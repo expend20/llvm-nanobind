@@ -56,6 +56,21 @@ FetchContent_MakeAvailable(nanobind)
 
 include("cmake/nanobind.cmake")
 
+# Target: LLVM-C-Wrapper
+add_library(LLVM-C-Wrapper INTERFACE)
+
+target_include_directories(LLVM-C-Wrapper INTERFACE
+	${LLVM_INCLUDE_DIRS}
+)
+
+if(NOT TARGET LLVM-C)
+	message(FATAL_ERROR "Target \"LLVM-C\" referenced by \"LLVM-C-Wrapper\" does not exist!")
+endif()
+
+target_link_libraries(LLVM-C-Wrapper INTERFACE
+	LLVM-C
+)
+
 # Target: llvm
 set(llvm_SOURCES
 	cmake.toml
@@ -69,10 +84,10 @@ target_compile_features(llvm PUBLIC
 	cxx_std_23
 )
 
-if(NOT TARGET LLVM-C)
-	message(FATAL_ERROR "Target \"LLVM-C\" referenced by \"llvm\" does not exist!")
+if(NOT TARGET LLVM-C-Wrapper)
+	message(FATAL_ERROR "Target \"LLVM-C-Wrapper\" referenced by \"llvm\" does not exist!")
 endif()
 
 target_link_libraries(llvm PUBLIC
-	LLVM-C
+	LLVM-C-Wrapper
 )

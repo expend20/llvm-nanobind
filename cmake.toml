@@ -15,6 +15,11 @@ components = ["Interpreter", "Development.Module", "Development.SABIModule"]
 
 [find-package.LLVM]
 
+[target.LLVM-C-Wrapper]
+type = "interface"
+link-libraries = ["::LLVM-C"]
+include-directories = ["${LLVM_INCLUDE_DIRS}"]
+
 [fetch-content.nanobind]
 git = "https://github.com/wjakob/nanobind"
 tag = "v2.9.2"
@@ -29,4 +34,4 @@ pass-sources = true
 type = "nanobind_module"
 sources = ["src/llvm-nanobind.cpp"]
 compile-features = ["cxx_std_23"]
-link-libraries = ["::LLVM-C"]
+link-libraries = ["::LLVM-C-Wrapper"]
