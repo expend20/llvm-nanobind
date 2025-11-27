@@ -33,5 +33,5 @@ pass-sources = true
 [target.llvm]
 type = "nanobind_module"
 sources = ["src/llvm-nanobind.cpp"]
-compile-features = ["cxx_std_23"]
+compile-features = ["cxx_std_20"]
 link-libraries = ["::LLVM-C-Wrapper"]

@@ -81,7 +81,7 @@ nanobind_add_typed_module(llvm ${llvm_SOURCES})
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${llvm_SOURCES})
 
 target_compile_features(llvm PUBLIC
-	cxx_std_23
+	cxx_std_20
 )
 
 if(NOT TARGET LLVM-C-Wrapper)
