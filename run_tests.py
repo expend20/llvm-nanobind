@@ -40,6 +40,7 @@ TESTS = [
 # Mapping of C++ test names to Python test files (only tests with Python equivalents)
 PYTHON_TESTS = {
     "test_context": Path("test_context.py"),
+    "test_module": Path("test_module.py"),
     "test_factorial": Path("test_factorial.py"),
 }
 

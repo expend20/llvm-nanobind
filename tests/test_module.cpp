@@ -17,6 +17,7 @@
 #include <llvm-c/Analysis.h>
 #include <cstdio>
 #include <cstring>
+#include <string>
 
 int main() {
     LLVMContextRef ctx = LLVMContextCreate();
@@ -24,33 +25,38 @@ int main() {
     // Create module
     LLVMModuleRef mod = LLVMModuleCreateWithNameInContext("test_module", ctx);
 
-    // Get initial module identifier
+    // Get initial module identifier (copy to string before modifying)
     size_t id_len;
-    const char *initial_id = LLVMGetModuleIdentifier(mod, &id_len);
+    const char *id_ptr = LLVMGetModuleIdentifier(mod, &id_len);
+    std::string initial_id(id_ptr, id_len);
 
     // Set new module identifier
     LLVMSetModuleIdentifier(mod, "renamed_module", strlen("renamed_module"));
-    const char *new_id = LLVMGetModuleIdentifier(mod, &id_len);
+    id_ptr = LLVMGetModuleIdentifier(mod, &id_len);
+    std::string new_id(id_ptr, id_len);
 
-    // Get/set source filename
+    // Get/set source filename (copy to string before modifying)
     size_t src_len;
-    const char *initial_src = LLVMGetSourceFileName(mod, &src_len);
+    const char *src_ptr = LLVMGetSourceFileName(mod, &src_len);
+    std::string initial_src(src_ptr, src_len);
     LLVMSetSourceFileName(mod, "test_source.c", strlen("test_source.c"));
-    const char *new_src = LLVMGetSourceFileName(mod, &src_len);
+    src_ptr = LLVMGetSourceFileName(mod, &src_len);
+    std::string new_src(src_ptr, src_len);
 
-    // Get/set data layout
-    const char *initial_layout = LLVMGetDataLayoutStr(mod);
+    // Get/set data layout (copy to string before modifying)
+    std::string initial_layout = LLVMGetDataLayoutStr(mod);
     LLVMSetDataLayout(mod, "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128");
-    const char *new_layout = LLVMGetDataLayoutStr(mod);
+    std::string new_layout = LLVMGetDataLayoutStr(mod);
 
-    // Get/set target triple
-    const char *initial_target = LLVMGetTarget(mod);
+    // Get/set target triple (copy to string before modifying)
+    std::string initial_target = LLVMGetTarget(mod);
     LLVMSetTarget(mod, "x86_64-unknown-linux-gnu");
-    const char *new_target = LLVMGetTarget(mod);
+    std::string new_target = LLVMGetTarget(mod);
 
     // Clone module
     LLVMModuleRef cloned = LLVMCloneModule(mod);
-    const char *cloned_id = LLVMGetModuleIdentifier(cloned, &id_len);
+    id_ptr = LLVMGetModuleIdentifier(cloned, &id_len);
+    std::string cloned_id(id_ptr, id_len);
 
     // Verify module
     char *error = nullptr;
@@ -66,15 +72,15 @@ int main() {
 
     // Print diagnostic comments
     printf("; Test: test_module\n");
-    printf("; Initial module ID: %s\n", initial_id);
-    printf("; New module ID: %s\n", new_id);
-    printf("; Initial source filename: %s\n", initial_src);
-    printf("; New source filename: %s\n", new_src);
-    printf("; Initial data layout: %s\n", initial_layout[0] ? initial_layout : "(empty)");
-    printf("; New data layout: %s\n", new_layout);
-    printf("; Initial target: %s\n", initial_target[0] ? initial_target : "(empty)");
-    printf("; New target: %s\n", new_target);
-    printf("; Cloned module ID: %s\n", cloned_id);
+    printf("; Initial module ID: %s\n", initial_id.c_str());
+    printf("; New module ID: %s\n", new_id.c_str());
+    printf("; Initial source filename: %s\n", initial_src.c_str());
+    printf("; New source filename: %s\n", new_src.c_str());
+    printf("; Initial data layout: %s\n", initial_layout.empty() ? "(empty)" : initial_layout.c_str());
+    printf("; New data layout: %s\n", new_layout.c_str());
+    printf("; Initial target: %s\n", initial_target.empty() ? "(empty)" : initial_target.c_str());
+    printf("; New target: %s\n", new_target.c_str());
+    printf("; Cloned module ID: %s\n", cloned_id.c_str());
     printf("\n");
 
     // Print module IR

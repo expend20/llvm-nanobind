@@ -122,6 +122,35 @@ struct LLVMTypeWrapper {
       throw LLVMInvalidOperationError("Type is not an integer type");
     return LLVMGetIntTypeWidth(m_ref);
   }
+
+  bool is_sized() const {
+    check_valid();
+    return LLVMTypeIsSized(m_ref);
+  }
+
+  bool is_packed_struct() const {
+    check_valid();
+    if (!is_struct())
+      throw LLVMInvalidOperationError("Type is not a struct type");
+    return LLVMIsPackedStruct(m_ref);
+  }
+
+  bool is_opaque_struct() const {
+    check_valid();
+    if (!is_struct())
+      throw LLVMInvalidOperationError("Type is not a struct type");
+    return LLVMIsOpaqueStruct(m_ref);
+  }
+
+  std::optional<std::string> get_struct_name() const {
+    check_valid();
+    if (!is_struct())
+      throw LLVMInvalidOperationError("Type is not a struct type");
+    const char *name = LLVMGetStructName(m_ref);
+    if (!name)
+      return std::nullopt;
+    return std::string(name);
+  }
 };
 
 // =============================================================================
@@ -1154,21 +1183,13 @@ struct LLVMModuleWrapper : NoMoveCopy {
     return result;
   }
 
-  // Clone
-  LLVMModuleWrapper *clone() const {
-    check_valid();
-    LLVMModuleRef cloned = LLVMCloneModule(m_ref);
-    auto *wrapper = new LLVMModuleWrapper();
-    wrapper->m_ref = cloned;
-    wrapper->m_context_token = m_context_token;
-    wrapper->m_token = std::make_shared<ValidityToken>();
-    wrapper->m_ctx_ref = m_ctx_ref;
-    return wrapper;
-  }
+  // Clone - returns a ModuleManager that must be used with 'with' or .dispose()
+  LLVMModuleManager *clone() const;
 
 private:
   // Private constructor for clone
   LLVMModuleWrapper() = default;
+  friend struct LLVMModuleManager;
 };
 
 // =============================================================================
@@ -1283,6 +1304,11 @@ struct LLVMContextWrapper : NoMoveCopy {
     return LLVMTypeWrapper(LLVMDoubleTypeInContext(m_ref), m_token);
   }
 
+  LLVMTypeWrapper bfloat_type() {
+    check_valid();
+    return LLVMTypeWrapper(LLVMBFloatTypeInContext(m_ref), m_token);
+  }
+
   LLVMTypeWrapper pointer_type(unsigned address_space = 0) {
     check_valid();
     return LLVMTypeWrapper(LLVMPointerTypeInContext(m_ref, address_space),
@@ -1375,13 +1401,33 @@ struct LLVMModuleManager : NoMoveCopy {
   std::string m_name;
   LLVMContextWrapper *m_context = nullptr;
   std::unique_ptr<LLVMModuleWrapper> m_module;
+  bool m_entered = false;
+  bool m_disposed = false;
+  bool m_from_clone = false;  // True if this manager owns a cloned module
 
+  // Constructor for ctx.create_module("name")
   LLVMModuleManager(std::string name, LLVMContextWrapper *context)
       : m_name(std::move(name)), m_context(context) {}
 
+  // Constructor for mod.clone() - takes ownership of pre-created module
+  explicit LLVMModuleManager(std::unique_ptr<LLVMModuleWrapper> cloned_module)
+      : m_module(std::move(cloned_module)), m_from_clone(true) {}
+
   LLVMModuleWrapper &enter() {
-    if (m_module)
+    if (m_disposed)
+      throw LLVMException("Module has been disposed");
+    if (m_entered)
       throw LLVMException("Module manager already entered");
+
+    m_entered = true;
+
+    if (m_from_clone) {
+      // Already have a module from clone - just validate and return it
+      m_module->check_valid();
+      return *m_module;
+    }
+
+    // Create new module
     if (!m_context)
       throw LLVMException("No context provided");
     m_context->check_valid();
@@ -1391,9 +1437,23 @@ struct LLVMModuleManager : NoMoveCopy {
   }
 
   void exit(const nb::object &, const nb::object &, const nb::object &) {
-    if (!m_module)
-      throw LLVMException("Module manager not entered");
+    if (m_disposed)
+      throw LLVMException("Module has already been disposed");
+    if (!m_entered)
+      throw LLVMException("Module manager was not entered");
     m_module.reset();
+    m_disposed = true;
+  }
+
+  void dispose() {
+    if (m_disposed)
+      throw LLVMException("Module has already been disposed");
+    if (m_entered)
+      throw LLVMException("Cannot call dispose() after __enter__; use __exit__ or 'with' statement");
+    if (!m_from_clone && !m_module)
+      throw LLVMException("Module has not been created");
+    m_module.reset();
+    m_disposed = true;
   }
 };
 
@@ -1404,25 +1464,42 @@ struct LLVMModuleManager : NoMoveCopy {
 struct LLVMBuilderManager : NoMoveCopy {
   LLVMContextWrapper *m_context = nullptr;
   std::unique_ptr<LLVMBuilderWrapper> m_builder;
+  bool m_entered = false;
+  bool m_disposed = false;
 
   explicit LLVMBuilderManager(LLVMContextWrapper *context)
       : m_context(context) {}
 
   LLVMBuilderWrapper &enter() {
-    if (m_builder)
+    if (m_disposed)
+      throw LLVMException("Builder has been disposed");
+    if (m_entered)
       throw LLVMException("Builder manager already entered");
     if (!m_context)
       throw LLVMException("No context provided");
     m_context->check_valid();
     m_builder =
         std::make_unique<LLVMBuilderWrapper>(m_context->m_ref, m_context->m_token);
+    m_entered = true;
     return *m_builder;
   }
 
   void exit(const nb::object &, const nb::object &, const nb::object &) {
-    if (!m_builder)
-      throw LLVMException("Builder manager not entered");
+    if (m_disposed)
+      throw LLVMException("Builder has already been disposed");
+    if (!m_entered)
+      throw LLVMException("Builder manager was not entered");
     m_builder.reset();
+    m_disposed = true;
+  }
+
+  void dispose() {
+    if (m_disposed)
+      throw LLVMException("Builder has already been disposed");
+    if (m_entered)
+      throw LLVMException("Cannot call dispose() after __enter__; use __exit__ or 'with' statement");
+    // For builder, there's nothing to dispose if not entered
+    m_disposed = true;
   }
 };
 
@@ -1438,6 +1515,25 @@ LLVMModuleManager *LLVMContextWrapper::create_module(const std::string &name) {
 LLVMBuilderManager *LLVMContextWrapper::create_builder() {
   check_valid();
   return new LLVMBuilderManager(this);
+}
+
+// =============================================================================
+// LLVMModuleWrapper method implementations (defined after Manager classes)
+// =============================================================================
+
+LLVMModuleManager *LLVMModuleWrapper::clone() const {
+  check_valid();
+  LLVMModuleRef cloned_ref = LLVMCloneModule(m_ref);
+
+  // Create wrapper for the cloned module using raw new (private constructor)
+  auto *raw_wrapper = new LLVMModuleWrapper();
+  raw_wrapper->m_ref = cloned_ref;
+  raw_wrapper->m_context_token = m_context_token;
+  raw_wrapper->m_token = std::make_shared<ValidityToken>();
+  raw_wrapper->m_ctx_ref = m_ctx_ref;
+
+  // Wrap in unique_ptr and return a manager that owns the cloned module
+  return new LLVMModuleManager(std::unique_ptr<LLVMModuleWrapper>(raw_wrapper));
 }
 
 // =============================================================================
@@ -1683,6 +1779,10 @@ NB_MODULE(llvm, m) {
       .def_prop_ro("is_array", &LLVMTypeWrapper::is_array)
       .def_prop_ro("is_vector", &LLVMTypeWrapper::is_vector)
       .def_prop_ro("int_width", &LLVMTypeWrapper::get_int_width)
+      .def_prop_ro("is_sized", &LLVMTypeWrapper::is_sized)
+      .def_prop_ro("is_packed_struct", &LLVMTypeWrapper::is_packed_struct)
+      .def_prop_ro("is_opaque_struct", &LLVMTypeWrapper::is_opaque_struct)
+      .def_prop_ro("struct_name", &LLVMTypeWrapper::get_struct_name)
       .def("set_body", &struct_set_body, "elem_types"_a, "packed"_a = false);
 
   // Value wrapper
@@ -1864,6 +1964,7 @@ NB_MODULE(llvm, m) {
       .def("half_type", &LLVMContextWrapper::half_type)
       .def("float_type", &LLVMContextWrapper::float_type)
       .def("double_type", &LLVMContextWrapper::double_type)
+      .def("bfloat_type", &LLVMContextWrapper::bfloat_type)
       .def("pointer_type", &LLVMContextWrapper::pointer_type,
            "address_space"_a = 0)
       .def("array_type", &LLVMContextWrapper::array_type, "elem_ty"_a,
@@ -1894,14 +1995,18 @@ NB_MODULE(llvm, m) {
       .def("__enter__", &LLVMModuleManager::enter,
            nb::rv_policy::reference_internal)
       .def("__exit__", &LLVMModuleManager::exit, "exc_type"_a.none(),
-           "exc_value"_a.none(), "traceback"_a.none());
+           "exc_value"_a.none(), "traceback"_a.none())
+      .def("dispose", &LLVMModuleManager::dispose,
+           R"(Dispose the module without using a 'with' statement. Can only be called before __enter__.)");
 
   // Builder manager
   nb::class_<LLVMBuilderManager>(m, "BuilderManager")
       .def("__enter__", &LLVMBuilderManager::enter,
            nb::rv_policy::reference_internal)
       .def("__exit__", &LLVMBuilderManager::exit, "exc_type"_a.none(),
-           "exc_value"_a.none(), "traceback"_a.none());
+           "exc_value"_a.none(), "traceback"_a.none())
+      .def("dispose", &LLVMBuilderManager::dispose,
+           R"(Dispose the builder without using a 'with' statement. Can only be called before __enter__.)");
 
   // Module-level factory functions
   m.def(
