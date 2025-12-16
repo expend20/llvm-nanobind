@@ -270,11 +270,13 @@ llvm-nanobind/
 
 ### Commands to Implement
 
-1. `--echo` - Complete module cloning via C API
-2. `--test-dibuilder` - Comprehensive debug info builder test
-3. `--get-di-tag` - Get DWARF tag from debug info node
-4. `--di-type-get-name` - Get type name from debug info
-5. `--test-diagnostic-handler` - Test diagnostic handler callbacks
+1. ~~`--echo` - Complete module cloning via C API~~ **DEFERRED to Phase 5** (requires ~100+ APIs)
+2. ✅ `--test-dibuilder` - Comprehensive debug info builder test **COMPLETE**
+3. ✅ `--get-di-tag` - Get DWARF tag from debug info node **COMPLETE**
+4. ✅ `--di-type-get-name` - Get type name from debug info **COMPLETE**
+5. ✅ `--test-diagnostic-handler` - Test diagnostic handler callbacks **COMPLETE**
+
+**Status**: 4/5 commands complete (80%). The `--echo` command requires extensive type/constant/instruction cloning APIs (~100+) and is deferred to Phase 5 after platform-specific commands are complete.
 
 ### 3.1 Echo Command Requirements
 

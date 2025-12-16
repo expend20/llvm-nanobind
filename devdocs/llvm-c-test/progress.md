@@ -1,6 +1,6 @@
 # llvm-c-test Python Port Progress
 
-**Last Updated:** December 16, 2025
+**Last Updated:** December 17, 2025
 
 ## Quick Summary
 
@@ -9,7 +9,7 @@
 ⏳ **Phase 3** - Complex commands (4/5 complete) - diagnostic & debug info builder working ✅  
 ⏳ **Phase 4** - Platform-specific (disassembly, object files) - Not Started
 
-**Progress:** 17/22 commands (77%) • 108/~235 bindings (46%)
+**Progress:** 18/22 commands (82%) • 108/~235 bindings (46%)
 
 ---
 
@@ -21,7 +21,7 @@
 | Phase 2: Metadata & Attributes | 6/6 | 9/~30 | ✅ Complete |
 | Phase 3: Complex (Echo/Debug) | 4/5 | 69/~150 | ⏳ In Progress |
 | Phase 4: Platform-Specific | 0/3 | 0/~20 | Not Started |
-| **Total** | **17/22 (77%)** | **57/~235 (24%)** | **In Progress** |
+| **Total** | **18/22 (82%)** | **108/~235 (46%)** | **In Progress** |
 
 ---
 
@@ -185,10 +185,15 @@
 ### Commands
 
 - [ ] `--echo` - Complete module cloning (deferred to Phase 5 - requires ~100+ APIs)
-- [x] `--test-dibuilder` - Debug info builder test ✅
+- [x] `--test-dibuilder` - Debug info builder test ✅ **NEW: Dec 17**
 - [x] `--get-di-tag` - Get DWARF tag from DI node
 - [x] `--di-type-get-name` - Get DI type name
 - [x] `--test-diagnostic-handler` - Test diagnostic callbacks
+
+**Implementation Details:**
+- `--test-dibuilder`: ~460 lines, tests all 59 DIBuilder APIs, generates 94-line IR with ObjC classes, enums, dynamic arrays, macros
+- Fixed 6 nullable parameter bindings to accept `None` values
+- Validates comprehensive debug info metadata creation
 
 ### 3.1 Echo Command Bindings
 
@@ -667,15 +672,16 @@
 
 ## Completed Milestones
 
-### Phase 3 (Partial): Diagnostic & Debug Info - December 16, 2025 ⏳
+### Phase 3: Diagnostic & Debug Info - December 16-17, 2025 ✅
 
-Successfully implemented 3 of 5 Phase 3 commands with 69 new API bindings (51 more added in iterations 2-3).
+Successfully implemented 4 of 5 Phase 3 commands with 69 new API bindings (51 added in iterations 2-3).
 Note: `--echo` command deferred to Phase 5 due to complexity (~100+ APIs needed).
 
 **Commands Implemented:**
-- `--test-diagnostic-handler` - Tests diagnostic handler callback system (prints diagnostic info to stderr)
-- `--get-di-tag` - Tests LLVMGetDINodeTag functionality (silent test)
-- `--di-type-get-name` - Tests LLVMDITypeGetName functionality (silent test)
+- ✅ `--test-diagnostic-handler` - Tests diagnostic handler callback system (prints diagnostic info to stderr)
+- ✅ `--get-di-tag` - Tests LLVMGetDINodeTag functionality (silent test)
+- ✅ `--di-type-get-name` - Tests LLVMDITypeGetName functionality (silent test)
+- ✅ `--test-dibuilder` - **NEW!** Comprehensive debug info builder test (generates 94-line IR module)
 
 **Key Bindings Added:**
 - **Diagnostic Handler (6 bindings)**: Thread-local diagnostic info storage to avoid Python callbacks
@@ -733,8 +739,34 @@ Completed DIBuilder API coverage (59/60 = 98%):
 - Debug record iteration (first/last/next/previous)
 - Metadata operations (replace uses, subprogram type, arrays)
 
+**Fourth Iteration: --test-dibuilder Implementation (December 17, 2025):**
+Completed comprehensive debug info builder test (~460 lines Python):
+- Tests all 59 DIBuilder APIs in a single comprehensive program
+- Creates complex debug metadata:
+  - ObjC class declarations with inheritance
+  - Enumerations (regular + arbitrary precision, 64-bit values)
+  - Subrange types with metadata bounds
+  - Dynamic array types with data location
+  - Set types
+  - Macros and module imports
+  - Debug labels and locations
+  - Global and local variables with expressions
+  - Functions with complete debug info
+- Tests new debug record positioning and iteration APIs
+- Generates 94-line LLVM IR module with comprehensive debug info
+- Fixed 6 nullable parameter bindings (`.none()` annotations)
+- Fixed Python API usage patterns (builder context manager, method names)
+
+**Bug Fixes in Bindings:**
+- Added `.none()` to 6 nullable metadata parameters:
+  - `dibuilder_create_global_variable_expression(decl)`
+  - `dibuilder_create_debug_location(inlined_at)`
+  - `dibuilder_create_function(subroutine_type)`
+  - `dibuilder_create_subrange_type(lower_bound, upper_bound, stride, bias)`
+  - `dibuilder_create_dynamic_array_type(associated, allocated, rank, bit_stride)`
+  - `dibuilder_create_temp_macro_file(parent_macro_file)`
+
 **Remaining Phase 3 Work:**
-- `--test-dibuilder` - Ready to implement! All 59 required APIs available
 - `--echo` - **Deferred to Phase 5** (requires ~100+ APIs for complete IR cloning)
 
 **Rationale for Deferring --echo:**
