@@ -10,6 +10,7 @@
 #include <llvm-c/Analysis.h>
 #include <llvm-c/BitReader.h>
 #include <llvm-c/Core.h>
+#include <llvm-c/DebugInfo.h>
 #include <llvm-c/Target.h>
 #include <llvm-c/TargetMachine.h>
 
@@ -2279,6 +2280,87 @@ LLVMModuleWrapper *parse_bitcode_in_context(LLVMContextWrapper &ctx,
 }
 
 // =============================================================================
+// DIBuilder Wrapper
+// =============================================================================
+
+struct LLVMDIBuilderWrapper : NoMoveCopy {
+  LLVMDIBuilderRef m_ref = nullptr;
+  std::shared_ptr<ValidityToken> m_module_token;
+  
+  LLVMDIBuilderWrapper(LLVMModuleRef mod, std::shared_ptr<ValidityToken> module_token)
+      : m_module_token(std::move(module_token)) {
+    m_ref = LLVMCreateDIBuilder(mod);
+  }
+  
+  ~LLVMDIBuilderWrapper() {
+    if (m_ref) {
+      LLVMDisposeDIBuilder(m_ref);
+      m_ref = nullptr;
+    }
+  }
+  
+  void check_valid() const {
+    if (!m_ref)
+      throw LLVMUseAfterFreeError("DIBuilder is null");
+    if (!m_module_token || !m_module_token->is_valid())
+      throw LLVMUseAfterFreeError("DIBuilder used after module was destroyed");
+  }
+  
+  void finalize() {
+    check_valid();
+    LLVMDIBuilderFinalize(m_ref);
+  }
+};
+
+// =============================================================================
+// Metadata Wrapper
+// =============================================================================
+
+struct LLVMMetadataWrapper {
+  LLVMMetadataRef m_ref = nullptr;
+  std::shared_ptr<ValidityToken> m_context_token;
+  
+  LLVMMetadataWrapper() = default;
+  LLVMMetadataWrapper(LLVMMetadataRef ref, std::shared_ptr<ValidityToken> token)
+      : m_ref(ref), m_context_token(std::move(token)) {}
+  
+  void check_valid() const {
+    if (!m_ref)
+      throw LLVMUseAfterFreeError("Metadata is null");
+    if (!m_context_token || !m_context_token->is_valid())
+      throw LLVMUseAfterFreeError("Metadata used after context was destroyed");
+  }
+};
+
+// =============================================================================
+// Diagnostic Handler Support (Thread-Local Storage)
+// =============================================================================
+
+// Thread-local storage for diagnostic info
+struct DiagnosticInfo {
+  std::string description;
+  LLVMDiagnosticSeverity severity = LLVMDSError;
+  bool was_called = false;
+};
+
+static thread_local DiagnosticInfo g_diagnostic_info;
+
+// Global diagnostic handler callback
+static void diagnostic_handler_callback(LLVMDiagnosticInfoRef di, void *context) {
+  g_diagnostic_info.was_called = true;
+  
+  // Get severity
+  g_diagnostic_info.severity = LLVMGetDiagInfoSeverity(di);
+  
+  // Get description
+  char *desc = LLVMGetDiagInfoDescription(di);
+  if (desc) {
+    g_diagnostic_info.description = std::string(desc);
+    LLVMDisposeMessage(desc);
+  }
+}
+
+// =============================================================================
 // Module Registration
 // =============================================================================
 
@@ -2876,4 +2958,172 @@ NB_MODULE(llvm, m) {
         return result != nullptr;
       },
       "val"_a, R"(Check if value is ValueAsMetadata.)");
+
+  // ==========================================================================
+  // Diagnostic Handler Support
+  // ==========================================================================
+  
+  nb::enum_<LLVMDiagnosticSeverity>(m, "DiagnosticSeverity")
+      .value("Error", LLVMDSError)
+      .value("Warning", LLVMDSWarning)
+      .value("Remark", LLVMDSRemark)
+      .value("Note", LLVMDSNote);
+  
+  m.def(
+      "context_set_diagnostic_handler",
+      [](LLVMContextWrapper &ctx) {
+        ctx.check_valid();
+        g_diagnostic_info = DiagnosticInfo(); // Reset
+        LLVMContextSetDiagnosticHandler(ctx.m_ref, diagnostic_handler_callback, nullptr);
+      },
+      "ctx"_a, R"(Set diagnostic handler for context (stores info in thread-local storage).)");
+  
+  m.def(
+      "diagnostic_was_called",
+      []() { return g_diagnostic_info.was_called; },
+      R"(Check if diagnostic handler was called since last reset.)");
+  
+  m.def(
+      "get_diagnostic_severity",
+      []() { return g_diagnostic_info.severity; },
+      R"(Get severity of last diagnostic.)");
+  
+  m.def(
+      "get_diagnostic_description",
+      []() { return g_diagnostic_info.description; },
+      R"(Get description of last diagnostic.)");
+  
+  m.def(
+      "reset_diagnostic_info",
+      []() { g_diagnostic_info = DiagnosticInfo(); },
+      R"(Reset diagnostic info.)");
+
+  // Bitcode parsing API that uses LLVMGetBitcodeModule2 (global context)
+  m.def(
+      "get_bitcode_module_2",
+      [](LLVMMemoryBufferWrapper &membuf) -> LLVMModuleWrapper * {
+        membuf.check_valid();
+        LLVMModuleRef mod = nullptr;
+        
+        if (LLVMGetBitcodeModule2(membuf.m_ref, &mod)) {
+          throw LLVMException("Failed to parse bitcode");
+        }
+        
+        // Get global context and create wrapper
+        LLVMContextRef global_ctx = LLVMGetGlobalContext();
+        static thread_local auto global_token = std::make_shared<ValidityToken>();
+        return new LLVMModuleWrapper(mod, global_ctx, global_token);
+      },
+      nb::rv_policy::take_ownership, "membuf"_a, 
+      R"(Parse bitcode from memory buffer using global context (uses diagnostic handler).)");
+
+  // ==========================================================================
+  // Debug Info Builder
+  // ==========================================================================
+  
+  nb::class_<LLVMDIBuilderWrapper>(m, "DIBuilder")
+      .def("finalize", &LLVMDIBuilderWrapper::finalize,
+           R"(Finalize the debug info builder.)");
+  
+  m.def(
+      "create_dibuilder",
+      [](LLVMModuleWrapper &mod) -> LLVMDIBuilderWrapper * {
+        mod.check_valid();
+        return new LLVMDIBuilderWrapper(mod.m_ref, mod.m_token);
+      },
+      nb::rv_policy::take_ownership, "mod"_a,
+      R"(Create a debug info builder for a module.)");
+  
+  nb::class_<LLVMMetadataWrapper>(m, "Metadata");
+  
+  m.def(
+      "md_string_in_context_2",
+      [](LLVMContextWrapper &ctx, const std::string &str) -> LLVMMetadataWrapper {
+        ctx.check_valid();
+        return LLVMMetadataWrapper(
+            LLVMMDStringInContext2(ctx.m_ref, str.c_str(), str.size()),
+            ctx.m_token);
+      },
+      "ctx"_a, "str"_a,
+      R"(Create metadata string in context (returns LLVMMetadataRef).)");
+  
+  m.def(
+      "md_node_in_context_2",
+      [](LLVMContextWrapper &ctx, const std::vector<LLVMMetadataWrapper> &mds) -> LLVMMetadataWrapper {
+        ctx.check_valid();
+        std::vector<LLVMMetadataRef> refs;
+        refs.reserve(mds.size());
+        for (const auto &md : mds) {
+          md.check_valid();
+          refs.push_back(md.m_ref);
+        }
+        return LLVMMetadataWrapper(
+            LLVMMDNodeInContext2(ctx.m_ref, refs.data(), refs.size()),
+            ctx.m_token);
+      },
+      "ctx"_a, "mds"_a,
+      R"(Create metadata node in context from metadata refs.)");
+  
+  m.def(
+      "get_di_node_tag",
+      [](const LLVMMetadataWrapper &md) -> unsigned {
+        md.check_valid();
+        return LLVMGetDINodeTag(md.m_ref);
+      },
+      "md"_a,
+      R"(Get DWARF tag from debug info node.)");
+  
+  m.def(
+      "dibuilder_create_file",
+      [](LLVMDIBuilderWrapper &dib, const std::string &filename,
+         const std::string &directory) -> LLVMMetadataWrapper {
+        dib.check_valid();
+        return LLVMMetadataWrapper(
+            LLVMDIBuilderCreateFile(dib.m_ref, filename.c_str(), filename.size(),
+                                   directory.c_str(), directory.size()),
+            dib.m_module_token);
+      },
+      "dib"_a, "filename"_a, "directory"_a,
+      R"(Create file debug info metadata.)");
+  
+  m.def(
+      "dibuilder_create_struct_type",
+      [](LLVMDIBuilderWrapper &dib, const LLVMMetadataWrapper &scope,
+         const std::string &name, const LLVMMetadataWrapper &file,
+         unsigned line_number, uint64_t size_in_bits, uint32_t align_in_bits,
+         unsigned flags) -> LLVMMetadataWrapper {
+        dib.check_valid();
+        scope.check_valid();
+        file.check_valid();
+        
+        return LLVMMetadataWrapper(
+            LLVMDIBuilderCreateStructType(
+                dib.m_ref, scope.m_ref, name.c_str(), name.size(),
+                file.m_ref, line_number, size_in_bits, align_in_bits,
+                (LLVMDIFlags)flags, nullptr, nullptr, 0, 0, nullptr,
+                nullptr, 0),
+            dib.m_module_token);
+      },
+      "dib"_a, "scope"_a, "name"_a, "file"_a, "line_number"_a,
+      "size_in_bits"_a, "align_in_bits"_a, "flags"_a,
+      R"(Create struct type debug info metadata.)");
+  
+  m.def(
+      "di_type_get_name",
+      [](const LLVMMetadataWrapper &di_type) -> std::string {
+        di_type.check_valid();
+        size_t len;
+        const char *name = LLVMDITypeGetName(di_type.m_ref, &len);
+        return std::string(name, len);
+      },
+      "di_type"_a,
+      R"(Get name from debug info type.)");
+  
+  // Constants for DIFlags
+  m.attr("DIFlagZero") = nb::int_((unsigned)LLVMDIFlagZero);
+  m.attr("DIFlagPrivate") = nb::int_((unsigned)LLVMDIFlagPrivate);
+  m.attr("DIFlagProtected") = nb::int_((unsigned)LLVMDIFlagProtected);
+  m.attr("DIFlagPublic") = nb::int_((unsigned)LLVMDIFlagPublic);
+  m.attr("DIFlagFwdDecl") = nb::int_((unsigned)LLVMDIFlagFwdDecl);
+  m.attr("DIFlagObjcClassComplete") = nb::int_((unsigned)LLVMDIFlagObjcClassComplete);
 }

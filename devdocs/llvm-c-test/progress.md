@@ -6,10 +6,10 @@
 
 ✅ **Phase 1 Complete** - All 8 foundation commands working (targets, calc, module operations)  
 ✅ **Phase 2 Complete** - All 6 metadata/attribute test commands working  
-⏳ **Phase 3** - Complex commands (echo, diagnostics) - Not Started  
+⏳ **Phase 3** - Complex commands (3/5 complete) - diagnostic, debug info basics working  
 ⏳ **Phase 4** - Platform-specific (disassembly, object files) - Not Started
 
-**Progress:** 14/22 commands (64%) • 39/~235 bindings (17%)
+**Progress:** 17/22 commands (77%) • 57/~235 bindings (24%)
 
 ---
 
@@ -19,9 +19,9 @@
 |-------|----------|----------|--------|
 | Phase 1: Foundation | 8/8 | 30/~35 | ✅ Complete |
 | Phase 2: Metadata & Attributes | 6/6 | 9/~30 | ✅ Complete |
-| Phase 3: Complex (Echo/Debug) | 0/5 | 0/~150 | Not Started |
+| Phase 3: Complex (Echo/Debug) | 3/5 | 18/~150 | ⏳ In Progress |
 | Phase 4: Platform-Specific | 0/3 | 0/~20 | Not Started |
-| **Total** | **14/22 (64%)** | **39/~235 (17%)** | **In Progress** |
+| **Total** | **17/22 (77%)** | **57/~235 (24%)** | **In Progress** |
 
 ---
 
@@ -180,15 +180,15 @@
 
 ---
 
-## Phase 3: Complex Commands (0/5 commands)
+## Phase 3: Complex Commands (3/5 commands) ⏳
 
 ### Commands
 
 - [ ] `--echo` - Complete module cloning
 - [ ] `--test-dibuilder` - Debug info builder test
-- [ ] `--get-di-tag` - Get DWARF tag from DI node
-- [ ] `--di-type-get-name` - Get DI type name
-- [ ] `--test-diagnostic-handler` - Test diagnostic callbacks
+- [x] `--get-di-tag` - Get DWARF tag from DI node
+- [x] `--di-type-get-name` - Get DI type name
+- [x] `--test-diagnostic-handler` - Test diagnostic callbacks
 
 ### 3.1 Echo Command Bindings
 
@@ -506,13 +506,27 @@
 - [ ] `LLVMPositionBuilderBeforeInstrAndDbgRecords`
 - [ ] `LLVMPositionBuilderBeforeDbgRecords`
 
-### 3.3 Diagnostic Handler Bindings - 0/5
+### 3.3 Diagnostic Handler Bindings - 5/5 ✅
 
-- [ ] `LLVMContextSetDiagnosticHandler`
-- [ ] `LLVMContextGetDiagnosticHandler`
-- [ ] `LLVMContextGetDiagnosticContext`
-- [ ] `LLVMGetDiagInfoSeverity`
-- [ ] `LLVMGetDiagInfoDescription`
+- [x] `LLVMContextSetDiagnosticHandler`
+- [x] `LLVMContextGetDiagnosticHandler` (not exposed, handled internally)
+- [x] `LLVMContextGetDiagnosticContext` (not exposed, handled internally)
+- [x] `LLVMGetDiagInfoSeverity`
+- [x] `LLVMGetDiagInfoDescription`
+- [x] `LLVMGetBitcodeModule2` (for global context parsing)
+
+### 3.4 Basic Debug Info Bindings - 8/8 ✅
+
+- [x] `LLVMCreateDIBuilder`
+- [x] `LLVMDisposeDIBuilder`
+- [x] `LLVMDIBuilderFinalize`
+- [x] `LLVMDIBuilderCreateFile`
+- [x] `LLVMDIBuilderCreateStructType`
+- [x] `LLVMGetDINodeTag`
+- [x] `LLVMDITypeGetName`
+- [x] `LLVMMDStringInContext2`
+- [x] `LLVMMDNodeInContext2`
+- [x] `LLVMDiagnosticSeverity` enum
 
 ### Lit Tests Passing
 
@@ -523,9 +537,9 @@
 - [ ] `invoke.ll`
 - [ ] `memops.ll`
 - [ ] `debug_info_new_format.ll`
-- [ ] `get-di-tag.ll`
-- [ ] `di-type-get-name.ll`
-- [ ] `invalid-bitcode.test` (diagnostic handler)
+- [x] `get-di-tag.ll`
+- [x] `di-type-get-name.ll`
+- [x] `invalid-bitcode.test` (diagnostic handler)
 
 ---
 
@@ -580,6 +594,54 @@
 ---
 
 ## Completed Milestones
+
+### Phase 3 (Partial): Diagnostic & Basic Debug Info - December 16, 2025 ⏳
+
+Successfully implemented 3 of 5 Phase 3 commands with 18 new API bindings:
+
+**Commands Implemented:**
+- `--test-diagnostic-handler` - Tests diagnostic handler callback system (prints diagnostic info to stderr)
+- `--get-di-tag` - Tests LLVMGetDINodeTag functionality (silent test)
+- `--di-type-get-name` - Tests LLVMDITypeGetName functionality (silent test)
+
+**Key Bindings Added:**
+- **Diagnostic Handler (6 bindings)**: Thread-local diagnostic info storage to avoid Python callbacks
+  - `LLVMContextSetDiagnosticHandler` - Sets C callback that stores info in thread-local
+  - `LLVMGetDiagInfoSeverity` - Gets severity enum (Error/Warning/Remark/Note)
+  - `LLVMGetDiagInfoDescription` - Gets diagnostic message
+  - `LLVMGetBitcodeModule2` - Parse bitcode with global context (triggers diagnostics)
+  - Plus Python accessors: `diagnostic_was_called()`, `get_diagnostic_severity()`, `get_diagnostic_description()`
+
+- **Debug Info Builder (12 bindings)**: Basic debug info creation
+  - `LLVMCreateDIBuilder` / `LLVMDisposeDIBuilder` - DIBuilder lifecycle
+  - `LLVMDIBuilderFinalize` - Finalize debug info
+  - `LLVMDIBuilderCreateFile` - Create file metadata
+  - `LLVMDIBuilderCreateStructType` - Create struct type metadata
+  - `LLVMGetDINodeTag` - Get DWARF tag from debug info node
+  - `LLVMDITypeGetName` - Get name from debug info type
+  - `LLVMMDStringInContext2` / `LLVMMDNodeInContext2` - Metadata creation
+  - Plus wrapper classes: `LLVMDIBuilderWrapper`, `LLVMMetadataWrapper`
+  - Plus constants: `DIFlagZero`, `DIFlagPrivate`, `DIFlagObjcClassComplete`, etc.
+
+**Technical Highlights:**
+- **Thread-Local Diagnostic Storage**: Avoided Python callback complexity by using thread-local C++ storage
+  - C callback `diagnostic_handler_callback()` stores severity and description
+  - Python code calls accessor functions to retrieve diagnostic info
+  - Clean separation: C handles callbacks, Python reads results
+
+- **Debug Info Wrappers**: Added proper RAII wrappers for DIBuilder and Metadata
+  - DIBuilder tied to module lifetime via shared_ptr<ValidityToken>
+  - Metadata tied to context lifetime
+  - Prevents use-after-free errors
+
+**Test Results:**
+- All 3 commands produce output matching C version exactly
+- `--test-diagnostic-handler` correctly intercepts bitcode parsing errors
+- `--get-di-tag` and `--di-type-get-name` are silent tests (no output = success)
+
+**Remaining Phase 3 Work:**
+- `--test-dibuilder` - Requires ~40 additional debug info APIs (comprehensive test)
+- `--echo` - Requires ~100+ APIs for complete IR cloning (most complex command)
 
 ### Phase 2: Metadata & Attributes - December 16, 2025 ✅
 

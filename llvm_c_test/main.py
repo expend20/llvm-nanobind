@@ -107,6 +107,19 @@ def main():
         from .metadata import is_a_value_as_metadata
 
         return is_a_value_as_metadata()
+    # Phase 3 commands
+    elif command == "--test-diagnostic-handler":
+        from .diagnostic import test_diagnostic_handler
+
+        return test_diagnostic_handler()
+    elif command == "--get-di-tag":
+        from .debuginfo import get_di_tag
+
+        return get_di_tag()
+    elif command == "--di-type-get-name":
+        from .debuginfo import di_type_get_name
+
+        return di_type_get_name()
     else:
         print(f"Unknown command: {command}", file=sys.stderr)
         print_usage()
