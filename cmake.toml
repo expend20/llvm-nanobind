@@ -7,11 +7,14 @@ name = "llvm-nanobind"
 
 [variables]
 CMAKE_EXPORT_COMPILE_COMMANDS = true
+CMAKE_MODULE_PATH = "${CMAKE_SOURCE_DIR}/cmake"
 
 # TODO: when finding Python 3.14 this produces abi3 modules that are not compatible with 3.12
 [find-package.Python]
 version = "3.12"
 components = ["Interpreter", "Development.Module", "Development.SABIModule"]
+
+[find-package.nanobind-wrapper]
 
 [find-package.LLVM]
 
@@ -19,11 +22,6 @@ components = ["Interpreter", "Development.Module", "Development.SABIModule"]
 type = "interface"
 link-libraries = ["::LLVM-C"]
 include-directories = ["${LLVM_INCLUDE_DIRS}"]
-
-[fetch-content.nanobind]
-git = "https://github.com/wjakob/nanobind"
-tag = "v2.9.2"
-include-after = ["cmake/nanobind.cmake"]
 
 [template.nanobind_module]
 type = "shared"

@@ -26,6 +26,7 @@ endif()
 
 # Variables
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
 project(llvm-nanobind)
 
@@ -37,24 +38,9 @@ find_package(Python 3.12 REQUIRED
 		Development.SABIModule
 )
 
+find_package(nanobind-wrapper REQUIRED)
+
 find_package(LLVM REQUIRED)
-
-include(FetchContent)
-
-# Fix warnings about DOWNLOAD_EXTRACT_TIMESTAMP
-if(POLICY CMP0135)
-	cmake_policy(SET CMP0135 NEW)
-endif()
-message(STATUS "Fetching nanobind (v2.9.2)...")
-FetchContent_Declare(nanobind
-	GIT_REPOSITORY
-		"https://github.com/wjakob/nanobind"
-	GIT_TAG
-		v2.9.2
-)
-FetchContent_MakeAvailable(nanobind)
-
-include("cmake/nanobind.cmake")
 
 # Target: LLVM-C-Wrapper
 add_library(LLVM-C-Wrapper INTERFACE)
