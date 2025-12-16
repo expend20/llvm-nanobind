@@ -29,3 +29,18 @@ Run the example:
 ```bash
 uv run playground.py
 ```
+
+## Testing
+
+Run the golden master tests (C++ and Python bindings):
+
+```bash
+uv run python run_tests.py
+```
+
+Run the vendored llvm-c-test integration tests:
+
+```bash
+uv run python run_llvm_c_tests.py        # Run all tests
+uv run python run_llvm_c_tests.py -v     # Verbose output
+```

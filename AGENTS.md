@@ -2,12 +2,14 @@
 
 ## Build & Test Commands
 ```bash
-cmake -B build -G Ninja          # Configure (first time only)
-cmake --build build              # Build everything
-cmake --build build --target llvm # Build Python bindings only
-python3 run_tests.py             # Run all C++ tests + Python comparison
-./build/test_factorial           # Run single C++ test
-python3 test_factorial.py        # Run single Python test
+cmake -B build -G Ninja                      # Configure (first time only)
+cmake --build build                          # Build everything
+cmake --build build --target llvm            # Build Python bindings only
+uv run python run_tests.py                   # Run all C++ tests + Python comparison
+uv run python run_llvm_c_tests.py            # Run vendored llvm-c-test lit tests
+uv run python run_llvm_c_tests.py -v         # Run lit tests with verbose output
+./build/test_factorial                       # Run single C++ test
+uv run python test_factorial.py              # Run single Python test
 ```
 
 ## Code Style
