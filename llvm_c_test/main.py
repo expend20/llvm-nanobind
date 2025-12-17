@@ -39,6 +39,9 @@ def print_usage():
         file=sys.stderr,
     )
     print("", file=sys.stderr)
+    print("  * --echo", file=sys.stderr)
+    print("    Read bitcode from stdin - print cloned module", file=sys.stderr)
+    print("", file=sys.stderr)
 
 
 def main():
@@ -137,6 +140,11 @@ def main():
         from .object_file import object_list_symbols
 
         return object_list_symbols()
+    # Phase 5 command
+    elif command == "--echo":
+        from .echo import echo
+
+        return echo()
     else:
         print(f"Unknown command: {command}", file=sys.stderr)
         print_usage()

@@ -1,6 +1,6 @@
 # llvm-c-test Python Port Progress
 
-**Last Updated:** December 17, 2025 (Phase 4 Complete)
+**Last Updated:** December 17, 2025 (Phase 5 COMPLETE - Echo command working!)
 
 ## Quick Summary
 
@@ -8,935 +8,175 @@
 ✅ **Phase 2 Complete** - All 6 metadata/attribute test commands working  
 ✅ **Phase 3 Complete** - All 4 diagnostic & debug info commands working  
 ✅ **Phase 4 Complete** - All 3 platform-specific commands working (disassembly, object files)
-⏳ **Phase 5** - Echo command (module cloning) - Not Started
+✅ **Phase 5 Complete** - Echo command (module cloning) working!
 
-**Progress:** 21/22 commands (95%) • 128/~305 bindings (42%)
+**Progress:** 22/22 commands (100%) • All lit tests passing!
 
 ---
 
 ## Status Overview
 
-| Phase | Commands | Bindings | Status |
-|-------|----------|----------|--------|
-| Phase 1: Foundation | 8/8 | 30/~35 | ✅ Complete |
-| Phase 2: Metadata & Attributes | 6/6 | 9/~30 | ✅ Complete |
-| Phase 3: Complex (Debug Info) | 4/4 | 69/~70 | ✅ Complete |
-| Phase 4: Platform-Specific | 3/3 | 20/~20 | ✅ Complete |
-| Phase 5: Echo (Module Cloning) | 0/1 | 0/~150 | Not Started |
-| **Total** | **21/22 (95%)** | **128/~305 (42%)** | **In Progress** |
+| Phase | Commands | Status |
+|-------|----------|--------|
+| Phase 1: Foundation | 8/8 | ✅ Complete |
+| Phase 2: Metadata & Attributes | 6/6 | ✅ Complete |
+| Phase 3: Complex (Debug Info) | 4/4 | ✅ Complete |
+| Phase 4: Platform-Specific | 3/3 | ✅ Complete |
+| Phase 5: Echo (Module Cloning) | 1/1 | ✅ Complete |
+| **Total** | **22/22 (100%)** | **All Lit Tests Passing** |
 
 ---
 
-## Infrastructure
+## Phase 5: Echo Command - COMPLETE ✅
 
-### Package Structure
+### Final Session: December 17, 2025
 
-- [x] Create `llvm_c_test/` package directory
-- [x] Create `llvm_c_test/__init__.py`
-- [x] Create `llvm_c_test/__main__.py` (CLI entry point)
-- [x] Create `llvm_c_test/main.py` (command dispatcher)
-- [x] Create `llvm_c_test/helpers.py` (utility functions)
+Successfully completed the `--echo` command implementation, the most complex command in the llvm-c-test suite.
 
-### Lit Test Integration
+### Work Completed
 
-- [ ] Create wrapper script for Python llvm-c-test
-- [ ] Modify `lit.cfg.py` to support Python substitution
-- [ ] Test `USE_PYTHON_LLVM_C_TEST` environment variable
+**Python Implementation (`llvm_c_test/echo.py`):**
+- ~1400 lines of Python code
+- `TypeCloner` class - Clones all LLVM type kinds
+- `clone_constant()` / `clone_constant_impl()` - Clone all constant types
+- `clone_inline_asm()` - Clone inline assembly values
+- `FunCloner` class with full instruction cloning:
+  - All 60+ instruction opcodes supported
+  - Operand bundle cloning
+  - Exception handling (landingpad, catchswitch, etc.)
+  - Atomic operations with sync scope IDs
+  - Fast-math flags preservation
+- `declare_symbols()` / `clone_symbols()` - Global cloning
+- Proper cleanup order to avoid use-after-free crashes
 
----
+**C++ Bindings Added:**
+- Value equality operators (`__eq__`, `__ne__`, `__hash__`) for Value, Type, BasicBlock, NamedMDNode
+- `add_clause()` - Add clause to landing pad
+- `add_handler()` - Add handler to catch switch
+- `get_handlers()` - Get all handlers from catch switch
+- `get_operand_bundle_at_index()` - Get operand bundle at index
+- `get_indices()` - Get indices for extractvalue/insertvalue
+- `first_param()` / `last_param()` - Function parameter iteration
+- `next_function()` / `prev_function()` - Function iteration
+- `first_function()` / `last_function()` - Module function iteration
+- `invoke_with_operand_bundles()` - Build invoke with operand bundles
+- `call_with_operand_bundles()` - Build call with operand bundles
+- `callbr()` - Build callbr instruction
+- `catch_switch()` - Build catch switch
+- `cleanup_ret()` - Build cleanup ret
+- `OperandBundle` class with tag, num_args, get_arg_at_index
+- `create_operand_bundle()` - Create operand bundle
+- `get_undef_mask_elem()` - Get undef mask element value
+- `get_inline_asm()` - Create inline assembly value
 
-## Phase 1: Foundation (8/8 commands) ✅
+**Memory Safety Fix:**
+- Fixed critical bug where Module destructor would crash if context was already destroyed
+- Module wrapper now checks validity token before calling `LLVMDisposeModule`
+- Prevents interpreter crash, prints warning about potential memory leak
+- Added comprehensive test suite in `test_memory_safety.py`
+- Documented issue and fix in `devdocs/memory-model-issues.md`
 
-### Commands
+### Test Results
 
-- [x] `--targets-list` - List all registered LLVM targets
-- [x] `--calc` - RPN calculator that generates IR
-- [x] `--module-dump` - Parse bitcode and print IR
-- [x] `--lazy-module-dump` - Lazy load and print bitcode
-- [x] `--new-module-dump` - Parse bitcode (new API) and print IR
-- [x] `--lazy-new-module-dump` - Lazy load (new API) and print IR
-- [x] `--module-list-functions` - List functions with stats
-- [x] `--module-list-globals` - List global variables
+All 23 lit tests passing:
+```
+PASS: llvm-c-test :: ARM/disassemble.test
+PASS: llvm-c-test :: X86/disassemble.test
+PASS: llvm-c-test :: add_named_metadata_operand.ll
+PASS: llvm-c-test :: atomics.ll
+PASS: llvm-c-test :: calc.test
+PASS: llvm-c-test :: callsite_attributes.ll
+PASS: llvm-c-test :: debug_info_new_format.ll
+PASS: llvm-c-test :: di-type-get-name.ll
+PASS: llvm-c-test :: echo.ll
+PASS: llvm-c-test :: empty.ll
+PASS: llvm-c-test :: float_ops.ll
+PASS: llvm-c-test :: freeze.ll
+PASS: llvm-c-test :: function_attributes.ll
+PASS: llvm-c-test :: functions.ll
+PASS: llvm-c-test :: get-di-tag.ll
+PASS: llvm-c-test :: globals.ll
+PASS: llvm-c-test :: invalid-bitcode.test
+PASS: llvm-c-test :: invoke.ll
+PASS: llvm-c-test :: is_a_value_as_metadata.ll
+PASS: llvm-c-test :: memops.ll
+PASS: llvm-c-test :: objectfile.ll
+PASS: llvm-c-test :: replace_md_operand.ll
+PASS: llvm-c-test :: set_metadata.ll
 
-### Required Bindings
+Total Discovered Tests: 23
+  Passed: 23 (100.00%)
+```
 
-#### Support.h (Memory Buffer) - 3/5
+### Known Limitations
 
-- [x] `LLVMCreateMemoryBufferWithSTDIN`
-- [ ] `LLVMCreateMemoryBufferWithContentsOfFile`
-- [x] `LLVMDisposeMemoryBuffer` (via wrapper destructor)
-- [x] `LLVMGetBufferStart`
-- [x] `LLVMGetBufferSize`
+The following features are stubbed out due to missing bindings (not critical for lit tests):
 
-#### BitReader.h - 4/5
+1. **Attribute copying** - Functions `get_last_enum_attribute_kind`, `get_enum_attribute_at_index`, etc. not bound
+2. **Global metadata copying** - Functions `global_copy_all_metadata`, `global_set_metadata` not bound
+3. **Instruction metadata copying** - Function `instruction_get_all_metadata_other_than_debug_loc` not bound
 
-- [x] `LLVMParseBitcodeInContext`
-- [x] `LLVMParseBitcodeInContext2`
-- [x] `LLVMGetBitcodeModuleInContext`
-- [x] `LLVMGetBitcodeModuleInContext2`
-- [ ] `LLVMGetBitcodeModule2`
-
-#### Target.h - 13/13 ✅
-
-- [x] `LLVMInitializeAllTargetInfos`
-- [x] `LLVMInitializeAllTargets`
-- [x] `LLVMInitializeAllTargetMCs`
-- [x] `LLVMInitializeAllAsmPrinters`
-- [x] `LLVMInitializeAllAsmParsers`
-- [x] `LLVMInitializeAllDisassemblers`
-- [x] `LLVMGetFirstTarget`
-- [x] `LLVMGetNextTarget`
-- [x] `LLVMGetTargetName`
-- [x] `LLVMGetTargetDescription`
-- [x] `LLVMTargetHasJIT`
-- [x] `LLVMTargetHasTargetMachine`
-- [x] `LLVMTargetHasAsmBackend`
-
-#### Core.h (Additional) - 8/12
-
-- [x] `LLVMGetFirstInstruction`
-- [x] `LLVMGetLastInstruction`
-- [x] `LLVMGetNextInstruction`
-- [x] `LLVMGetPreviousInstruction`
-- [x] `LLVMIsACallInst`
-- [x] `LLVMGetNumOperands`
-- [x] `LLVMGetOperand`
-- [x] `LLVMIsDeclaration`
-- [x] `LLVMBuildBinOp`
-- [ ] `LLVMContextSetDiagnosticHandler`
-- [ ] `LLVMGetDiagInfoDescription`
-- [ ] `LLVMGetDiagInfoSeverity`
-
-### Lit Tests Passing
-
-- [x] `calc.test`
-- [x] `functions.ll` (module-list-functions)
-- [x] `globals.ll` (module-list-globals)
-- [x] `empty.ll` (module-dump)
-
----
-
-## Phase 2: Metadata & Attributes (6/6 commands) ✅
-
-### Commands
-
-- [x] `--add-named-metadata-operand` - Test adding named metadata
-- [x] `--set-metadata` - Test setting instruction metadata
-- [x] `--replace-md-operand` - Test replacing metadata operands
-- [x] `--is-a-value-as-metadata` - Test ValueAsMetadata
-- [x] `--test-function-attributes` - Test function attribute enumeration
-- [x] `--test-callsite-attributes` - Test callsite attribute enumeration
-
-### Required Bindings
-
-#### Core.h (Attributes) - 4/13
-
-- [x] `LLVMAttributeReturnIndex` (constant)
-- [x] `LLVMAttributeFunctionIndex` (constant)
-- [x] `LLVMGetAttributeCountAtIndex`
-- [ ] `LLVMGetAttributesAtIndex`
-- [ ] `LLVMGetEnumAttributeAtIndex`
-- [ ] `LLVMAddAttributeAtIndex`
-- [x] `LLVMGetCallSiteAttributeCount`
-- [ ] `LLVMGetCallSiteAttributes`
-- [ ] `LLVMGetCallSiteEnumAttribute`
-- [ ] `LLVMAddCallSiteAttribute`
-- [ ] `LLVMGetLastEnumAttributeKind`
-- [ ] `LLVMCreateEnumAttribute`
-- [ ] `LLVMGetEnumAttributeValue`
-
-#### Core.h (Metadata) - 5/17
-
-- [x] `LLVMMDNode`
-- [ ] `LLVMMDNodeInContext`
-- [ ] `LLVMMDNodeInContext2`
-- [ ] `LLVMMDStringInContext`
-- [ ] `LLVMMDStringInContext2`
-- [ ] `LLVMGetMDString`
-- [x] `LLVMSetMetadata`
-- [ ] `LLVMGetMetadata`
-- [x] `LLVMGetMDKindID`
-- [ ] `LLVMGetMDKindIDInContext`
-- [x] `LLVMAddNamedMetadataOperand`
-- [ ] `LLVMGetNamedMetadataNumOperands`
-- [ ] `LLVMGetNamedMetadataOperands`
-- [ ] `LLVMMetadataAsValue`
-- [ ] `LLVMValueAsMetadata`
-- [ ] `LLVMReplaceMDNodeOperandWith`
-- [x] `LLVMIsAValueAsMetadata`
-
-#### Core.h (Other) - 0/3
-
-- [ ] `LLVMDeleteInstruction`
-- [ ] `LLVMGetModuleContext`
-- [ ] `LLVMEnablePrettyStackTrace` (ErrorHandling.h)
-
-### Lit Tests Passing
-
-- [ ] `add_named_metadata_operand.ll`
-- [ ] `set_metadata.ll`
-- [ ] `replace_md_operand.ll`
-- [ ] `is_a_value_as_metadata.ll`
-- [ ] `function_attributes.ll`
-- [ ] `callsite_attributes.ll`
+These can be added later if needed for specific use cases.
 
 ---
 
-## Phase 3: Complex Commands (4/4 commands) ✅
+## Future Work
 
-### Commands
+### Potential Enhancements
 
-- [x] `--test-dibuilder` - Debug info builder test ✅
-- [x] `--get-di-tag` - Get DWARF tag from DI node ✅
-- [x] `--di-type-get-name` - Get DI type name ✅
-- [x] `--test-diagnostic-handler` - Test diagnostic callbacks ✅
+1. **Add missing attribute bindings** for complete attribute copying
+2. **Add missing metadata bindings** for complete metadata copying
+3. **Improve memory model** - Consider Option 1 from memory-model-issues.md (context tracks modules)
 
-**Implementation Details:**
-- `--test-dibuilder`: ~460 lines, tests all 59 DIBuilder APIs, generates 94-line IR with ObjC classes, enums, dynamic arrays, macros
-- Fixed 6 nullable parameter bindings to accept `None` values
-- Validates comprehensive debug info metadata creation
+### Documentation Created
 
-**Note:** The `--echo` command has been moved to Phase 5 due to its complexity (~150 additional APIs required).
+- `devdocs/memory-model-issues.md` - Documents module/context lifetime issues and fix
+- `test_memory_safety.py` - Comprehensive memory safety test suite
 
 ---
 
-## Phase 5: Echo Command (Module Cloning) - 0/1 commands
+## All Commands Implemented
 
-### Commands
-
-- [ ] `--echo` - Complete module cloning (requires ~150 APIs)
-
-The `--echo` command is the most comprehensive test, requiring cloning of all types, constants, instructions, globals, and metadata.
-
-### 5.1 Echo Command Bindings
-
-#### Core.h (Type Cloning) - 0/27
-
-- [ ] `LLVMGetTypeKind`
-- [ ] `LLVMHalfTypeInContext`
-- [ ] `LLVMBFloatTypeInContext`
-- [ ] `LLVMX86FP80TypeInContext`
-- [ ] `LLVMFP128TypeInContext`
-- [ ] `LLVMPPCFP128TypeInContext`
-- [ ] `LLVMLabelTypeInContext`
-- [ ] `LLVMMetadataTypeInContext`
-- [ ] `LLVMX86AMXTypeInContext`
-- [ ] `LLVMTokenTypeInContext`
-- [ ] `LLVMScalableVectorType`
-- [ ] `LLVMTargetExtTypeInContext`
-- [ ] `LLVMGetTargetExtTypeName`
-- [ ] `LLVMGetTargetExtTypeNumTypeParams`
-- [ ] `LLVMGetTargetExtTypeNumIntParams`
-- [ ] `LLVMGetTargetExtTypeTypeParam`
-- [ ] `LLVMGetTargetExtTypeIntParam`
-- [ ] `LLVMGetTypeByName2`
-- [ ] `LLVMStructGetTypeAtIndex`
-- [ ] `LLVMPointerTypeIsOpaque`
-- [ ] `LLVMPointerType`
-- [ ] `LLVMCountParamTypes`
-- [ ] `LLVMGetParamTypes`
-- [ ] `LLVMGetReturnType`
-- [ ] `LLVMGetElementType`
-- [ ] `LLVMGetArrayLength2`
-- [ ] `LLVMGetVectorSize`
-
-#### Core.h (Constant Cloning) - 0/34
-
-- [ ] `LLVMIsAConstant`
-- [ ] `LLVMIsAGlobalValue`
-- [ ] `LLVMIsAFunction`
-- [ ] `LLVMIsAGlobalVariable`
-- [ ] `LLVMIsAGlobalAlias`
-- [ ] `LLVMIsAConstantInt`
-- [ ] `LLVMIsAConstantFP`
-- [ ] `LLVMIsAConstantAggregateZero`
-- [ ] `LLVMIsAConstantDataArray`
-- [ ] `LLVMIsAConstantArray`
-- [ ] `LLVMIsAConstantStruct`
-- [ ] `LLVMIsAConstantPointerNull`
-- [ ] `LLVMIsAConstantVector`
-- [ ] `LLVMIsAConstantDataVector`
-- [ ] `LLVMIsAConstantExpr`
-- [ ] `LLVMIsAConstantPtrAuth`
-- [ ] `LLVMGetIntrinsicID`
-- [ ] `LLVMIntrinsicIsOverloaded`
-- [ ] `LLVMGetIntrinsicDeclaration`
-- [ ] `LLVMGetRawDataValues`
-- [ ] `LLVMConstDataArray`
-- [ ] `LLVMGetAggregateElement`
-- [ ] `LLVMGetConstOpcode`
-- [ ] `LLVMConstBitCast`
-- [ ] `LLVMConstGEPWithNoWrapFlags`
-- [ ] `LLVMGEPGetNoWrapFlags`
-- [ ] `LLVMGetGEPSourceElementType`
-- [ ] `LLVMGetNumIndices`
-- [ ] `LLVMConstantPtrAuth`
-- [ ] `LLVMGetConstantPtrAuthPointer`
-- [ ] `LLVMGetConstantPtrAuthKey`
-- [ ] `LLVMGetConstantPtrAuthDiscriminator`
-- [ ] `LLVMGetConstantPtrAuthAddrDiscriminator`
-- [ ] `LLVMGetValueKind`
-
-#### Core.h (Instruction Cloning) - 0/35
-
-- [ ] `LLVMGetInstructionOpcode`
-- [ ] `LLVMInstructionRemoveFromParent`
-- [ ] `LLVMInsertIntoBuilderWithName`
-- [ ] `LLVMGetNUW`
-- [ ] `LLVMSetNUW`
-- [ ] `LLVMGetNSW`
-- [ ] `LLVMSetNSW`
-- [ ] `LLVMGetExact`
-- [ ] `LLVMSetExact`
-- [ ] `LLVMGetNNeg`
-- [ ] `LLVMSetNNeg`
-- [ ] `LLVMGetIsDisjoint`
-- [ ] `LLVMSetIsDisjoint`
-- [ ] `LLVMCanValueUseFastMathFlags`
-- [ ] `LLVMGetFastMathFlags`
-- [ ] `LLVMSetFastMathFlags`
-- [ ] `LLVMGetICmpSameSign`
-- [ ] `LLVMSetICmpSameSign`
-- [ ] `LLVMGetOrdering`
-- [ ] `LLVMSetOrdering`
-- [ ] `LLVMIsAtomic`
-- [ ] `LLVMGetAtomicSyncScopeID`
-- [ ] `LLVMSetAtomicSyncScopeID`
-- [ ] `LLVMGetAtomicRMWBinOp`
-- [ ] `LLVMGetCmpXchgSuccessOrdering`
-- [ ] `LLVMGetCmpXchgFailureOrdering`
-- [ ] `LLVMGetWeak`
-- [ ] `LLVMSetWeak`
-- [ ] `LLVMGetVolatile`
-- [ ] `LLVMSetVolatile`
-- [ ] `LLVMGetAllocatedType`
-- [ ] `LLVMGetTailCallKind`
-- [ ] `LLVMSetTailCallKind`
-- [ ] `LLVMGetCalledFunctionType`
-- [ ] `LLVMGetCalledValue`
-
-#### Core.h (Builder Instructions) - 0/36
-
-- [ ] `LLVMGetNumArgOperands`
-- [ ] `LLVMGetArgOperand`
-- [ ] `LLVMBuildInvokeWithOperandBundles`
-- [ ] `LLVMBuildCallWithOperandBundles`
-- [ ] `LLVMBuildCallBr`
-- [ ] `LLVMBuildResume`
-- [ ] `LLVMBuildLandingPad`
-- [ ] `LLVMAddClause`
-- [ ] `LLVMSetCleanup`
-- [ ] `LLVMIsCleanup`
-- [ ] `LLVMGetNumClauses`
-- [ ] `LLVMGetClause`
-- [ ] `LLVMBuildCatchSwitch`
-- [ ] `LLVMBuildCatchPad`
-- [ ] `LLVMBuildCleanupPad`
-- [ ] `LLVMBuildCatchRet`
-- [ ] `LLVMBuildCleanupRet`
-- [ ] `LLVMAddHandler`
-- [ ] `LLVMGetNumHandlers`
-- [ ] `LLVMGetHandlers`
-- [ ] `LLVMGetParentCatchSwitch`
-- [ ] `LLVMBuildExtractValue`
-- [ ] `LLVMBuildInsertValue`
-- [ ] `LLVMBuildExtractElement`
-- [ ] `LLVMBuildInsertElement`
-- [ ] `LLVMBuildShuffleVector`
-- [ ] `LLVMGetNumMaskElements`
-- [ ] `LLVMGetMaskValue`
-- [ ] `LLVMGetUndefMaskElem`
-- [ ] `LLVMBuildFreeze`
-- [ ] `LLVMBuildFenceSyncScope`
-- [ ] `LLVMBuildAtomicRMWSyncScope`
-- [ ] `LLVMBuildAtomicCmpXchgSyncScope`
-- [ ] `LLVMBuildGEPWithNoWrapFlags`
-- [ ] `LLVMGetIndices`
-- [ ] `LLVMGetNormalDest`
-
-#### Core.h (Exception Handling) - 0/5
-
-- [ ] `LLVMGetUnwindDest`
-- [ ] `LLVMGetSuccessor`
-- [ ] `LLVMGetCallBrDefaultDest`
-- [ ] `LLVMGetCallBrNumIndirectDests`
-- [ ] `LLVMGetCallBrIndirectDest`
-
-#### Core.h (Operand Bundles) - 0/7
-
-- [ ] `LLVMGetNumOperandBundles`
-- [ ] `LLVMGetOperandBundleAtIndex`
-- [ ] `LLVMCreateOperandBundle`
-- [ ] `LLVMDisposeOperandBundle`
-- [ ] `LLVMGetOperandBundleTag`
-- [ ] `LLVMGetNumOperandBundleArgs`
-- [ ] `LLVMGetOperandBundleArgAtIndex`
-
-#### Core.h (Inline Assembly) - 0/9
-
-- [ ] `LLVMIsAInlineAsm`
-- [ ] `LLVMGetInlineAsm`
-- [ ] `LLVMGetInlineAsmAsmString`
-- [ ] `LLVMGetInlineAsmConstraintString`
-- [ ] `LLVMGetInlineAsmDialect`
-- [ ] `LLVMGetInlineAsmFunctionType`
-- [ ] `LLVMGetInlineAsmHasSideEffects`
-- [ ] `LLVMGetInlineAsmNeedsAlignedStack`
-- [ ] `LLVMGetInlineAsmCanUnwind`
-
-#### Core.h (Global Cloning) - 0/26
-
-- [ ] `LLVMGlobalGetValueType`
-- [ ] `LLVMGetFirstGlobalAlias`
-- [ ] `LLVMGetLastGlobalAlias`
-- [ ] `LLVMGetNextGlobalAlias`
-- [ ] `LLVMGetPreviousGlobalAlias`
-- [ ] `LLVMGetNamedGlobalAlias`
-- [ ] `LLVMAddAlias2`
-- [ ] `LLVMAliasGetAliasee`
-- [ ] `LLVMAliasSetAliasee`
-- [ ] `LLVMGetFirstGlobalIFunc`
-- [ ] `LLVMGetLastGlobalIFunc`
-- [ ] `LLVMGetNextGlobalIFunc`
-- [ ] `LLVMGetPreviousGlobalIFunc`
-- [ ] `LLVMGetNamedGlobalIFunc`
-- [ ] `LLVMAddGlobalIFunc`
-- [ ] `LLVMGetGlobalIFuncResolver`
-- [ ] `LLVMSetGlobalIFuncResolver`
-- [ ] `LLVMGlobalCopyAllMetadata`
-- [ ] `LLVMGlobalSetMetadata`
-- [ ] `LLVMGetUnnamedAddress`
-- [ ] `LLVMSetUnnamedAddress`
-- [ ] `LLVMHasPersonalityFn`
-- [ ] `LLVMGetPersonalityFn`
-- [ ] `LLVMSetPersonalityFn`
-- [ ] `LLVMHasPrefixData`
-- [ ] `LLVMGetPrefixData`
-
-#### Core.h (Global Cloning cont.) - 0/4
-
-- [ ] `LLVMSetPrefixData`
-- [ ] `LLVMHasPrologueData`
-- [ ] `LLVMGetPrologueData`
-- [ ] `LLVMSetPrologueData`
-
-#### Core.h (Named Metadata) - 0/7
-
-- [ ] `LLVMGetFirstNamedMetadata`
-- [ ] `LLVMGetLastNamedMetadata`
-- [ ] `LLVMGetNextNamedMetadata`
-- [ ] `LLVMGetPreviousNamedMetadata`
-- [ ] `LLVMGetNamedMetadataName`
-- [ ] `LLVMGetNamedMetadata`
-- [ ] `LLVMGetOrInsertNamedMetadata`
-
-#### Core.h (Module Properties) - 0/4
-
-- [ ] `LLVMGetModuleInlineAsm`
-- [ ] `LLVMSetModuleInlineAsm2`
-- [ ] `LLVMSetModuleDataLayout`
-- [ ] `LLVMGetModuleDataLayout`
-
-#### Core.h (Parameter Iteration) - 0/4
-
-- [ ] `LLVMGetFirstParam`
-- [ ] `LLVMGetLastParam`
-- [ ] `LLVMGetNextParam`
-- [ ] `LLVMGetPreviousParam`
-
-#### Core.h (BasicBlock Operations) - 0/3
-
-- [ ] `LLVMValueIsBasicBlock`
-- [ ] `LLVMMoveBasicBlockBefore`
-- [ ] `LLVMMoveBasicBlockAfter`
-
-#### Core.h (Instruction Metadata) - 0/5
-
-- [ ] `LLVMInstructionGetAllMetadataOtherThanDebugLoc`
-- [ ] `LLVMValueMetadataEntriesGetKind`
-- [ ] `LLVMValueMetadataEntriesGetMetadata`
-- [ ] `LLVMDisposeValueMetadataEntries`
-- [ ] `LLVMAddMetadataToInst`
-
-### 3.2 Debug Info Bindings
-
-#### DebugInfo.h - 0/55
-
-- [ ] `LLVMCreateDIBuilder`
-- [ ] `LLVMDisposeDIBuilder`
-- [ ] `LLVMDIBuilderFinalize`
-- [ ] `LLVMDIBuilderCreateFile`
-- [ ] `LLVMDIBuilderCreateCompileUnit`
-- [ ] `LLVMDIBuilderCreateModule`
-- [ ] `LLVMDIBuilderCreateNameSpace`
-- [ ] `LLVMDIBuilderCreateFunction`
-- [ ] `LLVMDIBuilderCreateSubroutineType`
-- [ ] `LLVMDIBuilderCreateLexicalBlock`
-- [ ] `LLVMSetSubprogram`
-- [ ] `LLVMDIBuilderCreateBasicType`
-- [ ] `LLVMDIBuilderCreateStructType`
-- [ ] `LLVMDIBuilderCreatePointerType`
-- [ ] `LLVMDIBuilderCreateVectorType`
-- [ ] `LLVMDIBuilderCreateArrayType`
-- [ ] `LLVMDIBuilderCreateTypedef`
-- [ ] `LLVMDIBuilderCreateForwardDecl`
-- [ ] `LLVMDIBuilderCreateEnumerationType`
-- [ ] `LLVMDIBuilderCreateEnumerator`
-- [ ] `LLVMDIBuilderCreateEnumeratorOfArbitraryPrecision`
-- [ ] `LLVMDIBuilderCreateSubrangeType`
-- [ ] `LLVMDIBuilderCreateSetType`
-- [ ] `LLVMDIBuilderCreateDynamicArrayType`
-- [ ] `LLVMDIBuilderCreateReplaceableCompositeType`
-- [ ] `LLVMDIBuilderCreateObjCProperty`
-- [ ] `LLVMDIBuilderCreateObjCIVar`
-- [ ] `LLVMDIBuilderCreateInheritance`
-- [ ] `LLVMDIBuilderCreateGlobalVariableExpression`
-- [ ] `LLVMDIBuilderCreateParameterVariable`
-- [ ] `LLVMDIBuilderCreateAutoVariable`
-- [ ] `LLVMDIBuilderCreateLabel`
-- [ ] `LLVMDIBuilderInsertLabelAtEnd`
-- [ ] `LLVMDIBuilderInsertLabelBefore`
-- [ ] `LLVMDIBuilderCreateDebugLocation`
-- [ ] `LLVMDIBuilderCreateExpression`
-- [ ] `LLVMDIBuilderCreateConstantValueExpression`
-- [ ] `LLVMDIBuilderInsertDeclareRecordAtEnd`
-- [ ] `LLVMDIBuilderInsertDbgValueRecordAtEnd`
-- [ ] `LLVMDIBuilderCreateTempMacroFile`
-- [ ] `LLVMDIBuilderCreateMacro`
-- [ ] `LLVMDIBuilderGetOrCreateSubrange`
-- [ ] `LLVMDIBuilderGetOrCreateArray`
-- [ ] `LLVMReplaceArrays`
-- [ ] `LLVMDIBuilderCreateImportedModuleFromModule`
-- [ ] `LLVMDIBuilderCreateImportedModuleFromAlias`
-- [ ] `LLVMMetadataReplaceAllUsesWith`
-- [ ] `LLVMDISubprogramReplaceType`
-- [ ] `LLVMSetIsNewDbgInfoFormat`
-- [ ] `LLVMIsNewDbgInfoFormat`
-- [ ] `LLVMGetFirstDbgRecord`
-- [ ] `LLVMGetLastDbgRecord`
-- [ ] `LLVMGetNextDbgRecord`
-- [ ] `LLVMGetPreviousDbgRecord`
-- [ ] `LLVMGetDINodeTag`
-
-#### DebugInfo.h (cont.) - 0/3
-
-- [ ] `LLVMDITypeGetName`
-- [ ] `LLVMPositionBuilderBeforeInstrAndDbgRecords`
-- [ ] `LLVMPositionBuilderBeforeDbgRecords`
-
-### 3.3 Diagnostic Handler Bindings - 5/5 ✅
-
-- [x] `LLVMContextSetDiagnosticHandler`
-- [x] `LLVMContextGetDiagnosticHandler` (not exposed, handled internally)
-- [x] `LLVMContextGetDiagnosticContext` (not exposed, handled internally)
-- [x] `LLVMGetDiagInfoSeverity`
-- [x] `LLVMGetDiagInfoDescription`
-- [x] `LLVMGetBitcodeModule2` (for global context parsing)
-
-### 3.4 Debug Info Builder Bindings - 59/~60 ✅
-
-**Core Infrastructure (8/8) ✅:**
-- [x] `LLVMCreateDIBuilder` / `LLVMDisposeDIBuilder`
-- [x] `LLVMDIBuilderFinalize`
-- [x] `LLVMDIBuilderCreateFile`
-- [x] `LLVMDIBuilderCreateStructType`
-- [x] `LLVMGetDINodeTag` / `LLVMDITypeGetName`
-- [x] `LLVMMDStringInContext2` / `LLVMMDNodeInContext2`
-- [x] `LLVMMetadataAsValue` / `LLVMValueAsMetadata`
-- [x] `LLVMSetSubprogram`
-
-**Scope & Module (4/4) ✅:**
-- [x] `LLVMDIBuilderCreateCompileUnit`
-- [x] `LLVMDIBuilderCreateModule`
-- [x] `LLVMDIBuilderCreateNameSpace`
-- [x] `LLVMDIBuilderCreateFunction`
-
-**Type Creation (12/12) ✅:**
-- [x] `LLVMDIBuilderCreateBasicType`
-- [x] `LLVMDIBuilderCreatePointerType`
-- [x] `LLVMDIBuilderCreateSubroutineType`
-- [x] `LLVMDIBuilderCreateVectorType`
-- [x] `LLVMDIBuilderCreateTypedef`
-- [x] `LLVMDIBuilderCreateEnumerationType`
-- [x] `LLVMDIBuilderCreateForwardDecl`
-- [x] `LLVMDIBuilderCreateReplaceableCompositeType`
-- [x] `LLVMDIBuilderCreateSetType`
-- [x] `LLVMDIBuilderCreateSubrangeType` (complex form)
-- [x] `LLVMDIBuilderCreateDynamicArrayType`
-
-**Variables (3/3) ✅:**
-- [x] `LLVMDIBuilderCreateParameterVariable`
-- [x] `LLVMDIBuilderCreateAutoVariable`
-- [x] `LLVMDIBuilderCreateGlobalVariableExpression`
-
-**Expressions & Locations (3/3) ✅:**
-- [x] `LLVMDIBuilderCreateExpression`
-- [x] `LLVMDIBuilderCreateConstantValueExpression`
-- [x] `LLVMDIBuilderCreateDebugLocation`
-
-**Lexical Blocks & Labels (4/4) ✅:**
-- [x] `LLVMDIBuilderCreateLexicalBlock`
-- [x] `LLVMDIBuilderCreateLabel`
-- [x] `LLVMDIBuilderInsertDeclareRecordAtEnd`
-- [x] `LLVMDIBuilderInsertDbgValueRecordAtEnd`
-- [x] `LLVMDIBuilderInsertLabelAtEnd`
-
-**ObjC Support (3/3) ✅:**
-- [x] `LLVMDIBuilderCreateObjCProperty`
-- [x] `LLVMDIBuilderCreateObjCIVar`
-- [x] `LLVMDIBuilderCreateInheritance`
-
-**Enumerations & Macros (5/5) ✅:**
-- [x] `LLVMDIBuilderCreateEnumerator`
-- [x] `LLVMDIBuilderCreateEnumerationType`
-- [x] `LLVMDIBuilderCreateEnumeratorOfArbitraryPrecision`
-- [x] `LLVMDIBuilderCreateTempMacroFile`
-- [x] `LLVMDIBuilderCreateMacro`
-
-**Arrays & Subranges (2/2) ✅:**
-- [x] `LLVMDIBuilderGetOrCreateSubrange`
-- [x] `LLVMDIBuilderGetOrCreateArray`
-
-**Builder Positioning (8/8) ✅:**
-- [x] `LLVMPositionBuilderBeforeInstrAndDbgRecords`
-- [x] `LLVMPositionBuilderBeforeDbgRecords`
-- [x] `LLVMGetFirstDbgRecord` / `LLVMGetLastDbgRecord`
-- [x] `LLVMGetNextDbgRecord` / `LLVMGetPreviousDbgRecord`
-- [x] `LLVMSetIsNewDbgInfoFormat` / `LLVMIsNewDbgInfoFormat`
-
-**Module Imports (2/2) ✅:**
-- [x] `LLVMDIBuilderCreateImportedModuleFromModule`
-- [x] `LLVMDIBuilderCreateImportedModuleFromAlias`
-
-**Metadata Operations (4/4) ✅:**
-- [x] `LLVMMetadataReplaceAllUsesWith`
-- [x] `LLVMDISubprogramReplaceType`
-- [x] `LLVMReplaceArrays`
-- [x] `LLVMDIBuilderInsertLabelBefore`
-
-**Constants:**
-- [x] DIFlags: Zero, Private, Protected, Public, FwdDecl, ObjcClassComplete
-- [x] DWARF: SourceLanguageC, EmissionFull
-
-### Lit Tests Passing
-
-- [x] `get-di-tag.ll`
-- [x] `di-type-get-name.ll`
-- [x] `invalid-bitcode.test` (diagnostic handler)
+| Command | Module | Status |
+|---------|--------|--------|
+| `--targets-list` | `targets.py` | ✅ |
+| `--calc` | `calc.py` | ✅ |
+| `--module-dump` | `module_ops.py` | ✅ |
+| `--lazy-module-dump` | `module_ops.py` | ✅ |
+| `--new-module-dump` | `module_ops.py` | ✅ |
+| `--lazy-new-module-dump` | `module_ops.py` | ✅ |
+| `--module-list-functions` | `module_ops.py` | ✅ |
+| `--module-list-globals` | `module_ops.py` | ✅ |
+| `--test-function-attributes` | `attributes.py` | ✅ |
+| `--test-callsite-attributes` | `attributes.py` | ✅ |
+| `--add-named-metadata-operand` | `metadata.py` | ✅ |
+| `--set-metadata` | `metadata.py` | ✅ |
+| `--replace-md-operand` | `metadata.py` | ✅ |
+| `--is-a-value-as-metadata` | `metadata.py` | ✅ |
+| `--test-dibuilder` | `debuginfo.py` | ✅ |
+| `--get-di-tag` | `debuginfo.py` | ✅ |
+| `--di-type-get-name` | `debuginfo.py` | ✅ |
+| `--test-diagnostic-handler` | `diagnostic.py` | ✅ |
+| `--disassemble` | `disassemble.py` | ✅ |
+| `--object-list-sections` | `object_file.py` | ✅ |
+| `--object-list-symbols` | `object_file.py` | ✅ |
+| `--echo` | `echo.py` | ✅ |
 
 ---
 
-## Phase 4: Platform-Specific (3/3 commands) ✅
+## Running the Tests
 
-### Commands
+```bash
+# Run all lit tests
+CMAKE_PREFIX_PATH=$(brew --prefix llvm) uv run python run_llvm_c_tests.py
 
-- [x] `--disassemble` - Disassemble hex bytes ✅
-- [x] `--object-list-sections` - List object file sections ✅
-- [x] `--object-list-symbols` - List object file symbols ✅
+# Run with verbose output
+CMAKE_PREFIX_PATH=$(brew --prefix llvm) uv run python run_llvm_c_tests.py -v
 
-### Required Bindings
+# Run memory safety tests
+CMAKE_PREFIX_PATH=$(brew --prefix llvm) uv run python test_memory_safety.py
 
-#### Disassembler.h - 6/6 ✅
-
-- [x] `LLVMCreateDisasmCPUFeatures`
-- [x] `LLVMDisasmInstruction`
-- [x] `LLVMDisasmDispose`
-- [x] `LLVMCreateDisasm` (wrapper only exposes CPUFeatures variant)
-- [x] `LLVMCreateDisasmCPU` (wrapper only exposes CPUFeatures variant)
-- [x] `LLVMSetDisasmOptions` (not needed for tests)
-
-#### Object.h - 17/17 ✅
-
-- [x] `LLVMCreateBinary`
-- [x] `LLVMDisposeBinary`
-- [x] `LLVMObjectFileCopySectionIterator`
-- [x] `LLVMObjectFileIsSectionIteratorAtEnd`
-- [x] `LLVMMoveToNextSection`
-- [x] `LLVMDisposeSectionIterator`
-- [x] `LLVMGetSectionName`
-- [x] `LLVMGetSectionAddress`
-- [x] `LLVMGetSectionSize`
-- [x] `LLVMObjectFileCopySymbolIterator`
-- [x] `LLVMObjectFileIsSymbolIteratorAtEnd`
-- [x] `LLVMMoveToNextSymbol`
-- [x] `LLVMDisposeSymbolIterator`
-- [x] `LLVMGetSymbolName`
-- [x] `LLVMGetSymbolAddress`
-- [x] `LLVMGetSymbolSize`
-- [x] `LLVMMoveToContainingSection`
-
-### Lit Tests Passing
-
-- [x] `X86/disassemble.test` ✅
-- [x] `ARM/disassemble.test` ✅
-- [x] `objectfile.ll` ✅
-
----
-
-## Phase 5 Lit Tests (Echo Command)
-
-When Phase 5 is implemented, these tests should pass:
-
-- [ ] `echo.ll`
-- [ ] `atomics.ll`
-- [ ] `float_ops.ll`
-- [ ] `freeze.ll`
-- [ ] `invoke.ll`
-- [ ] `memops.ll`
-- [ ] `debug_info_new_format.ll`
-
----
-
-## Completed Milestones
-
-### Phase 4: Platform-Specific Commands - December 17, 2025 ✅
-
-Successfully implemented all 3 Phase 4 commands with 20 new API bindings, completing the platform-specific functionality for disassembly and object file parsing.
-
-**Commands Implemented:**
-- ✅ `--disassemble` - Disassembles hex bytes for various target architectures (x86, ARM, etc.)
-- ✅ `--object-list-sections` - Lists sections in object files (Mach-O, ELF, COFF, etc.)
-- ✅ `--object-list-symbols` - Lists symbols in object files with section information
-
-**Key Bindings Added:**
-- **Disassembler (6 bindings)**: Target-specific disassembly with CPU features
-  - `LLVMCreateDisasmCPUFeatures` - Creates disassembler with triple, CPU, and features
-  - `LLVMDisasmInstruction` - Disassembles single instruction from byte buffer
-  - `LLVMDisasmDispose` - Cleans up disassembler resources
-  - Wrapper: `LLVMDisasmContextWrapper` with RAII cleanup
-
-- **Object File API (17 bindings)**: Binary file and symbol parsing
-  - `LLVMCreateBinary` / `LLVMDisposeBinary` - Binary creation and cleanup
-  - Section iteration: `LLVMObjectFileCopySectionIterator`, `LLVMMoveToNextSection`, etc.
-  - Symbol iteration: `LLVMObjectFileCopySymbolIterator`, `LLVMMoveToNextSymbol`, etc.
-  - Section/symbol properties: name, address, size
-  - `LLVMMoveToContainingSection` - Maps symbols to their sections
-  - Wrappers: `LLVMBinaryWrapper`, `LLVMSectionIteratorWrapper`, `LLVMSymbolIteratorWrapper`
-
-**Technical Highlights:**
-- **std::pair Support**: Added `#include <nanobind/stl/pair.h>` to properly convert C++ `std::pair<size_t, std::string>` to Python tuples
-- **Exception Naming**: Fixed exception references from `llvm.LLVMException` to `llvm.LLVMError` (C++ `LLVMException` is exposed as `LLVMError` in Python)
-- **Type Safety**: All type checking passes with `uvx ty check` after stub regeneration
-- **Iterator Pattern**: Implemented C-style iterators with proper RAII cleanup in wrappers
-
-**Test Results:**
-- All 3 commands produce byte-identical output compared to C version
-- X86 and ARM disassembly tests pass with correct instruction decoding
-- Object file tests correctly handle various binary formats and gracefully fail on invalid input
-- Error handling verified: empty/invalid input produces proper error messages rather than crashes
-
-**Infrastructure Improvements:**
-- Updated `AGENTS.md` with comprehensive build documentation
-  - `CMAKE_PREFIX_PATH=$(brew --prefix llvm) uv sync` for full rebuild
-  - `uvx ty check` for type checking
-  - Type stub auto-generation workflow documented
-- Type checking now passes cleanly for all llvm_c_test files
-
-### Phase 3: Diagnostic & Debug Info - December 16-17, 2025 ✅
-
-Successfully implemented 4 of 5 Phase 3 commands with 69 new API bindings (51 added in iterations 2-3).
-Note: `--echo` command deferred to Phase 5 due to complexity (~100+ APIs needed).
-
-**Commands Implemented:**
-- ✅ `--test-diagnostic-handler` - Tests diagnostic handler callback system (prints diagnostic info to stderr)
-- ✅ `--get-di-tag` - Tests LLVMGetDINodeTag functionality (silent test)
-- ✅ `--di-type-get-name` - Tests LLVMDITypeGetName functionality (silent test)
-- ✅ `--test-dibuilder` - **NEW!** Comprehensive debug info builder test (generates 94-line IR module)
-
-**Key Bindings Added:**
-- **Diagnostic Handler (6 bindings)**: Thread-local diagnostic info storage to avoid Python callbacks
-  - `LLVMContextSetDiagnosticHandler` - Sets C callback that stores info in thread-local
-  - `LLVMGetDiagInfoSeverity` - Gets severity enum (Error/Warning/Remark/Note)
-  - `LLVMGetDiagInfoDescription` - Gets diagnostic message
-  - `LLVMGetBitcodeModule2` - Parse bitcode with global context (triggers diagnostics)
-  - Plus Python accessors: `diagnostic_was_called()`, `get_diagnostic_severity()`, `get_diagnostic_description()`
-
-- **Debug Info Builder (41 bindings)**: Comprehensive debug info creation
-  - **Core Infrastructure (10)**: DIBuilder lifecycle, metadata wrappers, file/struct creation
-  - **Scope & Module (4)**: Compile units, modules, namespaces, functions
-  - **Type Creation (6)**: Basic, pointer, subroutine, vector, typedef, enum types
-  - **Variables (3)**: Parameters, auto variables, global variable expressions
-  - **Expressions & Locations (3)**: DIExpressions, constant values, debug locations
-  - **Lexical Blocks & Labels (5)**: Lexical blocks, labels, declare/value record insertion
-  - **ObjC Support (3)**: Properties, ivars, inheritance
-  - **Enumerations (2)**: Enumerators and enumeration types
-  - **Arrays & Subranges (2)**: Subrange and array creation
-  - **Metadata Conversion (3)**: Value⇄Metadata, subprogram setting
-  - Plus wrapper classes: `LLVMDIBuilderWrapper`, `LLVMMetadataWrapper`
-  - Plus constants: DIFlags, DWARF source languages and emission kinds
-
-**Technical Highlights:**
-- **Thread-Local Diagnostic Storage**: Avoided Python callback complexity by using thread-local C++ storage
-  - C callback `diagnostic_handler_callback()` stores severity and description
-  - Python code calls accessor functions to retrieve diagnostic info
-  - Clean separation: C handles callbacks, Python reads results
-
-- **Debug Info Wrappers**: Added proper RAII wrappers for DIBuilder and Metadata
-  - DIBuilder tied to module lifetime via shared_ptr<ValidityToken>
-  - Metadata tied to context lifetime
-  - Prevents use-after-free errors
-
-**Test Results:**
-- All 3 commands produce output matching C version exactly
-- `--test-diagnostic-handler` correctly intercepts bitcode parsing errors
-- `--get-di-tag` and `--di-type-get-name` are silent tests (no output = success)
-
-**Second Iteration (29 bindings):**
-Extended debug info support:
-- Compile unit, module, namespace, function creation
-- Subroutine, vector, typedef types
-- Parameter, auto, global variables
-- Expressions, debug locations, lexical blocks
-- ObjC support, enumerations, subranges
-
-**Third Iteration (22 bindings):**
-Completed DIBuilder API coverage (59/60 = 98%):
-- Advanced type creation (forward decl, replaceable composite, set, dynamic array, complex subrange)
-- Arbitrary precision enumerators
-- Macro support (temp macro file, macro creation)
-- Module imports (from module/alias)
-- Builder positioning (new debug format toggle, position before instr/records)
-- Debug record iteration (first/last/next/previous)
-- Metadata operations (replace uses, subprogram type, arrays)
-
-**Fourth Iteration: --test-dibuilder Implementation (December 17, 2025):**
-Completed comprehensive debug info builder test (~460 lines Python):
-- Tests all 59 DIBuilder APIs in a single comprehensive program
-- Creates complex debug metadata:
-  - ObjC class declarations with inheritance
-  - Enumerations (regular + arbitrary precision, 64-bit values)
-  - Subrange types with metadata bounds
-  - Dynamic array types with data location
-  - Set types
-  - Macros and module imports
-  - Debug labels and locations
-  - Global and local variables with expressions
-  - Functions with complete debug info
-- Tests new debug record positioning and iteration APIs
-- Generates 94-line LLVM IR module with comprehensive debug info
-- Fixed 6 nullable parameter bindings (`.none()` annotations)
-- Fixed Python API usage patterns (builder context manager, method names)
-
-**Bug Fixes in Bindings:**
-- Added `.none()` to 6 nullable metadata parameters:
-  - `dibuilder_create_global_variable_expression(decl)`
-  - `dibuilder_create_debug_location(inlined_at)`
-  - `dibuilder_create_function(subroutine_type)`
-  - `dibuilder_create_subrange_type(lower_bound, upper_bound, stride, bias)`
-  - `dibuilder_create_dynamic_array_type(associated, allocated, rank, bit_stride)`
-  - `dibuilder_create_temp_macro_file(parent_macro_file)`
-
-**Remaining Phase 3 Work:**
-- `--echo` - **Deferred to Phase 5** (requires ~100+ APIs for complete IR cloning)
-
-**Rationale for Deferring --echo:**
-The `--echo` command is the single most complex test in the entire llvm-c-test suite, requiring:
-- Type cloning (27 APIs): All type kinds, target extension types
-- Constant cloning (34 APIs): All constant kinds, constant expressions
-- Instruction cloning (40 APIs): All instruction opcodes with flags
-- Global cloning (30 APIs): Aliases, IFuncs, metadata
-- Operand bundles (7 APIs), inline assembly (9 APIs), named metadata (7 APIs)
-
-Total: ~154 additional APIs. Given current progress (108 bindings total), implementing --echo would nearly triple our binding count. It's more efficient to complete Phases 3-4 first, then tackle --echo as a dedicated phase.
-
-### Phase 2: Metadata & Attributes - December 16, 2025 ✅
-
-Successfully implemented all 6 Phase 2 commands with 9 new API bindings:
-
-**Commands Implemented:**
-- `--test-function-attributes` - Enumerates function attributes at all indices (silent test)
-- `--test-callsite-attributes` - Enumerates call site attributes for call instructions (silent test)
-- `--add-named-metadata-operand` - Tests adding operands to named metadata (silent test)
-- `--set-metadata` - Tests setting metadata on instructions (silent test)
-- `--replace-md-operand` - Tests replacing metadata operands (partial, silent test)
-- `--is-a-value-as-metadata` - Tests ValueAsMetadata checking (silent test)
-
-**Key Bindings Added:**
-- **Attribute Constants (2)**: `AttributeReturnIndex`, `AttributeFunctionIndex`
-- **Attribute Functions (2)**: `get_attribute_count_at_index`, `get_callsite_attribute_count`
-- **Metadata Functions (5)**: `md_node`, `add_named_metadata_operand`, `set_metadata`, `get_md_kind_id`, `is_a_value_as_metadata`
-- **Helper Functions (2)**: `delete_instruction`, `get_module_context`
-
-**Technical Notes:**
-- Fixed nanobind unsigned/int compatibility issue - attribute index parameters must be declared as `int` not `unsigned` in lambdas
-- All Phase 2 tests are "silent" - they verify APIs don't crash/assert, produce no output on success
-- Tests match C version behavior exactly
-
-### Phase 1: Foundation - December 16, 2025 ✅
-
-Successfully implemented all 8 Phase 1 commands with 30 new API bindings:
-
-**Commands Implemented:**
-- `--targets-list` - List all registered LLVM targets with JIT support indicators
-- `--calc` - RPN calculator generating LLVM IR from tokenized stdin
-- `--module-dump` - Parse bitcode from stdin and print LLVM IR
-- `--lazy-module-dump` - Lazy-load bitcode from stdin and print IR
-- `--new-module-dump` - Parse bitcode using new API (diagnostic handler)
-- `--lazy-new-module-dump` - Lazy-load bitcode using new API
-- `--module-list-functions` - List functions with basic block/instruction counts and call detection
-- `--module-list-globals` - List global variables with type information
-
-**Key Bindings Added:**
-- **Target API (13 bindings)**: Complete target initialization and iteration support
-- **Memory Buffer (4 bindings)**: stdin reading and buffer access
-- **BitReader (4 bindings)**: Both legacy and new bitcode parsing APIs
-- **Instruction Iteration (7 bindings)**: Navigate instructions within basic blocks
-- **LLVMBuildBinOp**: Generic binary operation builder
-- **LLVMOpcode enum**: Opcode enumeration for calc command
-
-**Infrastructure:**
-- Created `llvm_c_test/` Python package with CLI dispatcher
-- Implemented `tokenize_stdin()` helper for command input parsing
-- All commands tested and producing correct output matching C version
-
----
-
-## Notes
-
-### Implementation Order
-
-1. Start with `--targets-list` (no stdin parsing required)
-2. Then `--calc` (exercises IR generation)
-3. Then `--module-dump` variants (requires BitReader)
-4. Then `--module-list-*` (requires instruction iteration)
-5. Continue with Phases 2-4
-
-### Testing Approach
-
-For each command:
-1. Run C version, capture output
-2. Implement Python version
-3. Run Python version, compare output
-4. Run lit tests with Python substitution
-
-### Binding Strategy
-
-Add bindings incrementally as needed for each command. Document which bindings are required in this file before implementation.
-
-### Technical Lessons Learned
-
-#### Nanobind Type Compatibility
-- **Issue**: Lambda parameters with `unsigned` type don't accept Python `int` values in certain contexts
-- **Solution**: Use `int` in lambda signature, cast to `unsigned` when calling C API
-- **Example**: `[](const LLVMFunctionWrapper &func, int idx)` with `LLVMGetAttributeCountAtIndex(func.m_ref, static_cast<unsigned>(idx))`
-- **Affected Functions**: `get_attribute_count_at_index`, `get_callsite_attribute_count`
-
-#### Class Hierarchy Binding
-- LLVMFunctionWrapper properly inherits from LLVMValueWrapper in C++
-- Nanobind correctly exposes this as `Function(Value)` in Python
-- `isinstance(func, llvm.Value)` works correctly for Function objects
-
-#### Silent Test Pattern
-- Phase 2 tests don't produce output - they exercise APIs to verify no crashes/assertions
-- Success = no output, no exceptions
-- Matches C version behavior exactly
-
-#### Range Iteration with Negative Start
-- `LLVMAttributeFunctionIndex` is -1
-- Python `range(-1, n)` creates empty range
-- Solution: Use while loop with manual increment instead
-
-#### Building with uv
-- Use `CMAKE_PREFIX_PATH=$(brew --prefix llvm) uv sync` to build
-- Use `uv run python -m llvm_c_test <command>` to test
-- Automatic rebuild on source changes
+# Test echo command directly
+echo 'define i32 @main() { ret i32 0 }' | $(brew --prefix llvm)/bin/llvm-as | \
+  CMAKE_PREFIX_PATH=$(brew --prefix llvm) uv run python -m llvm_c_test --echo
+```
