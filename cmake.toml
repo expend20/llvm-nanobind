@@ -4,6 +4,7 @@ cmkr-include = "cmake/cmkr.cmake"
 
 [project]
 name = "llvm-nanobind"
+include-after = ["cmake/magic-llvm.cmake"]
 
 [variables]
 CMAKE_EXPORT_COMPILE_COMMANDS = true

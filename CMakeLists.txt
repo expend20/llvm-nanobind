@@ -30,6 +30,8 @@ set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
 project(llvm-nanobind)
 
+include("cmake/magic-llvm.cmake")
+
 # Packages
 find_package(Python 3.12 REQUIRED
 	COMPONENTS
