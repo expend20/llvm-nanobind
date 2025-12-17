@@ -191,9 +191,6 @@ run_llvm_c_tests.py
         ├── With coverage (COVERAGE_RUN set by `uv run coverage run`):
         │   └── LLVM_C_TEST_CMD = python -m coverage run --parallel-mode -m llvm_c_test
         │
-        ├── With logging (LLVM_C_TEST_LOG set):
-        │   └── LLVM_C_TEST_CMD = python llvm-c-test-wrapper.py
-        │
         └── Default:
             └── LLVM_C_TEST_CMD = python -m llvm_c_test
 ```
@@ -211,13 +208,6 @@ After running, combine all coverage data:
 uv run coverage combine
 uv run coverage html
 ```
-
-### llvm-c-test-wrapper.py
-
-The wrapper script is used only for command logging. It:
-
-1. **Logs commands**: When `LLVM_C_TEST_LOG` is set, logs all executed commands with timestamps
-2. **Sets up path**: Ensures `llvm_c_test` module is importable from the project root
 
 ## Adding New Tests
 
