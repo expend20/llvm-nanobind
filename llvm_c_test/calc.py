@@ -4,7 +4,6 @@ Implementation of --calc command.
 RPN calculator that generates LLVM IR.
 """
 
-import sys
 import llvm
 from .helpers import tokenize_stdin
 

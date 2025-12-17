@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run
 """
 Test: test_types
 Tests LLVM Type creation and inspection via Python bindings.

@@ -34,12 +34,7 @@ entry:
 
     # Compile to bitcode
     bc_file = ll_file.replace(".ll", ".bc")
-    llvm_as = os.path.join(
-        os.environ.get("LLVM_PATH", "/opt/homebrew/opt/llvm/bin"), "llvm-as"
-    )
-    if not os.path.exists(llvm_as):
-        llvm_as = "llvm-as"  # Hope it's in PATH
-    os.system(f"{llvm_as} {ll_file} -o {bc_file}")
+    os.system(f"./llvm-bin llvm-as {ll_file} -o {bc_file}")
     os.unlink(ll_file)
 
     return bc_file

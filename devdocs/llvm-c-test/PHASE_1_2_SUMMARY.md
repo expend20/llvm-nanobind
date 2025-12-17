@@ -105,7 +105,7 @@ llvm-nanobind/
 ### Build Process
 ```bash
 # Build with uv (automatic rebuild)
-CMAKE_PREFIX_PATH=$(brew --prefix llvm) uv sync
+uv sync
 
 # Run tests
 uv run python -m llvm_c_test <command>

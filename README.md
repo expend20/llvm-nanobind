@@ -9,7 +9,7 @@ LLVM-C Python bindings with nanobind.
 Set the CMake prefix path environment variable to point to the LLVM prefix:
 
 ```bash
-export CMAKE_PREFIX_PATH=$(brew --prefix llvm)
+export CMAKE_PREFIX_PATH=/path/to/llvm
 ```
 
 Configure the bindings:

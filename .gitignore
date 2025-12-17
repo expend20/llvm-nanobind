@@ -19,3 +19,5 @@ htmlcov/
 .coverage*
 coverage.xml
 
+# LLVM prefix path file
+.llvm-prefix

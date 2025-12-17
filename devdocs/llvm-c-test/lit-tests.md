@@ -282,19 +282,18 @@ Total Discovered Tests: 23
    - Check for whitespace or formatting differences
 
 2. **Tool not found**: Missing LLVM tools
-   - Ensure `CMAKE_PREFIX_PATH=$(brew --prefix llvm)` is set
-   - Verify LLVM is installed: `brew install llvm`
+   - Ask the user to configure the CMake project once, this will yield .llvm-prefix
 
 3. **Python import error**: Module not built
-   - Run `CMAKE_PREFIX_PATH=$(brew --prefix llvm) uv sync`
+   - Run `uv sync`
 
 ### Debugging
 
 ```bash
 # Run single test with verbose output
-$(brew --prefix llvm)/bin/lit llvm-c/llvm-c-test/inputs/echo.ll -v -a
+$(cat .llvm-prefix)/bin/lit llvm-c/llvm-c-test/inputs/echo.ll -v -a
 
 # Test Python module directly
-echo 'define i32 @main() { ret i32 0 }' | $(brew --prefix llvm)/bin/llvm-as | \
+echo 'define i32 @main() { ret i32 0 }' | ./llvm-bin llvm-as | \
   uv run python -m llvm_c_test --echo
 ```

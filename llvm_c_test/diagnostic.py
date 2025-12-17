@@ -33,7 +33,7 @@ def test_diagnostic_handler():
     try:
         mod = llvm.get_bitcode_module_2(membuf)
         # If we get here, loading succeeded
-    except Exception as e:
+    except Exception:
         # Loading failed, which is fine for this test
         pass
 

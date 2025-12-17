@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run
 """
 Test: test_builder_arithmetic
 Tests LLVM Builder arithmetic instruction creation

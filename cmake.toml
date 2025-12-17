@@ -4,7 +4,6 @@ cmkr-include = "cmake/cmkr.cmake"
 
 [project]
 name = "llvm-nanobind"
-include-after = ["cmake/magic-llvm.cmake"]
 
 [variables]
 CMAKE_EXPORT_COMPILE_COMMANDS = true
@@ -16,13 +15,7 @@ version = "3.12"
 components = ["Interpreter", "Development.Module", "Development.SABIModule"]
 
 [find-package.nanobind-wrapper]
-
-[find-package.LLVM]
-
-[target.LLVM-C-Wrapper]
-type = "interface"
-link-libraries = ["::LLVM-C"]
-include-directories = ["${LLVM_INCLUDE_DIRS}"]
+[find-package.LLVM-Wrapper]
 
 [template.nanobind_module]
 type = "shared"

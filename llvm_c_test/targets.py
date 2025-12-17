@@ -4,7 +4,6 @@ Implementation of --targets-list command.
 Lists all registered LLVM targets.
 """
 
-import sys
 import llvm
 
 

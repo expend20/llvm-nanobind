@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run
 """
 Test runner for llvm-c-test lit tests.
 
@@ -6,8 +6,7 @@ Runs the vendored llvm-c-test integration tests using LLVM's lit test runner.
 
 LLVM tools are located in this order:
   1. --llvm-prefix command line argument
-  2. CMAKE_PREFIX_PATH environment variable
-  3. brew --prefix llvm (macOS only)
+  2. .llvm-prefix file in project root
 
 Usage:
     python run_llvm_c_tests.py [options] [lit options...]
@@ -54,8 +53,7 @@ def get_llvm_prefix(cli_prefix: str | None) -> Path:
 
     Priority:
       1. Command line argument (--llvm-prefix)
-      2. CMAKE_PREFIX_PATH environment variable
-      3. brew --prefix llvm (macOS only)
+      2. .llvm-prefix file in project root
     """
     # 1. Command line argument
     if cli_prefix:
@@ -65,28 +63,27 @@ def get_llvm_prefix(cli_prefix: str | None) -> Path:
         print(f"Error: Specified LLVM prefix does not exist: {path}", file=sys.stderr)
         sys.exit(1)
 
-    # 2. CMAKE_PREFIX_PATH environment variable
-    cmake_prefix_path = os.environ.get("CMAKE_PREFIX_PATH")
-    if cmake_prefix_path:
-        # CMAKE_PREFIX_PATH can be a semicolon-separated list; take the first
-        first_path = cmake_prefix_path.split(";")[0].split(":")[0]
-        path = Path(first_path)
-        if path.exists():
-            return path
-
-    # 3. Homebrew (macOS only)
-    brew_prefix = get_llvm_prefix_from_brew()
-    if brew_prefix and brew_prefix.exists():
-        return brew_prefix
+    # 2. .llvm-prefix file
+    project_root = Path(__file__).parent.resolve()
+    llvm_prefix_file = project_root / ".llvm-prefix"
+    if llvm_prefix_file.exists():
+        with llvm_prefix_file.open("r") as f:
+            prefix_path = f.read().strip()
+            path = Path(prefix_path).expanduser()
+            if path.exists():
+                return path
+            print(
+                f"Error: LLVM prefix in .llvm-prefix does not exist: {path}",
+                file=sys.stderr,
+            )
+            sys.exit(1)
 
     # No LLVM found
     print("Error: Could not find LLVM installation.", file=sys.stderr)
     print("", file=sys.stderr)
     print("Please specify LLVM location using one of:", file=sys.stderr)
     print("  --llvm-prefix /path/to/llvm", file=sys.stderr)
-    print("  CMAKE_PREFIX_PATH=/path/to/llvm", file=sys.stderr)
-    if sys.platform == "darwin":
-        print("  brew install llvm", file=sys.stderr)
+    print("  .llvm-prefix file containing the path", file=sys.stderr)
     sys.exit(1)
 
 
@@ -258,9 +255,9 @@ def main():
     print(f"  llvm-c-test:    {llvm_c_test_cmd}")
     print(f"  LLVM tools:     {llvm_tools_dir}")
     if use_python:
-        print(f"  Mode:           Python implementation")
+        print("  Mode:           Python implementation")
     else:
-        print(f"  Mode:           C binary")
+        print("  Mode:           C binary")
     print()
 
     result = subprocess.run(lit_args, env=env)

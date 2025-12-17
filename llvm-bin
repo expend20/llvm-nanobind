@@ -1,0 +1,53 @@
+#!/usr/bin/env -S uv run
+"""
+Usage:
+    python llvm-bin.py <tool> [args...]
+
+1. Read .llvm-prefix for the LLVM installation path
+2. Ensure <llvm_prefix>/bin/<tool> exists and is executable
+3. Forward command line arguments and stdout/stderr to the tool
+"""
+
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+def get_llvm_prefix() -> Path:
+    """Get the LLVM installation prefix from .llvm-prefix file."""
+    prefix_file = Path(__file__).parent / ".llvm-prefix"
+    if not prefix_file.exists():
+        print("Error: .llvm-prefix file not found.", file=sys.stderr)
+        sys.exit(1)
+
+    with open(prefix_file, "r") as f:
+        llvm_prefix = os.path.expanduser(f.read().strip())
+    
+    path = Path(llvm_prefix)
+    if not path.exists():
+        print(f"Error: LLVM prefix from .llvm-prefix does not exist: {path}", file=sys.stderr)
+        sys.exit(1)
+
+    return path
+
+def main():
+    if len(sys.argv) < 2:
+        print("Usage: python llvm-bin.py <tool> [args...]", file=sys.stderr)
+        sys.exit(1)
+
+    tool = sys.argv[1]
+    args = sys.argv[2:]
+
+    llvm_prefix = get_llvm_prefix()
+    tool_path = llvm_prefix / "bin" / tool
+
+    if not tool_path.exists() or not os.access(tool_path, os.X_OK):
+        print(f"Error: Tool '{tool}' not found or not executable at {tool_path}", file=sys.stderr)
+        sys.exit(1)
+
+    # Execute the tool with forwarded arguments
+    result = subprocess.run([str(tool_path)] + args)
+    sys.exit(result.returncode)
+
+if __name__ == "__main__":
+    main()

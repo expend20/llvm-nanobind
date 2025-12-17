@@ -180,11 +180,11 @@ Update error message format to match C version:
 uv run python run_llvm_c_tests.py --use-python
 
 # Run specific test
-cat llvm-c/llvm-c-test/inputs/atomics.ll | $(brew --prefix llvm)/bin/llvm-as | \
+cat llvm-c/llvm-c-test/inputs/atomics.ll | ./llvm-bin llvm-as | \
   uv run python -m llvm_c_test --echo
 
 # Compare with C version
-cat llvm-c/llvm-c-test/inputs/atomics.ll | $(brew --prefix llvm)/bin/llvm-as | \
+cat llvm-c/llvm-c-test/inputs/atomics.ll | ./llvm-bin llvm-as | \
   ./build/llvm-c-test --echo
 ```
 

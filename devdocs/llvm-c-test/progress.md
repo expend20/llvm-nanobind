@@ -183,15 +183,15 @@ Added the remaining bindings for complete attribute and metadata copying:
 
 ```bash
 # Run all lit tests
-CMAKE_PREFIX_PATH=$(brew --prefix llvm) uv run python run_llvm_c_tests.py
+uv run python run_llvm_c_tests.py
 
 # Run with verbose output
-CMAKE_PREFIX_PATH=$(brew --prefix llvm) uv run python run_llvm_c_tests.py -v
+uv run python run_llvm_c_tests.py -v
 
 # Run memory safety tests
-CMAKE_PREFIX_PATH=$(brew --prefix llvm) uv run python test_memory_safety.py
+uv run python test_memory_safety.py
 
 # Test echo command directly
-echo 'define i32 @main() { ret i32 0 }' | $(brew --prefix llvm)/bin/llvm-as | \
-  CMAKE_PREFIX_PATH=$(brew --prefix llvm) uv run python -m llvm_c_test --echo
+echo 'define i32 @main() { ret i32 0 }' | ./llvm-bin llvm-as | \
+  uv run python -m llvm_c_test --echo
 ```

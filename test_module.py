@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run
 """
 Test: test_module
 Tests LLVM Module creation and properties via Python bindings.

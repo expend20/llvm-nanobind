@@ -45,7 +45,7 @@ python -m llvm_c_test --targets-list
 A wrapper script will allow substituting the Python version:
 
 ```python
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run
 # llvm-c-test-py wrapper script
 import sys
 from llvm_c_test import main

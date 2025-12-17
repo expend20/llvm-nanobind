@@ -1051,8 +1051,9 @@ int main() {
 #### Python Test Template
 
 ```python
-#!/usr/bin/env python3
-import sysimport llvm
+#!/usr/bin/env -S uv run
+import sys
+import llvm
 
 def main():
     with llvm.create_context() as ctx:

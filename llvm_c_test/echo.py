@@ -11,7 +11,7 @@ Based on: llvm-c/llvm-c-test/echo.cpp
 from __future__ import annotations
 
 import sys
-from typing import Optional, cast
+from typing import Optional
 
 import llvm
 
@@ -26,6 +26,10 @@ class TypeCloner:
     def clone(self, src: llvm.Type | llvm.Value) -> llvm.Type:
         """Clone a type or a value's type."""
         if isinstance(src, llvm.Value):
+            # For functions/globals, use global_get_value_type() instead of .type
+            # because .type returns the pointer type, not the actual function type
+            if src.is_a_function() or src.is_a_global_variable():
+                return self.clone(src.global_get_value_type())
             return self.clone(src.type)
 
         kind = src.kind

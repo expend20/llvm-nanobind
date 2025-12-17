@@ -50,7 +50,20 @@ uv run coverage report --include="llvm_c_test/*"  # Show llvm_c_test coverage on
 C++ tests output LLVM IR to stdout → saved as `tests/output/*.ll` → Python tests must produce identical output.
 Tests must be deterministic (no timestamps, PIDs, addresses). See `devdocs/plan.md` for templates.
 
+## Debugging Hard Crashes
+
+**Important**: Our goal is to protect users from footguns by raising Python exceptions instead of hard crashes whenever possible. We have lifetime information for references and ownership tracking, so we can do additional checks before calling the C API.
+
+When encountering segfaults or crashes:
+
+1. **Isolate the crash** into a `test_memory_*.py` file with pure Python reproduction (no subprocesses)
+2. **Document the root cause** in the test file docstring
+3. **Add validation checks** in the C++ bindings to raise exceptions instead of crashing
+4. **Reference `devdocs/DEBUGGING.md`** for complete best practices
+
+See `devdocs/DEBUGGING.md` for detailed debugging guidelines and patterns.
+
 ## Common Build Issues
-- **CMake can't find LLVM**: Ensure `CMAKE_PREFIX_PATH=$(brew --prefix llvm)` is set
-- **Type stubs not updating**: Rebuild with `CMAKE_PREFIX_PATH=$(brew --prefix llvm) uv sync`
+- **CMake can't find LLVM**: Ask the user to configure the build manually once, this will create `.llvm-prefix` used for the rest of the build.
+- **Type stubs not updating**: Rebuild with `uv sync`
 - **Import errors in Python**: The llvm module is dynamically generated; type checkers need the stubs

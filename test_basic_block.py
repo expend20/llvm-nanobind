@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run
 """
 Test: test_basic_block
 Tests LLVM BasicBlock creation and manipulation via Python bindings.

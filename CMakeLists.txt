@@ -30,8 +30,6 @@ set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
 project(llvm-nanobind)
 
-include("cmake/magic-llvm.cmake")
-
 # Packages
 find_package(Python 3.12 REQUIRED
 	COMPONENTS
@@ -42,22 +40,7 @@ find_package(Python 3.12 REQUIRED
 
 find_package(nanobind-wrapper REQUIRED)
 
-find_package(LLVM REQUIRED)
-
-# Target: LLVM-C-Wrapper
-add_library(LLVM-C-Wrapper INTERFACE)
-
-target_include_directories(LLVM-C-Wrapper INTERFACE
-	${LLVM_INCLUDE_DIRS}
-)
-
-if(NOT TARGET LLVM-C)
-	message(FATAL_ERROR "Target \"LLVM-C\" referenced by \"LLVM-C-Wrapper\" does not exist!")
-endif()
-
-target_link_libraries(LLVM-C-Wrapper INTERFACE
-	LLVM-C
-)
+find_package(LLVM-Wrapper REQUIRED)
 
 # Target: llvm
 set(llvm_SOURCES

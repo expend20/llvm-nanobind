@@ -6,7 +6,6 @@ This module implements debug info related commands like --get-di-tag,
 """
 
 import llvm
-import sys
 
 
 def get_di_tag():

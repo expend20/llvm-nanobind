@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run
 """
 Wrapper script for llvm_c_test that provides command logging.
 

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run
 """
 Test: test_context
 Tests LLVM Context creation and properties via Python bindings.
