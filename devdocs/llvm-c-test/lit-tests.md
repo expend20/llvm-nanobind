@@ -9,14 +9,20 @@ The lit test suite verifies that the Python implementation (`llvm_c_test`) produ
 ## Running the Tests
 
 ```bash
-# Run all lit tests (uses Python implementation)
+# Run all lit tests with C binary (default)
 uv run python run_llvm_c_tests.py
+
+# Run all lit tests with Python implementation
+uv run python run_llvm_c_tests.py --use-python
 
 # Run with verbose output
 uv run python run_llvm_c_tests.py -v
 
-# Run specific test
-$(brew --prefix llvm)/bin/lit llvm-c/llvm-c-test/inputs/echo.ll -v
+# Run with Python implementation and coverage collection
+uv run coverage run run_llvm_c_tests.py --use-python
+
+# Enable command logging for debugging
+LLVM_C_TEST_LOG=commands.log uv run python run_llvm_c_tests.py --use-python
 ```
 
 ## Test Directory Structure
@@ -160,8 +166,58 @@ Set by `run_llvm_c_tests.py`:
 | Variable | Description |
 |----------|-------------|
 | `LLVM_TOOLS_DIR` | Path to LLVM tools (llvm-as, FileCheck, etc.) |
-| `LLVM_C_TEST_EXE` | Path to llvm-c-test executable |
+| `LLVM_C_TEST_CMD` | Full command to run llvm-c-test (C binary, Python module, or coverage-wrapped) |
 | `LIT_EXEC_ROOT` | Output directory for test artifacts |
+| `PYTHONPATH` | Set to project root when using Python mode |
+
+For command logging:
+
+| Variable | Description |
+|----------|-------------|
+| `LLVM_C_TEST_LOG` | Path to log file for recording executed commands |
+
+## Architecture
+
+### Test Runner Flow
+
+```
+run_llvm_c_tests.py
+    │
+    ├── Default mode (C binary):
+    │   └── LLVM_C_TEST_CMD = /path/to/build/llvm-c-test
+    │
+    └── Python mode (--use-python):
+        │
+        ├── With coverage (COVERAGE_RUN set by `uv run coverage run`):
+        │   └── LLVM_C_TEST_CMD = python -m coverage run --parallel-mode -m llvm_c_test
+        │
+        ├── With logging (LLVM_C_TEST_LOG set):
+        │   └── LLVM_C_TEST_CMD = python llvm-c-test-wrapper.py
+        │
+        └── Default:
+            └── LLVM_C_TEST_CMD = python -m llvm_c_test
+```
+
+### Coverage Collection
+
+When running with coverage:
+```bash
+uv run coverage run --data-file=.coverage.run_llvm_c_tests run_llvm_c_tests.py --use-python
+```
+
+Each lit test invocation creates a unique coverage data file (due to `--parallel-mode`).
+After running, combine all coverage data:
+```bash
+uv run coverage combine
+uv run coverage html
+```
+
+### llvm-c-test-wrapper.py
+
+The wrapper script is used only for command logging. It:
+
+1. **Logs commands**: When `LLVM_C_TEST_LOG` is set, logs all executed commands with timestamps
+2. **Sets up path**: Ensures `llvm_c_test` module is importable from the project root
 
 ## Adding New Tests
 

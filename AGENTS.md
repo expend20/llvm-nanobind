@@ -4,12 +4,11 @@
 ```bash
 # CMake builds (for direct C++ development)
 cmake -B build -G Ninja                      # Configure (first time only)
-cmake --build build                          # Build everything
-cmake --build build --target llvm            # Build Python bindings only
+cmake --build build                          # Build
 
 # uv builds (recommended for Python development)
-CMAKE_PREFIX_PATH=$(brew --prefix llvm) uv sync  # Full rebuild with uv
-uv run <command>                             # Auto-rebuild if needed (may require CMAKE_PREFIX_PATH if not cached)
+uv sync --reinstall                          # Full rebuild with uv
+uv run <command>                             # Auto-rebuilds the extension if needed
 
 # Testing
 uv run python run_tests.py                   # Run all C++ tests + Python comparison
@@ -28,10 +27,11 @@ uv run coverage report                       # Show coverage report
 uv run coverage html                         # Generate HTML coverage report (htmlcov/)
 
 # Comprehensive Coverage (test runners + all tests)
-COVERAGE_RUN=1 uv run coverage run --data-file=.coverage.run_tests run_tests.py
-COVERAGE_RUN=1 uv run coverage run --data-file=.coverage.run_llvm_c_tests run_llvm_c_tests.py
+uv run coverage run --data-file=.coverage.run_tests run_tests.py
+uv run coverage run run_llvm_c_tests.py --use-python  # Each lit test creates .coverage.llvm_c_test.* files
 uv run coverage combine                      # Combine all coverage files
 uv run coverage report                       # Show comprehensive report
+uv run coverage report --include="llvm_c_test/*"  # Show llvm_c_test coverage only
 ```
 
 ## Type Checking

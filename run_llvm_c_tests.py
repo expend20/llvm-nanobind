@@ -14,25 +14,23 @@ Usage:
 
 Options:
     --llvm-prefix PATH    Path to LLVM installation prefix
+    --use-python          Use Python implementation instead of C binary
 
 Examples:
-    python run_llvm_c_tests.py                          # Run all tests
+    python run_llvm_c_tests.py                          # Run all tests (C binary)
+    python run_llvm_c_tests.py --use-python             # Run with Python implementation
     python run_llvm_c_tests.py -v                       # Verbose output
     python run_llvm_c_tests.py --llvm-prefix /opt/llvm  # Use specific LLVM
     python run_llvm_c_tests.py calc.test                # Run specific test
+
+    # Run with coverage (Python implementation)
+    uv run coverage run run_llvm_c_tests.py --use-python
 """
 
 import os
 import subprocess
 import sys
 from pathlib import Path
-
-
-def coverage_wrap(name: str, args: list[str]) -> list[str]:
-    """Wrap command with coverage if COVERAGE_RUN environment variable is set."""
-    if os.environ.get("COVERAGE_RUN"):
-        return ["-m", "coverage", "run", f"--data-file=.coverage.{name}"] + args
-    return args
 
 
 def get_llvm_prefix_from_brew() -> Path | None:
@@ -92,9 +90,10 @@ def get_llvm_prefix(cli_prefix: str | None) -> Path:
     sys.exit(1)
 
 
-def parse_args(args: list[str]) -> tuple[str | None, list[str]]:
-    """Parse our custom arguments, return (llvm_prefix, remaining_args)."""
+def parse_args(args: list[str]) -> tuple[str | None, bool, list[str]]:
+    """Parse our custom arguments, return (llvm_prefix, use_python, remaining_args)."""
     llvm_prefix = None
+    use_python = False
     remaining = []
 
     i = 0
@@ -108,42 +107,99 @@ def parse_args(args: list[str]) -> tuple[str | None, list[str]]:
         elif args[i].startswith("--llvm-prefix="):
             llvm_prefix = args[i].split("=", 1)[1]
             i += 1
+        elif args[i] == "--use-python":
+            use_python = True
+            i += 1
         else:
             remaining.append(args[i])
             i += 1
 
-    return llvm_prefix, remaining
+    return llvm_prefix, use_python, remaining
+
+
+def build_llvm_c_test_cmd(
+    use_python: bool, project_root: Path
+) -> tuple[str, dict[str, str]]:
+    """Build the llvm-c-test command string and extra environment variables.
+
+    Args:
+        use_python: If True, use Python implementation; otherwise use C binary.
+        project_root: Path to project root for locating files.
+
+    Returns:
+        Tuple of (command string, extra environment variables dict).
+    """
+    extra_env: dict[str, str] = {}
+
+    if use_python:
+        # PYTHONPATH must be embedded in the command since lit runs shell commands
+        # that don't inherit the environment from subprocess.run()
+        pythonpath_prefix = f"PYTHONPATH={project_root}"
+
+        # Check if we should enable coverage or logging
+        coverage_run = os.environ.get("COVERAGE_RUN")
+        log_file = os.environ.get("LLVM_C_TEST_LOG")
+
+        if coverage_run:
+            # Use coverage run with --parallel-mode so each invocation creates
+            # a unique data file that can be combined later with `coverage combine`
+            # Specify --data-file to write coverage to project root regardless of cwd
+            coverage_file = project_root / ".coverage.llvm_c_test"
+            cmd = f"{pythonpath_prefix} {sys.executable} -m coverage run --parallel-mode --data-file={coverage_file} -m llvm_c_test"
+        elif log_file:
+            # Use wrapper script for command logging
+            wrapper_script = project_root / "llvm-c-test-wrapper.py"
+            extra_env["LLVM_C_TEST_LOG"] = log_file
+            cmd = f"{pythonpath_prefix} {sys.executable} {wrapper_script}"
+        else:
+            # Direct invocation without coverage or logging
+            cmd = f"{pythonpath_prefix} {sys.executable} -m llvm_c_test"
+
+        return cmd, extra_env
+    else:
+        # Use C binary
+        llvm_c_test_exe = project_root / "build" / "llvm-c-test"
+        if sys.platform == "win32":
+            llvm_c_test_exe = llvm_c_test_exe.with_suffix(".exe")
+        return str(llvm_c_test_exe), extra_env
 
 
 def main():
     # Parse our custom arguments
-    llvm_prefix_arg, lit_args_extra = parse_args(sys.argv[1:])
+    llvm_prefix_arg, use_python, lit_args_extra = parse_args(sys.argv[1:])
 
     project_root = Path(__file__).parent.resolve()
     build_dir = project_root / "build"
     test_dir = project_root / "llvm-c" / "llvm-c-test" / "inputs"
 
-    # Verify build directory exists
+    # Verify build directory exists (needed for test outputs even with --use-python)
     if not build_dir.exists():
         print(f"Error: Build directory not found: {build_dir}", file=sys.stderr)
         print("Run: cmake -B build -G Ninja && cmake --build build", file=sys.stderr)
         sys.exit(1)
 
-    # Find llvm-c-test executable
-    llvm_c_test_exe = build_dir / "llvm-c-test"
-    if sys.platform == "win32":
-        llvm_c_test_exe = llvm_c_test_exe.with_suffix(".exe")
+    # Build the llvm-c-test command
+    llvm_c_test_cmd, extra_env = build_llvm_c_test_cmd(use_python, project_root)
 
-    if not llvm_c_test_exe.exists():
-        print(
-            f"Error: llvm-c-test executable not found: {llvm_c_test_exe}",
-            file=sys.stderr,
-        )
-        print(
-            "Build with: cmake --build build --target llvm-c-test-vendored",
-            file=sys.stderr,
-        )
-        sys.exit(1)
+    # Verify C binary exists if not using Python
+    if not use_python:
+        llvm_c_test_exe = project_root / "build" / "llvm-c-test"
+        if sys.platform == "win32":
+            llvm_c_test_exe = llvm_c_test_exe.with_suffix(".exe")
+
+        if not llvm_c_test_exe.exists():
+            print(
+                f"Error: llvm-c-test executable not found: {llvm_c_test_exe}",
+                file=sys.stderr,
+            )
+            print(
+                "Build with: cmake --build build --target llvm-c-test-vendored",
+                file=sys.stderr,
+            )
+            print(
+                "Or use --use-python to run with Python implementation", file=sys.stderr
+            )
+            sys.exit(1)
 
     # Get LLVM tools directory
     llvm_prefix = get_llvm_prefix(llvm_prefix_arg)
@@ -170,7 +226,8 @@ def main():
     # Set up environment for lit.cfg.py
     env = os.environ.copy()
     env["LLVM_TOOLS_DIR"] = str(llvm_tools_dir)
-    env["LLVM_C_TEST_EXE"] = str(llvm_c_test_exe)
+    env["LLVM_C_TEST_CMD"] = llvm_c_test_cmd
+    env.update(extra_env)
 
     # Use build directory for test outputs to keep source tree clean
     lit_exec_root = build_dir / "llvm-c-test-output"
@@ -198,8 +255,12 @@ def main():
     # Run lit
     print("Running llvm-c-test lit tests...")
     print(f"  Test directory: {test_dir}")
-    print(f"  llvm-c-test:    {llvm_c_test_exe}")
+    print(f"  llvm-c-test:    {llvm_c_test_cmd}")
     print(f"  LLVM tools:     {llvm_tools_dir}")
+    if use_python:
+        print(f"  Mode:           Python implementation")
+    else:
+        print(f"  Mode:           C binary")
     print()
 
     result = subprocess.run(lit_args, env=env)

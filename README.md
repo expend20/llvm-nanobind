@@ -76,11 +76,9 @@ uv run coverage report                    # Show combined report
 For comprehensive coverage including test runners and all subprocess tests:
 
 ```bash
-COVERAGE_RUN=1 uv run coverage run --data-file=.coverage.run_tests run_tests.py
-COVERAGE_RUN=1 uv run coverage run --data-file=.coverage.run_llvm_c_tests run_llvm_c_tests.py
+uv run coverage run --data-file=.coverage.run_tests run_tests.py
+uv run coverage run --data-file=.coverage.run_llvm_c_tests run_llvm_c_tests.py
 uv run coverage combine                   # Combine all coverage files
 uv run coverage report                    # Show comprehensive report
 uv run coverage html                      # Generate HTML report
 ```
-
-The `COVERAGE_RUN=1` environment variable enables coverage for subprocesses spawned by the test runners.

@@ -22,12 +22,17 @@ config.test_source_root = os.path.dirname(__file__)
 config.test_exec_root = os.environ.get("LIT_EXEC_ROOT", os.path.dirname(__file__))
 
 # Get paths from environment (set by run_llvm_c_tests.py)
-llvm_tools_dir = os.environ.get("LLVM_TOOLS_DIR", "")
-llvm_c_test_exe = os.environ.get("LLVM_C_TEST_EXE", "")
+llvm_tools_dir = os.environ.get("LLVM_TOOLS_DIR")
+llvm_c_test_cmd = os.environ.get("LLVM_C_TEST_CMD")
+
+if not llvm_tools_dir:
+    lit_config.fatal("LLVM_TOOLS_DIR environment variable not set")
+if not llvm_c_test_cmd:
+    lit_config.fatal("LLVM_C_TEST_CMD environment variable not set")
 
 # Tool substitutions
-config.substitutions.append(("%llvm-c-test", llvm_c_test_exe))
-config.substitutions.append(("llvm-c-test", llvm_c_test_exe))
+config.substitutions.append(("%llvm-c-test", llvm_c_test_cmd))
+config.substitutions.append(("llvm-c-test", llvm_c_test_cmd))
 config.substitutions.append(("llvm-as", os.path.join(llvm_tools_dir, "llvm-as")))
 config.substitutions.append(("llvm-dis", os.path.join(llvm_tools_dir, "llvm-dis")))
 config.substitutions.append(("FileCheck", os.path.join(llvm_tools_dir, "FileCheck")))
