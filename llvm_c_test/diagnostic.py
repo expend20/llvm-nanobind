@@ -12,51 +12,44 @@ import llvm
 def test_diagnostic_handler():
     """Test diagnostic handler functionality.
 
-    Sets up a diagnostic handler on the global context and attempts to
-    load invalid bitcode to trigger it.
-
-    TODO: This needs to be updated to use the new parsing API with LLVMParseError.
-    The diagnostic handler is now integrated into the context automatically.
+    The Python binding automatically installs a diagnostic handler that collects
+    diagnostics. We use get_diagnostics() to check if any were triggered during
+    bitcode parsing.
     """
-    # TODO: Reimplement using ctx.parse_bitcode_from_bytes and catching LLVMParseError
-    print("test-diagnostic-handler not yet implemented with new API", file=sys.stderr)
-    return 0
+    # Get global context (has automatic diagnostic handler installed)
+    ctx = llvm.global_context()
 
-    # Get global context
-    global_ctx = llvm.global_context()
-
-    # Set up diagnostic handler (now automatic)
-    # llvm.context_set_diagnostic_handler(global_ctx)
+    # Clear any previous diagnostics
+    ctx.clear_diagnostics()
 
     # Read stdin
     bitcode = sys.stdin.buffer.read()
 
+    # Track if handler was called via diagnostics list
+    handler_called = False
+    diagnostics = []
+
     # Try to load bitcode - this may trigger the diagnostic handler
     try:
-        with global_ctx.parse_bitcode_from_bytes(bitcode) as mod:
+        with ctx.parse_bitcode_from_bytes(bitcode) as mod:
             # If we get here, loading succeeded
             pass
-    except llvm.LLVMParseError as e:
-        # Loading failed, diagnostics are in e.diagnostics
+    except llvm.LLVMParseError:
+        # Loading failed - diagnostic handler was called
+        # Get diagnostics from context (they were collected before exception)
         pass
 
+    # Check context diagnostics
+    diagnostics = ctx.get_diagnostics()
+    handler_called = len(diagnostics) > 0
+
     # Check if diagnostic handler was called
-    if False:  # llvm.diagnostic_was_called():
+    if handler_called and len(diagnostics) > 0:
         print("Executing diagnostic handler", file=sys.stderr)
 
-        # Get severity
-        severity = llvm.get_diagnostic_severity()
-        severity_name = "unknown"
-        if severity == llvm.DiagnosticSeverity.Error:
-            severity_name = "error"
-        elif severity == llvm.DiagnosticSeverity.Warning:
-            severity_name = "warning"
-        elif severity == llvm.DiagnosticSeverity.Remark:
-            severity_name = "remark"
-        elif severity == llvm.DiagnosticSeverity.Note:
-            severity_name = "note"
-
-        print(f"Diagnostic severity is of type {severity_name}", file=sys.stderr)
+        # Get severity from first diagnostic
+        severity = diagnostics[0].severity
+        print(f"Diagnostic severity is of type {severity}", file=sys.stderr)
         print("Diagnostic handler was called while loading module", file=sys.stderr)
     else:
         print("Diagnostic handler was not called while loading module", file=sys.stderr)

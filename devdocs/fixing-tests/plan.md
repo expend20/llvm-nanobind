@@ -7,8 +7,8 @@ When running lit tests with `--use-python`, 10 out of 23 tests fail. This plan d
 ## Current Test Status (December 18, 2025)
 
 ```
-Passed: 13 (56.52%)
-Failed: 10 (43.48%)
+Passed: 21 (91.30%)
+Failed:  2 (8.70%)
 ```
 
 ## Root Cause Analysis
@@ -135,43 +135,49 @@ Compare `llvm_c_test/debuginfo.py` with `llvm-c/llvm-c-test/debuginfo.c` to find
 
 ## Implementation Phases
 
-### Phase 1: ModuleID Fix (Highest Impact)
+### Phase 1: ModuleID Fix ✅ COMPLETE
 **Priority:** High (fixes 6 tests)
 **Effort:** Low
 **File:** `llvm_c_test/echo.py`
+**Result:** Fixed 5 tests (atomics, float_ops, freeze, invoke, memops)
 
-### Phase 2: Error Message Format Fix
+### Phase 2: Error Message Format Fix ✅ COMPLETE
 **Priority:** Medium (fixes 1 test)
 **Effort:** Low
-**File:** `llvm_c_test/module_ops.py`
+**Files:** `llvm_c_test/module_ops.py`, `llvm_c_test/diagnostic.py`
+**Result:** Fixed 2 tests (invalid-bitcode, empty)
 
-### Phase 3: Lazy Module Support
+### Phase 3: Lazy Module Support ✅ COMPLETE
 **Priority:** Medium (fixes 1 test)
 **Effort:** Medium
 **Files:** `src/llvm-nanobind.cpp`, `llvm_c_test/module_ops.py`
+**Result:** Fixed 1 test (functions)
 
 ### Phase 4: DIBuilder Metadata Order
 **Priority:** Medium (fixes 1 test)
 **Effort:** Medium-High (requires careful comparison)
 **File:** `llvm_c_test/debuginfo.py`
+**Status:** Pending
 
 ### Phase 5: Syncscope Support
 **Priority:** Low (fixes 1 test, complex)
 **Effort:** High (may need C++ binding work)
 **Files:** `src/llvm-nanobind.cpp`, `llvm_c_test/echo.py`
+**Status:** Pending
 
 ---
 
 ## Summary Table
 
-| Root Cause | Tests | Regression Test | Fix Effort | Phase |
-|------------|-------|-----------------|------------|-------|
-| ModuleID `<bytes>` vs `<stdin>` | 6 | `test_module_id_stdin.py` | Low | 1 |
-| Error message format | 1 | `test_error_message_format.py` | Low | 2 |
-| Lazy module support | 1 | `test_lazy_materializable.py` | Medium | 3 |
-| DIBuilder metadata order | 1 | `test_dibuilder_metadata.py` | Medium-High | 4 |
-| Custom syncscope crash | 1 | `test_syncscope_crash.py` | High | 5 |
-| **Total** | **10** | | | |
+| Root Cause | Tests | Regression Test | Fix Effort | Phase | Status |
+|------------|-------|-----------------|------------|-------|--------|
+| ModuleID `<bytes>` vs `<stdin>` | 5 | `test_module_id_stdin.py` | Low | 1 | ✅ Done |
+| Error message format | 2 | `test_error_message_format.py` | Low | 2 | ✅ Done |
+| Lazy module support | 1 | `test_lazy_materializable.py` | Medium | 3 | ✅ Done |
+| DIBuilder metadata order | 1 | `test_dibuilder_metadata.py` | Medium-High | 4 | Pending |
+| Custom syncscope crash | 1 | `test_syncscope_crash.py` | High | 5 | Pending |
+| **Total Fixed** | **8** | | | | |
+| **Remaining** | **2** | | | | |
 
 ---
 

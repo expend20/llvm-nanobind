@@ -11,6 +11,33 @@ import sys
 import llvm
 
 
+def _extract_error_message(exception_msg: str) -> str:
+    """
+    HACK: Extract the core error message from LLVMParseError format.
+
+    The Python binding wraps errors differently than the C version.
+
+    Input format:
+        Failed to parse LLVM IR:
+          error: Unknown attribute kind (255) (Producer: ...)
+
+    Output format:
+        Unknown attribute kind (255) (Producer: ...)
+
+    This is needed for llvm-c-test compatibility.
+    """
+    lines = exception_msg.strip().split("\n")
+
+    for line in lines:
+        line = line.strip()
+        # Find line starting with "error:" and extract the message
+        if line.startswith("error:"):
+            return line[len("error:") :].strip()
+
+    # Fallback: return as-is
+    return exception_msg
+
+
 def module_dump(lazy=False, new=False):
     """
     Parse bitcode from stdin and print IR.
@@ -26,17 +53,21 @@ def module_dump(lazy=False, new=False):
         # Parse bitcode
         ctx = llvm.global_context()
 
-        with ctx.parse_bitcode_from_bytes(bitcode) as mod:
+        with ctx.parse_bitcode_from_bytes(bitcode, lazy=lazy) as mod:
+            # HACK: When parsing from bytes, LLVM sets module ID to '<bytes>'.
+            # For llvm-c-test compatibility, use '<stdin>' to match C version.
+            mod.name = "<stdin>"
             # Print module IR
             print(mod.to_string(), end="")
 
         return 0
     except llvm.LLVMParseError as e:
-        # Format error message to match C version
+        # HACK: Extract clean error message to match C version output format
+        clean_msg = _extract_error_message(str(e))
         if new:
-            print(f"Error with new bitcode parser: {e}", file=sys.stderr)
+            print(f"Error with new bitcode parser: {clean_msg}", file=sys.stderr)
         else:
-            print(f"Error parsing bitcode: {e}", file=sys.stderr)
+            print(f"Error parsing bitcode: {clean_msg}", file=sys.stderr)
         return 1
     except Exception as e:
         print(f"Error parsing bitcode: {e}", file=sys.stderr)

@@ -3562,7 +3562,8 @@ struct LLVMContextWrapper : NoMoveCopy {
   // Parsing methods - defined after LLVMModuleManager
   LLVMModuleManager *parse_bitcode_from_file(const fs::path &filename,
                                              bool lazy = false);
-  LLVMModuleManager *parse_bitcode_from_bytes(nb::bytes data);
+  LLVMModuleManager *parse_bitcode_from_bytes(nb::bytes data,
+                                              bool lazy = false);
   LLVMModuleManager *parse_ir(const std::string &source);
 };
 
@@ -3771,8 +3772,8 @@ LLVMContextWrapper::parse_bitcode_from_file(const fs::path &filename,
   return new LLVMModuleManager(std::move(mod));
 }
 
-LLVMModuleManager *
-LLVMContextWrapper::parse_bitcode_from_bytes(nb::bytes data) {
+LLVMModuleManager *LLVMContextWrapper::parse_bitcode_from_bytes(nb::bytes data,
+                                                                bool lazy) {
   check_valid();
   clear_diagnostics();
 
@@ -3780,9 +3781,14 @@ LLVMContextWrapper::parse_bitcode_from_bytes(nb::bytes data) {
   auto buf = LLVMCreateMemoryBufferWithMemoryRangeCopy(data.c_str(),
                                                        data.size(), "<bytes>");
 
-  // Parse eagerly (always)
+  // Parse bitcode
   LLVMModuleRef mod_ref;
-  auto failed = LLVMParseBitcodeInContext2(m_ref, buf, &mod_ref);
+  LLVMBool failed;
+  if (lazy) {
+    failed = LLVMGetBitcodeModuleInContext2(m_ref, buf, &mod_ref);
+  } else {
+    failed = LLVMParseBitcodeInContext2(m_ref, buf, &mod_ref);
+  }
 
   if (failed) {
     // On failure, we must dispose the buffer ourselves
@@ -3790,9 +3796,16 @@ LLVMContextWrapper::parse_bitcode_from_bytes(nb::bytes data) {
     throw LLVMParseError(get_diagnostics());
   }
 
-  // On success, LLVM took ownership of buf, don't dispose it
   // Create module wrapper (no buffer ownership - LLVM internals own it)
   auto mod = std::make_unique<LLVMModuleWrapper>(mod_ref, m_ref, m_token);
+
+  // For lazy loading, LLVM's Module takes ownership and stores the buffer
+  // internally. For eager loading, LLVM consumed the buffer during parsing,
+  // so we dispose it.
+  if (!lazy) {
+    LLVMDisposeMemoryBuffer(buf);
+  }
+
   return new LLVMModuleManager(std::move(mod));
 }
 
@@ -4695,7 +4708,7 @@ NB_MODULE(llvm, m) {
   auto exc_parse = nb::exception<LLVMParseError>(m, "LLVMParseError");
 
   // Set docstrings on exception classes
-  exc_error.attr("__doc__") =
+  exc_error.doc() =
       "Recoverable LLVM error.\n\n"
       "Raised for runtime errors that can be caught and handled, such as:\n"
       "- I/O errors when reading files\n"
@@ -4703,7 +4716,7 @@ NB_MODULE(llvm, m) {
       "- Binary creation errors\n\n"
       "These errors derive from Exception and can be caught normally.";
 
-  exc_memory.attr("__doc__") =
+  exc_memory.doc() =
       "Memory/lifetime error - derives from SystemExit.\n\n"
       "Raised for memory safety violations and lifetime issues:\n"
       "- Accessing objects after context was destroyed\n"
@@ -4715,7 +4728,7 @@ NB_MODULE(llvm, m) {
       "This design prevents accidental continuation after memory safety "
       "violations.";
 
-  exc_assertion.attr("__doc__") =
+  exc_assertion.doc() =
       "Programming error - derives from AssertionError.\n\n"
       "Raised for logic errors unrelated to object lifetimes:\n"
       "- Type mismatches: calling int_width on a float type\n"
@@ -4723,16 +4736,18 @@ NB_MODULE(llvm, m) {
       "- Invalid operations: value is not inline assembly\n\n"
       "These indicate bugs in your code but are recoverable.";
 
-  exc_parse.attr("__doc__") =
-      "LLVM IR/bitcode parsing error with diagnostics.\n\n"
-      "Raised when parsing LLVM IR or bitcode fails. Provides detailed\n"
-      "diagnostic information via the get_diagnostics() method.\n\n"
-      "Example:\n"
-      "    try:\n"
-      "        mod = ctx.parse_ir('invalid')\n"
-      "    except LLVMParseError as e:\n"
-      "        for diag in e.get_diagnostics():\n"
-      "            print(f'{diag.severity}: {diag.message}')";
+  exc_parse.doc() = "LLVM IR/bitcode parsing error with diagnostics.\n\n"
+                    "Raised when parsing LLVM IR or bitcode fails. Use "
+                    "ctx.get_diagnostics()\n"
+                    "to retrieve detailed diagnostic information after "
+                    "catching this exception.\n\n"
+                    "Example:\n"
+                    "    try:\n"
+                    "        mod = ctx.parse_ir('invalid')\n"
+                    "    except LLVMParseError as e:\n"
+                    "        print(f'Parse failed: {e}')\n"
+                    "        for diag in ctx.get_diagnostics():\n"
+                    "            print(f'{diag.severity}: {diag.message}')";
 
   // Diagnostic class
   nb::class_<Diagnostic>(m, "Diagnostic")
@@ -5689,7 +5704,8 @@ NB_MODULE(llvm, m) {
            "Parse LLVM bitcode from file")
       .def("parse_bitcode_from_bytes",
            &LLVMContextWrapper::parse_bitcode_from_bytes, "data"_a,
-           nb::rv_policy::take_ownership, "Parse LLVM bitcode from bytes")
+           "lazy"_a = false, nb::rv_policy::take_ownership,
+           "Parse LLVM bitcode from bytes")
       .def("parse_ir", &LLVMContextWrapper::parse_ir, "source"_a,
            nb::rv_policy::take_ownership, "Parse LLVM IR from string")
       // Diagnostics

@@ -2,40 +2,20 @@
 """
 Regression test for lazy module loading and materialization.
 
-When using lazy loading (--lazy-module-dump), the C version shows functions with
-`; Materializable` comments and empty bodies `{}`. The Python version currently
-doesn't support lazy loading from bytes - only from files.
+When using lazy loading (--lazy-module-dump), LLVM shows functions with
+`; Materializable` comments and empty bodies `{}`.
 
-This test documents:
+This test verifies:
 1. parse_bitcode_from_file supports lazy=True
-2. parse_bitcode_from_bytes does NOT support lazy (always eager)
-3. Lazy-loaded modules should show "; Materializable" in output
+2. parse_bitcode_from_bytes supports lazy=True
+3. Lazy-loaded modules show "; Materializable" in output
 
-Root cause: The module_ops.py doesn't pass lazy parameter to parse function,
-and parse_bitcode_from_bytes doesn't have a lazy parameter anyway.
+The lazy parameter was added to parse_bitcode_from_bytes to fix functions.ll.
 
-Affects lit tests:
-- functions.ll (--lazy-module-dump command)
-
-Fix needed:
-1. Add lazy parameter to parse_bitcode_from_bytes C++ binding
-2. Update module_ops.py to use lazy=True for --lazy-module-dump
-3. Ensure LLVM's LLVMPrintModuleToString includes "; Materializable" for
-   lazy-loaded functions (this is automatic if module is truly lazy)
-
-Expected C output (lazy):
+Expected output (lazy):
 ```
 ; Materializable
 define i32 @X() {}
-```
-
-Current Python output (not lazy):
-```
-define i32 @X() {
-entry:
-  br label %l1
-  ...
-}
 ```
 """
 
@@ -59,29 +39,19 @@ def test_lazy_loading_from_file_supported():
             print(f"Functions: {func_names}")
 
 
-def test_lazy_loading_from_bytes_not_supported():
-    """Document that parse_bitcode_from_bytes doesn't have lazy parameter."""
+def test_lazy_loading_from_bytes_supported():
+    """Verify parse_bitcode_from_bytes supports lazy parameter."""
     bitcode_path = Path(__file__).parent / "factorial.bc"
     with open(bitcode_path, "rb") as f:
         bitcode = f.read()
 
     with llvm.create_context() as ctx:
-        # Check if lazy parameter exists
-        import inspect
-
-        sig = inspect.signature(ctx.parse_bitcode_from_bytes)
-        params = list(sig.parameters.keys())
-
-        # Currently only has 'data' parameter, no 'lazy'
-        print(f"parse_bitcode_from_bytes parameters: {params}")
-
-        has_lazy = "lazy" in params
-        print(f"Has lazy parameter: {has_lazy}")
-
-        # This is the current limitation - bytes API is always eager
-        # TODO: Add lazy parameter to parse_bitcode_from_bytes
-        if not has_lazy:
-            print("NOTE: lazy parameter not yet supported for bytes API")
+        # Test that lazy=True works
+        with ctx.parse_bitcode_from_bytes(bitcode, lazy=True) as mod:
+            ir = str(mod)
+            has_materializable = "; Materializable" in ir
+            print(f"Lazy load from bytes has '; Materializable': {has_materializable}")
+            assert has_materializable, "Lazy load from bytes should show Materializable"
 
 
 def test_lazy_module_output_format():
@@ -124,14 +94,11 @@ if __name__ == "__main__":
     print("test_lazy_loading_from_file_supported: PASSED")
     print()
 
-    test_lazy_loading_from_bytes_not_supported()
-    print("test_lazy_loading_from_bytes_not_supported: PASSED")
+    test_lazy_loading_from_bytes_supported()
+    print("test_lazy_loading_from_bytes_supported: PASSED")
     print()
 
     test_lazy_module_output_format()
     print("test_lazy_module_output_format: PASSED")
 
-    print("\nAll lazy module tests completed!")
-    print("\nNOTE: To fix functions.ll test, need to:")
-    print("  1. Add lazy parameter to parse_bitcode_from_bytes")
-    print("  2. Update module_ops.py to use lazy=True for --lazy-module-dump")
+    print("\nAll lazy module tests passed!")

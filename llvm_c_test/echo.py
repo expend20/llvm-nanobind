@@ -1382,7 +1382,10 @@ def echo() -> int:
 
         with ctx.parse_bitcode_from_bytes(bitcode) as src:
             source_filename = src.source_filename
-            module_name = src.name
+            # HACK: When parsing from bytes, LLVM sets module ID to '<bytes>'.
+            # For llvm-c-test compatibility, we use '<stdin>' to match the C version
+            # which reads directly from stdin via LLVMCreateMemoryBufferWithSTDIN.
+            module_name = "<stdin>"
 
             # Create destination module
             with ctx.create_module(module_name) as m:
