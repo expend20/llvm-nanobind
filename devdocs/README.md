@@ -12,6 +12,7 @@ devdocs/
 ├── lit-tests.md        # LLVM lit test infrastructure documentation
 ├── archive/            # Completed task summaries (key learnings only)
 │   ├── bindings.md
+│   ├── fixing-tests.md
 │   ├── llvm-c-test.md
 │   └── parsing-refactor.md
 └── <task-name>/        # In-progress tasks
@@ -73,6 +74,7 @@ The `archive/` directory contains summaries of completed work:
 | File | Summary |
 |------|---------|
 | `bindings.md` | Core Python bindings: ownership model, exception hierarchy, wrapper patterns |
+| `fixing-tests.md` | Test fixing work: borrowed contexts, diagnostic registry, syncscope gotchas |
 | `llvm-c-test.md` | Python port of llvm-c-test: 22 commands, echo architecture, testing |
 | `parsing-refactor.md` | New parsing API: buffer ownership, diagnostics, migration patterns |
 

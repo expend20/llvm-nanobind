@@ -345,7 +345,7 @@ if __name__ == "__main__":
 ## Resources
 
 - `devdocs/memory-model.md` - Memory model documentation
-- `devdocs/fixing-tests/plan.md` - Current test fixing plan
+- `devdocs/archive/fixing-tests.md` - Summary of test fixing work
 - `AGENTS.md` - Agent guidelines (references this document)
 
 ## Summary Checklist
