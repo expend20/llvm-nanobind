@@ -152,6 +152,7 @@ struct LLVMModuleManager;
 struct LLVMBuilderManager;
 struct LLVMNamedMDNodeWrapper;
 struct LLVMOperandBundleWrapper;
+struct LLVMUseWrapper;
 
 // =============================================================================
 // Operand Bundle Wrapper (for call/invoke instructions with operand bundles)
@@ -602,6 +603,39 @@ struct LLVMNamedMDNodeWrapper {
 };
 
 // =============================================================================
+// Use Wrapper (for use-def chain iteration)
+// =============================================================================
+
+struct LLVMUseWrapper {
+  LLVMUseRef m_ref = nullptr;
+  std::shared_ptr<ValidityToken> m_context_token;
+
+  LLVMUseWrapper() = default;
+  LLVMUseWrapper(LLVMUseRef ref, std::shared_ptr<ValidityToken> token)
+      : m_ref(ref), m_context_token(std::move(token)) {}
+
+  void check_valid() const {
+    if (!m_ref)
+      throw LLVMMemoryError("Use is null");
+    if (!m_context_token || !m_context_token->is_valid())
+      throw LLVMMemoryError("Use used after context was destroyed");
+  }
+
+  std::optional<LLVMUseWrapper> next_use() const {
+    check_valid();
+    LLVMUseRef next = LLVMGetNextUse(m_ref);
+    if (!next)
+      return std::nullopt;
+    return LLVMUseWrapper(next, m_context_token);
+  }
+
+  // get_user and get_used_value are implemented after LLVMValueWrapper is
+  // defined
+  LLVMValueWrapper get_user() const;
+  LLVMValueWrapper get_used_value() const;
+};
+
+// =============================================================================
 // Value Wrapper (base for all LLVM values)
 // =============================================================================
 
@@ -670,6 +704,15 @@ struct LLVMValueWrapper {
   bool is_poison() const {
     check_valid();
     return LLVMIsPoison(m_ref);
+  }
+
+  // Use-def chain iteration
+  std::optional<LLVMUseWrapper> first_use() const {
+    check_valid();
+    LLVMUseRef use = LLVMGetFirstUse(m_ref);
+    if (!use)
+      return std::nullopt;
+    return LLVMUseWrapper(use, m_context_token);
   }
 
   std::optional<LLVMValueWrapper> next_global() const {
@@ -1717,6 +1760,23 @@ struct LLVMFunctionWrapper : LLVMValueWrapper {
     return LLVMFunctionWrapper(prev, m_context_token);
   }
 };
+
+// Implementation of LLVMUseWrapper methods - need LLVMValueWrapper
+inline LLVMValueWrapper LLVMUseWrapper::get_user() const {
+  check_valid();
+  LLVMValueRef user = LLVMGetUser(m_ref);
+  if (!user)
+    throw LLVMAssertionError("Use has no user");
+  return LLVMValueWrapper(user, m_context_token);
+}
+
+inline LLVMValueWrapper LLVMUseWrapper::get_used_value() const {
+  check_valid();
+  LLVMValueRef used = LLVMGetUsedValue(m_ref);
+  if (!used)
+    throw LLVMAssertionError("Use has no used value");
+  return LLVMValueWrapper(used, m_context_token);
+}
 
 // Implementation of LLVMBasicBlockWrapper::parent() - needs LLVMFunctionWrapper
 inline LLVMFunctionWrapper LLVMBasicBlockWrapper::parent() const {
@@ -4439,20 +4499,7 @@ struct LLVMMemoryBufferWrapper : NoMoveCopy {
   }
 };
 
-// Memory buffer creation functions (for object file API)
-LLVMMemoryBufferWrapper *create_memory_buffer_with_stdin() {
-  LLVMMemoryBufferRef buf;
-  char *error_msg = nullptr;
-
-  if (LLVMCreateMemoryBufferWithSTDIN(&buf, &error_msg)) {
-    std::string err = error_msg ? error_msg : "Unknown error reading stdin";
-    if (error_msg)
-      LLVMDisposeMessage(error_msg);
-    throw LLVMError(err);
-  }
-
-  return new LLVMMemoryBufferWrapper(buf);
-}
+// LLVMMemoryBufferWrapper is kept internal for module parsing - not exposed to Python
 
 // =============================================================================
 // Disassembler Wrapper
@@ -4513,38 +4560,59 @@ create_disasm_cpu_features(const std::string &triple, const std::string &cpu,
 
 // Forward declarations
 struct LLVMBinaryWrapper;
+struct LLVMBinaryManager;
 struct LLVMSectionIteratorWrapper;
 struct LLVMSymbolIteratorWrapper;
+struct LLVMRelocationIteratorWrapper;
 
+// Binary wrapper - owns the binary and its backing memory buffer
 struct LLVMBinaryWrapper : NoMoveCopy {
   LLVMBinaryRef m_ref = nullptr;
+  LLVMMemoryBufferRef m_buf = nullptr; // Owned - must stay alive while binary exists
+  std::shared_ptr<ValidityToken> m_token;
 
   LLVMBinaryWrapper() = default;
-  explicit LLVMBinaryWrapper(LLVMBinaryRef ref) : m_ref(ref) {}
+  LLVMBinaryWrapper(LLVMBinaryRef ref, LLVMMemoryBufferRef buf)
+      : m_ref(ref), m_buf(buf), m_token(std::make_shared<ValidityToken>()) {}
 
-  ~LLVMBinaryWrapper() {
+  ~LLVMBinaryWrapper() { dispose_internal(); }
+
+  void dispose_internal() {
+    if (m_token)
+      m_token->invalidate();
     if (m_ref) {
       LLVMDisposeBinary(m_ref);
       m_ref = nullptr;
     }
+    // Dispose buffer AFTER binary since binary references it
+    if (m_buf) {
+      LLVMDisposeMemoryBuffer(m_buf);
+      m_buf = nullptr;
+    }
   }
-
-  bool is_valid() const { return m_ref != nullptr; }
 
   void check_valid() const {
     if (!m_ref)
-      throw LLVMMemoryError("Binary is null or invalid");
+      throw LLVMMemoryError("Binary has been disposed");
+  }
+
+  LLVMBinaryType get_type() const {
+    check_valid();
+    return LLVMBinaryGetType(m_ref);
   }
 };
 
+// Section iterator - holds validity token from binary
 struct LLVMSectionIteratorWrapper : NoMoveCopy {
   LLVMSectionIteratorRef m_ref = nullptr;
-  LLVMBinaryWrapper *m_binary = nullptr; // Non-owning reference
+  LLVMBinaryRef m_binary_ref = nullptr; // For is_at_end check
+  std::shared_ptr<ValidityToken> m_binary_token;
 
   LLVMSectionIteratorWrapper() = default;
-  LLVMSectionIteratorWrapper(LLVMSectionIteratorRef ref,
-                             LLVMBinaryWrapper *binary)
-      : m_ref(ref), m_binary(binary) {}
+  LLVMSectionIteratorWrapper(LLVMSectionIteratorRef ref, LLVMBinaryRef binary_ref,
+                             std::shared_ptr<ValidityToken> binary_token)
+      : m_ref(ref), m_binary_ref(binary_ref),
+        m_binary_token(std::move(binary_token)) {}
 
   ~LLVMSectionIteratorWrapper() {
     if (m_ref) {
@@ -4553,18 +4621,16 @@ struct LLVMSectionIteratorWrapper : NoMoveCopy {
     }
   }
 
-  bool is_valid() const { return m_ref != nullptr; }
-
   void check_valid() const {
+    if (!m_binary_token || !m_binary_token->is_valid())
+      throw LLVMMemoryError("Section iterator used after binary was disposed");
     if (!m_ref)
-      throw LLVMMemoryError("SectionIterator is null or invalid");
-    if (!m_binary || !m_binary->is_valid())
-      throw LLVMMemoryError("Binary associated with iterator is invalid");
+      throw LLVMMemoryError("Section iterator is null");
   }
 
   bool is_at_end() const {
     check_valid();
-    return LLVMObjectFileIsSectionIteratorAtEnd(m_binary->m_ref, m_ref);
+    return LLVMObjectFileIsSectionIteratorAtEnd(m_binary_ref, m_ref);
   }
 
   void move_next() {
@@ -4587,16 +4653,45 @@ struct LLVMSectionIteratorWrapper : NoMoveCopy {
     check_valid();
     return LLVMGetSectionSize(m_ref);
   }
+
+  nb::bytes get_contents() const {
+    check_valid();
+    const char *contents = LLVMGetSectionContents(m_ref);
+    size_t size = LLVMGetSectionSize(m_ref);
+    return nb::bytes(contents, size);
+  }
+
+  bool contains_symbol(const LLVMSymbolIteratorWrapper &sym) const;
+
+  // For Python iteration - returns self
+  LLVMSectionIteratorWrapper &iter() {
+    check_valid();
+    return *this;
+  }
+
+  // For Python iteration - returns next section or throws StopIteration
+  LLVMSectionIteratorWrapper &next() {
+    check_valid();
+    if (is_at_end()) {
+      throw nb::stop_iteration();
+    }
+    // We return self since Python iteration expects the iterator to advance
+    // and return the current value. We'll advance after returning.
+    return *this;
+  }
 };
 
+// Symbol iterator - holds validity token from binary
 struct LLVMSymbolIteratorWrapper : NoMoveCopy {
   LLVMSymbolIteratorRef m_ref = nullptr;
-  LLVMBinaryWrapper *m_binary = nullptr; // Non-owning reference
+  LLVMBinaryRef m_binary_ref = nullptr;
+  std::shared_ptr<ValidityToken> m_binary_token;
 
   LLVMSymbolIteratorWrapper() = default;
-  LLVMSymbolIteratorWrapper(LLVMSymbolIteratorRef ref,
-                            LLVMBinaryWrapper *binary)
-      : m_ref(ref), m_binary(binary) {}
+  LLVMSymbolIteratorWrapper(LLVMSymbolIteratorRef ref, LLVMBinaryRef binary_ref,
+                            std::shared_ptr<ValidityToken> binary_token)
+      : m_ref(ref), m_binary_ref(binary_ref),
+        m_binary_token(std::move(binary_token)) {}
 
   ~LLVMSymbolIteratorWrapper() {
     if (m_ref) {
@@ -4605,18 +4700,16 @@ struct LLVMSymbolIteratorWrapper : NoMoveCopy {
     }
   }
 
-  bool is_valid() const { return m_ref != nullptr; }
-
   void check_valid() const {
+    if (!m_binary_token || !m_binary_token->is_valid())
+      throw LLVMMemoryError("Symbol iterator used after binary was disposed");
     if (!m_ref)
-      throw LLVMMemoryError("SymbolIterator is null or invalid");
-    if (!m_binary || !m_binary->is_valid())
-      throw LLVMMemoryError("Binary associated with iterator is invalid");
+      throw LLVMMemoryError("Symbol iterator is null");
   }
 
   bool is_at_end() const {
     check_valid();
-    return LLVMObjectFileIsSymbolIteratorAtEnd(m_binary->m_ref, m_ref);
+    return LLVMObjectFileIsSymbolIteratorAtEnd(m_binary_ref, m_ref);
   }
 
   void move_next() {
@@ -4639,50 +4732,231 @@ struct LLVMSymbolIteratorWrapper : NoMoveCopy {
     check_valid();
     return LLVMGetSymbolSize(m_ref);
   }
-};
 
-// Create binary from memory buffer
-// Returns (binary_wrapper, error_message)
-// If binary_wrapper is null, error_message contains the error
-std::pair<LLVMBinaryWrapper *, std::string>
-create_binary(LLVMMemoryBufferWrapper &membuf) {
-  membuf.check_valid();
-
-  char *error_msg = nullptr;
-  LLVMBinaryRef ref =
-      LLVMCreateBinary(membuf.m_ref, LLVMGetGlobalContext(), &error_msg);
-
-  if (!ref || error_msg) {
-    std::string err =
-        error_msg ? std::string(error_msg) : "Unknown error creating binary";
-    if (error_msg)
-      LLVMDisposeMessage(error_msg);
-    return {nullptr, err};
+  // For Python iteration
+  LLVMSymbolIteratorWrapper &iter() {
+    check_valid();
+    return *this;
   }
 
-  return {new LLVMBinaryWrapper(ref), ""};
-}
+  LLVMSymbolIteratorWrapper &next() {
+    check_valid();
+    if (is_at_end()) {
+      throw nb::stop_iteration();
+    }
+    return *this;
+  }
+};
 
-// Create section iterator from binary
-LLVMSectionIteratorWrapper *copy_section_iterator(LLVMBinaryWrapper &binary) {
-  binary.check_valid();
-  LLVMSectionIteratorRef ref = LLVMObjectFileCopySectionIterator(binary.m_ref);
-  return new LLVMSectionIteratorWrapper(ref, &binary);
-}
+// Relocation iterator - holds validity token from binary
+struct LLVMRelocationIteratorWrapper : NoMoveCopy {
+  LLVMRelocationIteratorRef m_ref = nullptr;
+  LLVMSectionIteratorRef m_section_ref = nullptr; // For is_at_end check
+  std::shared_ptr<ValidityToken> m_binary_token;
 
-// Create symbol iterator from binary
-LLVMSymbolIteratorWrapper *copy_symbol_iterator(LLVMBinaryWrapper &binary) {
-  binary.check_valid();
-  LLVMSymbolIteratorRef ref = LLVMObjectFileCopySymbolIterator(binary.m_ref);
-  return new LLVMSymbolIteratorWrapper(ref, &binary);
-}
+  LLVMRelocationIteratorWrapper() = default;
+  LLVMRelocationIteratorWrapper(LLVMRelocationIteratorRef ref,
+                                LLVMSectionIteratorRef section_ref,
+                                std::shared_ptr<ValidityToken> binary_token)
+      : m_ref(ref), m_section_ref(section_ref),
+        m_binary_token(std::move(binary_token)) {}
 
-// Move section iterator to containing section of symbol
-void move_to_containing_section(LLVMSectionIteratorWrapper &sect,
-                                LLVMSymbolIteratorWrapper &sym) {
-  sect.check_valid();
+  ~LLVMRelocationIteratorWrapper() {
+    if (m_ref) {
+      LLVMDisposeRelocationIterator(m_ref);
+      m_ref = nullptr;
+    }
+  }
+
+  void check_valid() const {
+    if (!m_binary_token || !m_binary_token->is_valid())
+      throw LLVMMemoryError(
+          "Relocation iterator used after binary was disposed");
+    if (!m_ref)
+      throw LLVMMemoryError("Relocation iterator is null");
+  }
+
+  bool is_at_end() const {
+    check_valid();
+    return LLVMIsRelocationIteratorAtEnd(m_section_ref, m_ref);
+  }
+
+  void move_next() {
+    check_valid();
+    LLVMMoveToNextRelocation(m_ref);
+  }
+
+  uint64_t get_offset() const {
+    check_valid();
+    return LLVMGetRelocationOffset(m_ref);
+  }
+
+  uint64_t get_type() const {
+    check_valid();
+    return LLVMGetRelocationType(m_ref);
+  }
+
+  std::string get_type_name() const {
+    check_valid();
+    const char *name = LLVMGetRelocationTypeName(m_ref);
+    std::string result = name ? std::string(name) : std::string();
+    // Caller owns the string, so we need to free it
+    if (name)
+      LLVMDisposeMessage(const_cast<char *>(name));
+    return result;
+  }
+
+  std::string get_value_string() const {
+    check_valid();
+    const char *value = LLVMGetRelocationValueString(m_ref);
+    std::string result = value ? std::string(value) : std::string();
+    if (value)
+      LLVMDisposeMessage(const_cast<char *>(value));
+    return result;
+  }
+
+  // For Python iteration
+  LLVMRelocationIteratorWrapper &iter() {
+    check_valid();
+    return *this;
+  }
+
+  LLVMRelocationIteratorWrapper &next() {
+    check_valid();
+    if (is_at_end()) {
+      throw nb::stop_iteration();
+    }
+    return *this;
+  }
+};
+
+// Implement contains_symbol after LLVMSymbolIteratorWrapper is defined
+bool LLVMSectionIteratorWrapper::contains_symbol(
+    const LLVMSymbolIteratorWrapper &sym) const {
+  check_valid();
   sym.check_valid();
-  LLVMMoveToContainingSection(sect.m_ref, sym.m_ref);
+  return LLVMGetSectionContainsSymbol(m_ref, sym.m_ref);
+}
+
+// Binary manager for Python 'with' statement
+struct LLVMBinaryManager : NoMoveCopy {
+  std::unique_ptr<LLVMBinaryWrapper> m_binary;
+  bool m_entered = false;
+  bool m_disposed = false;
+
+  // For deferred creation from bytes
+  std::optional<std::string> m_bytes_data; // Store as string to own the data
+
+  // For deferred creation from file
+  std::optional<fs::path> m_file_path;
+
+  // Constructor for from_bytes
+  explicit LLVMBinaryManager(nb::bytes data)
+      : m_bytes_data(std::string(data.c_str(), data.size())) {}
+
+  // Constructor for from_file
+  explicit LLVMBinaryManager(fs::path path) : m_file_path(std::move(path)) {}
+
+  LLVMBinaryWrapper &enter() {
+    if (m_disposed)
+      throw LLVMMemoryError("Binary has been disposed");
+    if (m_entered)
+      throw LLVMMemoryError("Binary manager already entered");
+
+    m_entered = true;
+
+    if (m_bytes_data) {
+      m_binary = create_from_bytes(*m_bytes_data);
+    } else if (m_file_path) {
+      m_binary = create_from_file(*m_file_path);
+    } else {
+      throw LLVMMemoryError("No data source for binary");
+    }
+
+    return *m_binary;
+  }
+
+  void exit(const nb::object &, const nb::object &, const nb::object &) {
+    if (m_disposed)
+      throw LLVMMemoryError("Binary has already been disposed");
+    if (!m_entered)
+      throw LLVMMemoryError("Binary manager was not entered");
+    m_binary.reset();
+    m_disposed = true;
+  }
+
+  void dispose() {
+    if (m_disposed)
+      throw LLVMMemoryError("Binary has already been disposed");
+    if (m_entered)
+      throw LLVMMemoryError("Cannot call dispose() after __enter__; use "
+                           "__exit__ or 'with' statement");
+    m_disposed = true;
+  }
+
+private:
+  static std::unique_ptr<LLVMBinaryWrapper>
+  create_from_bytes(const std::string &data) {
+    LLVMMemoryBufferRef buf = LLVMCreateMemoryBufferWithMemoryRangeCopy(
+        data.c_str(), data.size(), "<bytes>");
+    if (!buf) {
+      throw LLVMError("Failed to create memory buffer");
+    }
+
+    char *error_msg = nullptr;
+    LLVMBinaryRef ref =
+        LLVMCreateBinary(buf, LLVMGetGlobalContext(), &error_msg);
+
+    if (!ref || error_msg) {
+      std::string err =
+          error_msg ? std::string(error_msg) : "Unknown error creating binary";
+      if (error_msg)
+        LLVMDisposeMessage(error_msg);
+      LLVMDisposeMemoryBuffer(buf);
+      throw LLVMError("Error creating binary: " + err);
+    }
+
+    return std::make_unique<LLVMBinaryWrapper>(ref, buf);
+  }
+
+  static std::unique_ptr<LLVMBinaryWrapper>
+  create_from_file(const fs::path &path) {
+    LLVMMemoryBufferRef buf;
+    char *error_msg = nullptr;
+
+    if (LLVMCreateMemoryBufferWithContentsOfFile(path.string().c_str(), &buf,
+                                                 &error_msg)) {
+      std::string err =
+          error_msg ? std::string(error_msg) : "Unknown error reading file";
+      if (error_msg)
+        LLVMDisposeMessage(error_msg);
+      throw LLVMError("Error reading file: " + err);
+    }
+
+    char *binary_err = nullptr;
+    LLVMBinaryRef ref =
+        LLVMCreateBinary(buf, LLVMGetGlobalContext(), &binary_err);
+
+    if (!ref || binary_err) {
+      std::string err =
+          binary_err ? std::string(binary_err) : "Unknown error creating binary";
+      if (binary_err)
+        LLVMDisposeMessage(binary_err);
+      LLVMDisposeMemoryBuffer(buf);
+      throw LLVMError("Error creating binary: " + err);
+    }
+
+    return std::make_unique<LLVMBinaryWrapper>(ref, buf);
+  }
+};
+
+// Factory functions
+LLVMBinaryManager *create_binary_from_bytes(nb::bytes data) {
+  return new LLVMBinaryManager(std::move(data));
+}
+
+LLVMBinaryManager *create_binary_from_file(const fs::path &path) {
+  return new LLVMBinaryManager(path);
 }
 
 // =============================================================================
@@ -5108,6 +5382,12 @@ NB_MODULE(llvm, m) {
       .def("set_body", &struct_set_body, "elem_types"_a, "packed"_a = false)
       .def_prop_ro("struct_element_count", &type_count_struct_element_types);
 
+  // Use wrapper (for use-def chain iteration)
+  nb::class_<LLVMUseWrapper>(m, "Use")
+      .def_prop_ro("next_use", &LLVMUseWrapper::next_use)
+      .def_prop_ro("user", &LLVMUseWrapper::get_user)
+      .def_prop_ro("used_value", &LLVMUseWrapper::get_used_value);
+
   // Value wrapper
   nb::class_<LLVMValueWrapper>(m, "Value")
       .def("__eq__", [](const LLVMValueWrapper &a,
@@ -5126,6 +5406,7 @@ NB_MODULE(llvm, m) {
       .def_prop_ro("is_constant", &LLVMValueWrapper::is_constant)
       .def_prop_ro("is_undef", &LLVMValueWrapper::is_undef)
       .def_prop_ro("is_poison", &LLVMValueWrapper::is_poison)
+      .def_prop_ro("first_use", &LLVMValueWrapper::first_use)
       .def_prop_ro("next_global", &LLVMValueWrapper::next_global)
       .def_prop_ro("prev_global", &LLVMValueWrapper::prev_global)
       .def("add_incoming", &phi_add_incoming, "val"_a, "bb"_a)
@@ -5148,6 +5429,7 @@ NB_MODULE(llvm, m) {
            "is_ext"_a)
       .def("is_externally_initialized", &global_is_externally_initialized)
       .def("delete_global", &global_delete)
+      .def("delete", &global_delete)  // Alias for delete_global
       // PHI helpers
       .def("count_incoming", &phi_count_incoming)
       .def("get_incoming_value", &phi_get_incoming_value, "index"_a)
@@ -5413,6 +5695,7 @@ NB_MODULE(llvm, m) {
       .def("append_existing_basic_block",
            &LLVMFunctionWrapper::append_existing_basic_block, "bb"_a)
       .def("erase", &LLVMFunctionWrapper::erase)
+      .def("delete", &LLVMFunctionWrapper::erase)  // Alias for erase
       // Echo command support - parameter iteration
       .def("first_param", &LLVMFunctionWrapper::first_param)
       .def("last_param", &LLVMFunctionWrapper::last_param)
@@ -5927,12 +6210,7 @@ NB_MODULE(llvm, m) {
   m.def("get_first_target", &get_first_target,
         R"(Get the first registered target (returns None if no targets).)");
 
-  // Memory buffer wrapper
-  // LLVMMemoryBufferWrapper is kept internal, not exposed to Python
-  // But we need create_memory_buffer_with_stdin for object file API
-  m.def("create_memory_buffer_with_stdin", &create_memory_buffer_with_stdin,
-        nb::rv_policy::take_ownership,
-        R"(Read stdin into a memory buffer (for object file API).)");
+  // Memory buffer is internal only - not exposed to Python
 
   // =============================================================================
   // Disassembler Bindings
@@ -5972,13 +6250,57 @@ NB_MODULE(llvm, m) {
   // Object File Bindings
   // =============================================================================
 
-  nb::class_<LLVMBinaryWrapper>(m, "Binary")
-      .def_prop_ro("is_valid", &LLVMBinaryWrapper::is_valid,
-                   R"(Check if binary is valid.)");
+  // BinaryType enum
+  nb::enum_<LLVMBinaryType>(m, "BinaryType")
+      .value("Archive", LLVMBinaryTypeArchive)
+      .value("MachOUniversalBinary", LLVMBinaryTypeMachOUniversalBinary)
+      .value("COFFImportFile", LLVMBinaryTypeCOFFImportFile)
+      .value("IR", LLVMBinaryTypeIR)
+      .value("WinRes", LLVMBinaryTypeWinRes)
+      .value("COFF", LLVMBinaryTypeCOFF)
+      .value("ELF32L", LLVMBinaryTypeELF32L)
+      .value("ELF32B", LLVMBinaryTypeELF32B)
+      .value("ELF64L", LLVMBinaryTypeELF64L)
+      .value("ELF64B", LLVMBinaryTypeELF64B)
+      .value("MachO32L", LLVMBinaryTypeMachO32L)
+      .value("MachO32B", LLVMBinaryTypeMachO32B)
+      .value("MachO64L", LLVMBinaryTypeMachO64L)
+      .value("MachO64B", LLVMBinaryTypeMachO64B)
+      .value("Wasm", LLVMBinaryTypeWasm)
+      .value("Offload", LLVMBinaryTypeOffload);
 
+  // Binary wrapper
+  nb::class_<LLVMBinaryWrapper>(m, "Binary")
+      .def_prop_ro(
+          "type",
+          [](const LLVMBinaryWrapper &self) {
+            self.check_valid();
+            return self.get_type();
+          },
+          R"(Get the binary type.)")
+      .def_prop_ro(
+          "sections",
+          [](LLVMBinaryWrapper &self) {
+            self.check_valid();
+            LLVMSectionIteratorRef ref =
+                LLVMObjectFileCopySectionIterator(self.m_ref);
+            return new LLVMSectionIteratorWrapper(ref, self.m_ref, self.m_token);
+          },
+          nb::rv_policy::take_ownership,
+          R"(Get an iterator over sections in the binary.)")
+      .def_prop_ro(
+          "symbols",
+          [](LLVMBinaryWrapper &self) {
+            self.check_valid();
+            LLVMSymbolIteratorRef ref =
+                LLVMObjectFileCopySymbolIterator(self.m_ref);
+            return new LLVMSymbolIteratorWrapper(ref, self.m_ref, self.m_token);
+          },
+          nb::rv_policy::take_ownership,
+          R"(Get an iterator over symbols in the binary.)");
+
+  // Section iterator
   nb::class_<LLVMSectionIteratorWrapper>(m, "SectionIterator")
-      .def_prop_ro("is_valid", &LLVMSectionIteratorWrapper::is_valid,
-                   R"(Check if section iterator is valid.)")
       .def("is_at_end", &LLVMSectionIteratorWrapper::is_at_end,
            R"(Check if iterator is at end.)")
       .def("move_next", &LLVMSectionIteratorWrapper::move_next,
@@ -5988,11 +6310,52 @@ NB_MODULE(llvm, m) {
       .def_prop_ro("address", &LLVMSectionIteratorWrapper::get_address,
                    R"(Get section address.)")
       .def_prop_ro("size", &LLVMSectionIteratorWrapper::get_size,
-                   R"(Get section size.)");
+                   R"(Get section size.)")
+      .def_prop_ro("contents", &LLVMSectionIteratorWrapper::get_contents,
+                   R"(Get section contents as bytes.)")
+      .def("contains_symbol", &LLVMSectionIteratorWrapper::contains_symbol,
+           "symbol"_a, R"(Check if section contains the given symbol.)")
+      .def(
+          "move_to_containing_section",
+          [](LLVMSectionIteratorWrapper &self,
+             const LLVMSymbolIteratorWrapper &sym) {
+            self.check_valid();
+            sym.check_valid();
+            LLVMMoveToContainingSection(self.m_ref, sym.m_ref);
+          },
+          "symbol"_a,
+          R"(Move this section iterator to the section containing the given symbol.)")
+      .def_prop_ro(
+          "relocations",
+          [](LLVMSectionIteratorWrapper &self) {
+            self.check_valid();
+            LLVMRelocationIteratorRef ref = LLVMGetRelocations(self.m_ref);
+            return new LLVMRelocationIteratorWrapper(ref, self.m_ref,
+                                                     self.m_binary_token);
+          },
+          nb::rv_policy::take_ownership,
+          R"(Get an iterator over relocations in this section.)")
+      // Python iteration support
+      .def("__iter__", &LLVMSectionIteratorWrapper::iter,
+           nb::rv_policy::reference_internal)
+      .def(
+          "__next__",
+          [](LLVMSectionIteratorWrapper &self) -> LLVMSectionIteratorWrapper * {
+            self.check_valid();
+            if (self.is_at_end()) {
+              throw nb::stop_iteration();
+            }
+            // Return a snapshot then advance
+            // For simplicity, we return self and advance
+            // The caller accesses properties before calling __next__ again
+            auto *result = &self;
+            self.move_next();
+            return result;
+          },
+          nb::rv_policy::reference_internal);
 
+  // Symbol iterator
   nb::class_<LLVMSymbolIteratorWrapper>(m, "SymbolIterator")
-      .def_prop_ro("is_valid", &LLVMSymbolIteratorWrapper::is_valid,
-                   R"(Check if symbol iterator is valid.)")
       .def("is_at_end", &LLVMSymbolIteratorWrapper::is_at_end,
            R"(Check if iterator is at end.)")
       .def("move_next", &LLVMSymbolIteratorWrapper::move_next,
@@ -6002,56 +6365,94 @@ NB_MODULE(llvm, m) {
       .def_prop_ro("address", &LLVMSymbolIteratorWrapper::get_address,
                    R"(Get symbol address.)")
       .def_prop_ro("size", &LLVMSymbolIteratorWrapper::get_size,
-                   R"(Get symbol size.)");
+                   R"(Get symbol size.)")
+      // Python iteration support
+      .def("__iter__", &LLVMSymbolIteratorWrapper::iter,
+           nb::rv_policy::reference_internal)
+      .def(
+          "__next__",
+          [](LLVMSymbolIteratorWrapper &self) -> LLVMSymbolIteratorWrapper * {
+            self.check_valid();
+            if (self.is_at_end()) {
+              throw nb::stop_iteration();
+            }
+            auto *result = &self;
+            self.move_next();
+            return result;
+          },
+          nb::rv_policy::reference_internal);
 
-  m.def(
-      "create_binary",
-      [](LLVMMemoryBufferWrapper &membuf) -> LLVMBinaryWrapper * {
-        auto [binary, error] = create_binary(membuf);
-        if (!binary) {
-          throw LLVMError("Error creating binary: " + error);
-        }
-        return binary;
-      },
-      "membuf"_a, nb::rv_policy::take_ownership,
-      R"(Create a binary from a memory buffer.
-      
-      Args:
-          membuf: Memory buffer containing the binary data
-          
-      Returns:
-          Binary object
-          
-      Raises:
-          LLVMError if binary creation fails.)");
+  // Relocation iterator
+  nb::class_<LLVMRelocationIteratorWrapper>(m, "RelocationIterator")
+      .def("is_at_end", &LLVMRelocationIteratorWrapper::is_at_end,
+           R"(Check if iterator is at end.)")
+      .def("move_next", &LLVMRelocationIteratorWrapper::move_next,
+           R"(Move to next relocation.)")
+      .def_prop_ro("offset", &LLVMRelocationIteratorWrapper::get_offset,
+                   R"(Get relocation offset.)")
+      .def_prop_ro("type", &LLVMRelocationIteratorWrapper::get_type,
+                   R"(Get relocation type.)")
+      .def_prop_ro("type_name", &LLVMRelocationIteratorWrapper::get_type_name,
+                   R"(Get relocation type name.)")
+      .def_prop_ro("value_string",
+                   &LLVMRelocationIteratorWrapper::get_value_string,
+                   R"(Get relocation value string.)")
+      // Python iteration support
+      .def("__iter__", &LLVMRelocationIteratorWrapper::iter,
+           nb::rv_policy::reference_internal)
+      .def(
+          "__next__",
+          [](LLVMRelocationIteratorWrapper &self)
+              -> LLVMRelocationIteratorWrapper * {
+            self.check_valid();
+            if (self.is_at_end()) {
+              throw nb::stop_iteration();
+            }
+            auto *result = &self;
+            self.move_next();
+            return result;
+          },
+          nb::rv_policy::reference_internal);
 
-  m.def(
-      "create_binary_or_error",
-      [](LLVMMemoryBufferWrapper &membuf)
-          -> std::pair<LLVMBinaryWrapper *, std::string> {
-        return create_binary(membuf);
-      },
-      "membuf"_a, nb::rv_policy::take_ownership,
-      R"(Create a binary from a memory buffer, returning error as string.
-      
-      Args:
-          membuf: Memory buffer containing the binary data
-          
-      Returns:
-          Tuple of (Binary or None, error_message)
-          If Binary is None, error_message contains the error.)");
+  // Binary manager for context manager protocol
+  nb::class_<LLVMBinaryManager>(m, "BinaryManager")
+      .def("__enter__", &LLVMBinaryManager::enter,
+           nb::rv_policy::reference_internal)
+      .def("__exit__", &LLVMBinaryManager::exit, "exc_type"_a.none(),
+           "exc_value"_a.none(), "traceback"_a.none())
+      .def("dispose", &LLVMBinaryManager::dispose,
+           R"(Dispose the binary without using a 'with' statement. Can only be called before __enter__.)");
 
-  m.def("copy_section_iterator", &copy_section_iterator, "binary"_a,
+  // Factory functions for creating binaries
+  m.def("create_binary_from_bytes", &create_binary_from_bytes, "data"_a,
         nb::rv_policy::take_ownership,
-        R"(Create a section iterator for the binary.)");
+        R"(Create a binary manager from bytes for use with 'with' statement.
+        
+        Args:
+            data: The bytes containing the object file data
+            
+        Returns:
+            BinaryManager for use in a 'with' statement
+            
+        Example:
+            with llvm.create_binary_from_bytes(data) as binary:
+                for section in binary.sections:
+                    print(section.name))");
 
-  m.def("copy_symbol_iterator", &copy_symbol_iterator, "binary"_a,
+  m.def("create_binary_from_file", &create_binary_from_file, "path"_a,
         nb::rv_policy::take_ownership,
-        R"(Create a symbol iterator for the binary.)");
-
-  m.def("move_to_containing_section", &move_to_containing_section,
-        "section_iter"_a, "symbol_iter"_a,
-        R"(Move section iterator to the section containing the symbol.)");
+        R"(Create a binary manager from a file for use with 'with' statement.
+        
+        Args:
+            path: Path to the object file
+            
+        Returns:
+            BinaryManager for use in a 'with' statement
+            
+        Example:
+            with llvm.create_binary_from_file("test.o") as binary:
+                for section in binary.sections:
+                    print(section.name))");
 
   // BitReader functions
 

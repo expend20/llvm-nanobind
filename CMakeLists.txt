@@ -528,3 +528,31 @@ get_directory_property(CMKR_VS_STARTUP_PROJECT DIRECTORY ${PROJECT_SOURCE_DIR} D
 if(NOT CMKR_VS_STARTUP_PROJECT)
 	set_property(DIRECTORY ${PROJECT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT test_struct)
 endif()
+
+# Target: test_symbol_size_crash
+set(test_symbol_size_crash_SOURCES
+	cmake.toml
+	"tests/regressions/test_symbol_size_crash.cpp"
+)
+
+add_executable(test_symbol_size_crash)
+
+target_sources(test_symbol_size_crash PRIVATE ${test_symbol_size_crash_SOURCES})
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${test_symbol_size_crash_SOURCES})
+
+target_compile_features(test_symbol_size_crash PRIVATE
+	cxx_std_20
+)
+
+if(NOT TARGET LLVM-C-Wrapper)
+	message(FATAL_ERROR "Target \"LLVM-C-Wrapper\" referenced by \"test_symbol_size_crash\" does not exist!")
+endif()
+
+target_link_libraries(test_symbol_size_crash PRIVATE
+	LLVM-C-Wrapper
+)
+
+get_directory_property(CMKR_VS_STARTUP_PROJECT DIRECTORY ${PROJECT_SOURCE_DIR} DEFINITION VS_STARTUP_PROJECT)
+if(NOT CMKR_VS_STARTUP_PROJECT)
+	set_property(DIRECTORY ${PROJECT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT test_symbol_size_crash)
+endif()

@@ -1,84 +1,103 @@
 # llvm-nanobind
 
-LLVM-C Python bindings with nanobind. 
+Python bindings for the LLVM-C API using [nanobind](https://github.com/wjakob/nanobind).
 
-⚠️ This project is still in a very early design phase and not remotely usable.
+This project provides a Pythonic interface to LLVM's compiler infrastructure, enabling you to build compilers, analyzers, and code transformation tools in Python.
 
-## Local development
+**Status**: Under active development. Core APIs are bound and tested against LLVM's `llvm-c-test` suite, but the API is not yet stable. Expect breaking changes.
 
-Set the CMake prefix path environment variable to point to the LLVM prefix:
+_Note_: This project is 90%+ vibe coded. It is mostly an experiment to see what LLMs can do when you set things up properly.
+
+## Features
+
+- Comprehensive LLVM-C API coverage (~7300 lines of bindings)
+- Memory-safe: validity tokens prevent use-after-free crashes
+- Type-safe: auto-generated `.pyi` stubs for IDE support
+- Tested: 25+ lit tests, 15 golden master test pairs
+
+## Installation
+
+This package requires LLVM to be installed. The build will automatically find LLVM if it's in your PATH, or you can specify the path:
 
 ```bash
 export CMAKE_PREFIX_PATH=/path/to/llvm
+pip install .
 ```
 
-Configure the bindings:
+## Quick Start
 
-```bash
-cmake -B build -G Ninja -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+```python
+import llvm
+
+# Create a simple function that returns 42
+with llvm.create_context() as ctx:
+    with ctx.create_module("example") as mod:
+        # Create function type: i32 ()
+        i32 = ctx.int32_type()
+        fn_type = ctx.function_type(i32, [])
+        
+        # Create function and basic block
+        fn = mod.add_function("get_answer", fn_type)
+        bb = fn.append_basic_block("entry")
+        
+        # Build return instruction
+        with ctx.create_builder() as builder:
+            builder.position_at_end(bb)
+            builder.ret(llvm.const_int(i32, 42))
+        
+        # Print the IR
+        print(mod)
 ```
 
-Build the bindings:
+## Development
+
+### Setup
 
 ```bash
+# Configure (first time)
+cmake -B build -G Ninja
+
+# Build
 cmake --build build
+
+# Or use uv (recommended) - auto-rebuilds as needed
+uv sync
 ```
 
-Run the example:
+### Testing
 
 ```bash
-uv run playground.py
-```
-
-## Testing
-
-Run the golden master tests (C++ and Python bindings):
-
-```bash
+# Golden master tests (C++ and Python must produce identical output)
 uv run run_tests.py
-```
 
-Run the vendored llvm-c-test integration tests:
-
-```bash
+# LLVM lit integration tests
 uv run run_llvm_c_tests.py        # Run all tests
 uv run run_llvm_c_tests.py -v     # Verbose output
+
+# Type checking
+uvx ty check
 ```
 
-## Type Checking
-
-Check type correctness of Python code:
+### Coverage
 
 ```bash
-uvx ty check                              # Check all Python files
-uvx ty check llvm_c_test/                 # Check specific directory
+# Run with coverage
+uv run coverage run run_llvm_c_tests.py --use-python
+uv run coverage combine
+uv run coverage report --include="llvm_c_test/*"
 ```
 
-## Code Coverage
+## Documentation
 
-Generate code coverage reports:
-
-```bash
-uv run coverage run test_factorial.py     # Run test with coverage
-uv run coverage report                    # Show coverage summary
-uv run coverage html                      # Generate HTML report (htmlcov/)
+Type stubs are auto-generated and provide IDE intellisense. After building, find them at:
+```
+.venv/lib/python3.*/site-packages/llvm/__init__.pyi
 ```
 
-To combine coverage from multiple test runs:
+For development documentation, see `devdocs/README.md`.
 
-```bash
-uv run coverage run --data-file=.coverage.test1 test_factorial.py
-uv run coverage run --data-file=.coverage.test2 test_module.py
-uv run coverage combine                   # Combine all .coverage.* files
-uv run coverage report                    # Show combined report
-```
+## License
 
-For comprehensive coverage including test runners and all subprocess tests:
+This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
 
-```bash
-uv run coverage run --data-file=.coverage.run_tests run_tests.py
-uv run coverage run --data-file=.coverage.run_llvm_c_tests run_llvm_c_tests.py
-uv run coverage combine                   # Combine all coverage files
-uv run coverage report                    # Show comprehensive report
-uv run coverage html                      # Generate HTML report
-```
+LLVM is licensed under the Apache License v2.0 with LLVM Exceptions.

@@ -146,6 +146,5 @@ def main():
 
         return echo()
     else:
-        print(f"Unknown command: {command}", file=sys.stderr)
         print_usage()
         return 1

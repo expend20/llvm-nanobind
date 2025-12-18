@@ -19,28 +19,20 @@ def object_list_sections() -> int:
     Returns:
         Exit code (0 for success, 1 for error)
     """
-    # Read object file from stdin
-    try:
-        membuf = llvm.create_memory_buffer_with_stdin()
-    except llvm.LLVMError as e:
-        print(f"Error reading file: {e}", file=sys.stderr)
-        sys.exit(1)
+    # Read object file from stdin as bytes
+    data = sys.stdin.buffer.read()
 
-    # Create binary
     try:
-        binary = llvm.create_binary(membuf)
+        with llvm.create_binary_from_bytes(data) as binary:
+            # Iterate sections using Pythonic for loop
+            for sect in binary.sections:
+                name = sect.name
+                address = sect.address
+                size = sect.size
+                print(f"'{name}': @0x{address:08x} +{size}")
     except llvm.LLVMError as e:
         print(f"Error reading object: {e}", file=sys.stderr)
         sys.exit(1)
-
-    # Iterate sections
-    sect = llvm.copy_section_iterator(binary)
-    while sect and sect.is_valid and not sect.is_at_end():
-        name = sect.name
-        address = sect.address
-        size = sect.size
-        print(f"'{name}': @0x{address:08x} +{size}")
-        sect.move_next()
 
     return 0
 
@@ -54,36 +46,31 @@ def object_list_symbols() -> int:
     Returns:
         Exit code (0 for success, 1 for error)
     """
-    # Read object file from stdin
-    try:
-        membuf = llvm.create_memory_buffer_with_stdin()
-    except llvm.LLVMError as e:
-        print(f"Error reading file: {e}", file=sys.stderr)
-        sys.exit(1)
+    # Read object file from stdin as bytes
+    data = sys.stdin.buffer.read()
 
-    # Create binary
     try:
-        binary = llvm.create_binary(membuf)
+        with llvm.create_binary_from_bytes(data) as binary:
+            # Get a section iterator to track containing sections
+            sect = binary.sections
+
+            # Iterate symbols manually (not with for loop since we need
+            # to use the iterator reference with move_to_containing_section)
+            sym = binary.symbols
+            while not sym.is_at_end():
+                # Move section iterator to the section containing this symbol
+                sect.move_to_containing_section(sym)
+
+                sym_name = sym.name
+                sym_address = sym.address
+                sym_size = sym.size
+                sect_name = sect.name
+
+                print(f"{sym_name} @0x{sym_address:08x} +{sym_size} ({sect_name})")
+
+                sym.move_next()
     except llvm.LLVMError as e:
         print(f"Error reading object: {e}", file=sys.stderr)
         sys.exit(1)
-
-    # Get iterators
-    sect = llvm.copy_section_iterator(binary)
-    sym = llvm.copy_symbol_iterator(binary)
-
-    # Iterate symbols
-    while sect and sym and sect.is_valid and sym.is_valid and not sym.is_at_end():
-        # Move section iterator to containing section of this symbol
-        llvm.move_to_containing_section(sect, sym)
-
-        sym_name = sym.name
-        sym_address = sym.address
-        sym_size = sym.size
-        sect_name = sect.name
-
-        print(f"{sym_name} @0x{sym_address:08x} +{sym_size} ({sect_name})")
-
-        sym.move_next()
 
     return 0

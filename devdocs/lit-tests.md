@@ -145,7 +145,7 @@ define i32 @main() {
 
 4. **Error test**:
    ```
-   ; RUN: not llvm-c-test --module-dump < %S/Inputs/invalid.ll.bc 2>&1 | FileCheck %s
+   ; RUN: not llvm-c-test --module-dump < %S/invalid.ll.bc 2>&1 | FileCheck %s
    ```
 
 ## Configuration

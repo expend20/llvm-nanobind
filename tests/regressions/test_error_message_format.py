@@ -39,7 +39,7 @@ from pathlib import Path
 def get_parse_error_message():
     """Get the error message format from a parse failure."""
     invalid_bc = Path(__file__).parent.parent.parent / (
-        "llvm-c/llvm-c-test/inputs/Inputs/invalid.ll.bc"
+        "llvm-c/llvm-c-test/inputs/invalid.ll.bc"
     )
 
     if not invalid_bc.exists():
