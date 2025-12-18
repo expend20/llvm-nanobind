@@ -540,6 +540,79 @@ struct LLVMBasicBlock : NoMoveCopy {
 
 ---
 
+## Context Borrowing and get_module_context()
+
+### The Problem
+
+When cloning modules (like in `echo.py`), code often needs to access the module's context to create types:
+
+```python
+with ctx.parse_bitcode_from_bytes(bitcode) as src:
+    with ctx.create_module(src.name) as dst:
+        # TypeCloner needs the destination module's context
+        dst_ctx = llvm.get_module_context(dst)
+        int_ty = dst_ctx.int32_type()  # Create type in correct context
+```
+
+Previously, `get_module_context()` was broken - it always returned the global context instead of the module's actual context. This caused problems with context-specific features like custom syncscopes (e.g., `syncscope("agent")`).
+
+### Solution: Borrowed Context Wrappers
+
+`get_module_context()` now returns a **borrowed** (non-owning) context wrapper:
+
+```cpp
+// Constructor for non-owning (borrowed) reference to an existing context.
+LLVMContextWrapper(LLVMContextRef ref, std::shared_ptr<ValidityToken> token)
+    : m_ref(ref), m_token(std::move(token)), m_global(false), m_borrowed(true) {
+  // Don't install diagnostic handler - the owning context wrapper has it
+}
+```
+
+Key properties:
+- **Non-owning**: Destructor doesn't dispose the context
+- **Shares validity token**: Uses the same token as the owning wrapper, so it becomes invalid when the owning context is destroyed
+- **Same context ref**: Points to the exact same LLVM context, so syncscope IDs and other context-specific features work correctly
+
+### Diagnostic Registry
+
+Diagnostics are stored in a global registry keyed by context ref, not in individual wrappers:
+
+```cpp
+struct DiagnosticRegistry {
+  std::mutex mutex;
+  std::unordered_map<LLVMContextRef, std::vector<Diagnostic>> diagnostics;
+  // ...
+};
+```
+
+This design ensures:
+1. **Thread safety**: Protected by mutex
+2. **Borrowed wrapper support**: Both owning and borrowed wrappers access the same diagnostics
+3. **Automatic cleanup**: Diagnostics are removed when the owning context is destroyed
+
+### Usage Example
+
+```python
+with llvm.create_context() as ctx:
+    with ctx.parse_bitcode_from_bytes(bitcode) as src:
+        # src is in ctx
+        
+        with ctx.create_module("dst") as dst:
+            # dst is also in ctx
+            
+            # Get dst's context - returns borrowed wrapper pointing to ctx
+            dst_ctx = llvm.get_module_context(dst)
+            
+            # Types created through dst_ctx are in the same context as src
+            # So syncscope IDs from src are valid in dst
+            sync_id = src_inst.get_atomic_sync_scope_id()
+            
+            # This works because dst_ctx points to the same context as ctx
+            builder.atomic_rmw_sync_scope(..., sync_id)
+```
+
+---
+
 ## Summary Table
 
 ### Current Behavior

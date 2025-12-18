@@ -7,7 +7,9 @@
 
 #include <atomic>
 #include <memory>
+#include <mutex>
 #include <stdexcept>
+#include <unordered_map>
 
 #include <llvm-c/Analysis.h>
 #include <llvm-c/BitReader.h>
@@ -69,6 +71,48 @@ private:
       result += "  " + diag.severity + ": " + diag.message + "\n";
     }
     return result;
+  }
+};
+
+// =============================================================================
+// Global Diagnostic Registry
+// =============================================================================
+// Diagnostics are stored in a global map keyed by context ref. This allows
+// borrowed context wrappers (from get_module_context) to access the same
+// diagnostics as the owning context wrapper. Protected by a mutex for thread
+// safety.
+
+struct DiagnosticRegistry {
+  std::mutex mutex;
+  std::unordered_map<LLVMContextRef, std::vector<Diagnostic>> diagnostics;
+
+  static DiagnosticRegistry &instance() {
+    static DiagnosticRegistry registry;
+    return registry;
+  }
+
+  void add_diagnostic(LLVMContextRef ctx, const Diagnostic &diag) {
+    std::lock_guard<std::mutex> lock(mutex);
+    diagnostics[ctx].push_back(diag);
+  }
+
+  std::vector<Diagnostic> get_diagnostics(LLVMContextRef ctx) {
+    std::lock_guard<std::mutex> lock(mutex);
+    auto it = diagnostics.find(ctx);
+    if (it != diagnostics.end()) {
+      return it->second;
+    }
+    return {};
+  }
+
+  void clear_diagnostics(LLVMContextRef ctx) {
+    std::lock_guard<std::mutex> lock(mutex);
+    diagnostics.erase(ctx);
+  }
+
+  void remove_context(LLVMContextRef ctx) {
+    std::lock_guard<std::mutex> lock(mutex);
+    diagnostics.erase(ctx);
   }
 };
 
@@ -3262,7 +3306,7 @@ struct LLVMContextWrapper : NoMoveCopy {
   LLVMContextRef m_ref = nullptr;
   std::shared_ptr<ValidityToken> m_token;
   bool m_global = false;
-  std::vector<Diagnostic> m_diagnostics;
+  bool m_borrowed = false; // True if we don't own the context (non-owning ref)
 
   explicit LLVMContextWrapper(bool global = false)
       : m_token(std::make_shared<ValidityToken>()), m_global(global) {
@@ -3272,21 +3316,65 @@ struct LLVMContextWrapper : NoMoveCopy {
       m_ref = LLVMContextCreate();
     }
 
-    // Install diagnostic handler
+    // Install diagnostic handler that uses the global registry.
+    // We pass the context ref as the user data so the handler can look up
+    // the correct diagnostics storage without needing a pointer to `this`.
     LLVMContextSetDiagnosticHandler(
         m_ref,
-        [](LLVMDiagnosticInfoRef info, void *ctx_ptr) {
-          static_cast<LLVMContextWrapper *>(ctx_ptr)->diagnostic_handler(info);
+        [](LLVMDiagnosticInfoRef info, void *ctx_ref_ptr) {
+          auto ctx_ref = static_cast<LLVMContextRef>(ctx_ref_ptr);
+          auto severity = LLVMGetDiagInfoSeverity(info);
+          char *desc = LLVMGetDiagInfoDescription(info);
+
+          std::string severity_str;
+          switch (severity) {
+          case LLVMDSError:
+            severity_str = "error";
+            break;
+          case LLVMDSWarning:
+            severity_str = "warning";
+            break;
+          case LLVMDSRemark:
+            severity_str = "remark";
+            break;
+          case LLVMDSNote:
+            severity_str = "note";
+            break;
+          default:
+            severity_str = "unknown";
+            break;
+          }
+
+          DiagnosticRegistry::instance().add_diagnostic(
+              ctx_ref, {severity_str, desc ? std::string(desc) : "",
+                        std::nullopt, std::nullopt});
+
+          if (desc) {
+            LLVMDisposeMessage(desc);
+          }
         },
-        this);
+        m_ref);
+  }
+
+  // Constructor for non-owning (borrowed) reference to an existing context.
+  // Used by get_module_context to return the module's context.
+  // Borrowed wrappers share the same diagnostic storage via the global
+  // registry.
+  LLVMContextWrapper(LLVMContextRef ref, std::shared_ptr<ValidityToken> token)
+      : m_ref(ref), m_token(std::move(token)), m_global(false),
+        m_borrowed(true) {
+    // Don't install diagnostic handler - the owning context wrapper has it
   }
 
   ~LLVMContextWrapper() {
-    if (m_ref && !m_global) {
+    if (m_ref && !m_global && !m_borrowed) {
+      // Clean up diagnostics from the global registry
+      DiagnosticRegistry::instance().remove_context(m_ref);
       LLVMContextDispose(m_ref);
       m_ref = nullptr;
     }
-    if (m_token) {
+    // Only invalidate the token if we own it (not borrowed)
+    if (m_token && !m_borrowed) {
       m_token->invalidate();
     }
   }
@@ -3299,53 +3387,25 @@ struct LLVMContextWrapper : NoMoveCopy {
   }
 
   void dispose() {
-    if (m_ref && !m_global) {
+    if (m_ref && !m_global && !m_borrowed) {
+      // Clean up diagnostics from the global registry
+      DiagnosticRegistry::instance().remove_context(m_ref);
       LLVMContextDispose(m_ref);
       m_ref = nullptr;
     }
-    if (m_token) {
+    // Only invalidate the token if we own it (not borrowed)
+    if (m_token && !m_borrowed) {
       m_token->invalidate();
     }
   }
 
-  // Diagnostic handler
-  void diagnostic_handler(LLVMDiagnosticInfoRef info) {
-    auto severity = LLVMGetDiagInfoSeverity(info);
-    char *desc = LLVMGetDiagInfoDescription(info);
-
-    std::string severity_str;
-    switch (severity) {
-    case LLVMDSError:
-      severity_str = "error";
-      break;
-    case LLVMDSWarning:
-      severity_str = "warning";
-      break;
-    case LLVMDSRemark:
-      severity_str = "remark";
-      break;
-    case LLVMDSNote:
-      severity_str = "note";
-      break;
-    default:
-      severity_str = "unknown";
-      break;
-    }
-
-    m_diagnostics.push_back({
-        severity_str, desc ? std::string(desc) : "",
-        std::nullopt, // line
-        std::nullopt  // column
-    });
-
-    if (desc) {
-      LLVMDisposeMessage(desc);
-    }
+  std::vector<Diagnostic> get_diagnostics() const {
+    return DiagnosticRegistry::instance().get_diagnostics(m_ref);
   }
 
-  std::vector<Diagnostic> get_diagnostics() const { return m_diagnostics; }
-
-  void clear_diagnostics() { m_diagnostics.clear(); }
+  void clear_diagnostics() {
+    DiagnosticRegistry::instance().clear_diagnostics(m_ref);
+  }
 
   // Properties
   bool get_discard_value_names() const {
@@ -3832,7 +3892,8 @@ LLVMModuleManager *LLVMContextWrapper::parse_ir(const std::string &source) {
     // LLVMParseIRInContext doesn't use diagnostic handler, so we create
     // a diagnostic manually
     if (!err.empty()) {
-      m_diagnostics.push_back({"error", err, std::nullopt, std::nullopt});
+      DiagnosticRegistry::instance().add_diagnostic(
+          m_ref, {"error", err, std::nullopt, std::nullopt});
     }
     throw LLVMParseError(get_diagnostics());
   }
@@ -6156,12 +6217,13 @@ NB_MODULE(llvm, m) {
       "get_module_context",
       [](const LLVMModuleWrapper &mod) -> LLVMContextWrapper * {
         mod.check_valid();
-        LLVMContextRef ctx = LLVMGetModuleContext(mod.m_ref);
-        // Return a wrapper for the context (note: this doesn't own it)
-        static thread_local LLVMContextWrapper global_ctx_wrapper(true);
-        return &global_ctx_wrapper;
+        // Return a non-owning wrapper for the module's context.
+        // The module stores its context ref and validity token, which we use
+        // to create a borrowed context wrapper that will be valid as long as
+        // the original context is alive.
+        return new LLVMContextWrapper(mod.m_ctx_ref, mod.m_context_token);
       },
-      nb::rv_policy::reference, "mod"_a, R"(Get module's context.)");
+      nb::rv_policy::take_ownership, "mod"_a, R"(Get module's context.)");
 
   m.def(
       "is_a_value_as_metadata",
@@ -6278,20 +6340,38 @@ NB_MODULE(llvm, m) {
       [](LLVMDIBuilderWrapper &dib, const LLVMMetadataWrapper &scope,
          const std::string &name, const LLVMMetadataWrapper &file,
          unsigned line_number, uint64_t size_in_bits, uint32_t align_in_bits,
-         unsigned flags) -> LLVMMetadataWrapper {
+         unsigned flags, const LLVMMetadataWrapper *derived_from,
+         const std::vector<LLVMMetadataWrapper> &elements,
+         unsigned runtime_lang, const LLVMMetadataWrapper *vtable_holder,
+         const std::string &unique_id) -> LLVMMetadataWrapper {
         dib.check_valid();
         scope.check_valid();
         file.check_valid();
+
+        // Build elements array
+        std::vector<LLVMMetadataRef> elem_refs;
+        elem_refs.reserve(elements.size());
+        for (const auto &e : elements) {
+          e.check_valid();
+          elem_refs.push_back(e.m_ref);
+        }
+
+        LLVMMetadataRef derived = derived_from ? derived_from->m_ref : nullptr;
+        LLVMMetadataRef vtable = vtable_holder ? vtable_holder->m_ref : nullptr;
 
         return LLVMMetadataWrapper(
             LLVMDIBuilderCreateStructType(
                 dib.m_ref, scope.m_ref, name.c_str(), name.size(), file.m_ref,
                 line_number, size_in_bits, align_in_bits, (LLVMDIFlags)flags,
-                nullptr, nullptr, 0, 0, nullptr, nullptr, 0),
+                derived, elem_refs.empty() ? nullptr : elem_refs.data(),
+                static_cast<unsigned>(elem_refs.size()), runtime_lang, vtable,
+                unique_id.c_str(), unique_id.size()),
             dib.m_module_token);
       },
       "dib"_a, "scope"_a, "name"_a, "file"_a, "line_number"_a, "size_in_bits"_a,
-      "align_in_bits"_a, "flags"_a,
+      "align_in_bits"_a, "flags"_a, "derived_from"_a.none() = nullptr,
+      "elements"_a = std::vector<LLVMMetadataWrapper>{}, "runtime_lang"_a = 0,
+      "vtable_holder"_a.none() = nullptr, "unique_id"_a = "",
       R"(Create struct type debug info metadata.)");
 
   m.def(

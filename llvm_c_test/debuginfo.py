@@ -264,7 +264,19 @@ def test_dibuilder():
         # Create struct type with elements
         struct_elts = [int64_ty, int64_ty, int64_ty]
         struct_dbg_ty = llvm.dibuilder_create_struct_type(
-            dib, namespace, "MyStruct", file_md, 0, 192, 0, 0
+            dib,
+            namespace,
+            "MyStruct",
+            file_md,
+            0,
+            192,
+            0,
+            0,
+            None,  # derived_from
+            struct_elts,  # elements
+            llvm.DWARFSourceLanguageC,  # runtime_lang
+            None,  # vtable_holder
+            "MyStruct",  # unique_id
         )
 
         # Create pointer type
@@ -507,7 +519,7 @@ def test_dibuilder():
             int64_ty,
             dyn_subscripts,
             loc_expr,
-            None,
+            foo_var1,  # associated - matches C code which passes FooVar1
             None,
             rank_expr,
             None,
