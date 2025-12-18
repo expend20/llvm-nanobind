@@ -1,192 +1,177 @@
-# Plan: Fix Python Implementation Test Failures
+# Plan: Fix Python llvm-c-test Implementation
 
 ## Overview
 
-When running lit tests with `--use-python`, 11 out of 23 tests fail. This plan documents the root causes and fixes for each category of failure.
+When running lit tests with `--use-python`, 10 out of 23 tests fail. This plan documents the root causes and fixes for each category of failure.
 
-## Current Test Status
+## Current Test Status (December 18, 2025)
 
 ```
-Passed: 12 (52%)
-Failed: 11 (48%)
+Passed: 13 (56.52%)
+Failed: 10 (43.48%)
 ```
 
 ## Root Cause Analysis
 
-### Category 1: Echo vmap Key Issue (6 tests)
+### Category 1: ModuleID Mismatch (6 tests)
 
 **Tests Affected:**
 - `atomics.ll`
-- `echo.ll`
+- `empty.ll`
 - `float_ops.ll`
 - `freeze.ll`
 - `invoke.ll`
 - `memops.ll`
 
 **Root Cause:**
-The `clone_value` function in `echo.py` uses `id(src)` as a key to the `vmap` dictionary. Since nanobind returns new Python wrapper objects each time (even for the same underlying LLVM value), `id()` returns different values. However, the Value class correctly implements `__hash__` and `__eq__` based on the underlying LLVM pointer.
+When parsing bitcode from bytes, the module ID is set to `'<bytes>'` but the LLVM C test expects `'<stdin>'`. This is a regression from the rewrite that replaced stdin-specific parsing with `parse_bitcode_from_bytes`.
 
-**Evidence:**
-```python
-# Testing shows id() differs but hash() and == work correctly:
-param1 = fn.first_param()
-param2 = fn.first_param()
-id(param1) != id(param2)      # True - different wrapper objects
-hash(param1) == hash(param2)  # True - same underlying pointer
-param1 == param2              # True - equality works
-d = {param1: 'value'}
-d[param2]                     # 'value' - dict lookup works!
-```
+**Regression Test:** `tests/regressions/test_module_id_stdin.py`
 
 **Fix:**
-Change dictionary keys from `id(src)` to `src` directly.
+In `echo.py`, rename the module to `'<stdin>'` after parsing when reading from stdin. This is acceptable since llvm-c-test is just for LLVM comparison.
 
-### Category 2: Memory Management Crashes (3 tests)
+```python
+# In echo.py, after parsing:
+mod.name = "<stdin>"
+```
+
+---
+
+### Category 2: Custom Syncscope Crash (1 test)
 
 **Tests Affected:**
-- `empty.ll` - diagnostic handler crash
-- `functions.ll` - lazy-module-dump crash
-- `objectfile.ll` - potential crash
+- `echo.ll`
 
 **Root Cause:**
-Memory corruption (double-free/use-after-free) in the bindings. The crash signatures show `free_medium_botch` errors. Per the memory model documentation, objects need to check validity tokens before accessing LLVM APIs.
+The test uses `syncscope("agent")` which is a custom, context-specific syncscope. When echo.py clones atomic instructions, it copies the syncscope ID directly from source to destination. However, syncscope IDs are context-specific integers that differ between contexts.
 
-**Specific Issues:**
+The crash occurs in `LLVMPrintModuleToString` when LLVM tries to look up the syncscope name for an invalid ID.
 
-1. **Diagnostic Handler (`empty.ll`):**
-   - `context_set_diagnostic_handler` stores a callback that may be invoked after the associated objects are freed
-   - Need to investigate callback lifetime management
+**Regression Test:** `tests/regressions/test_syncscope_crash.py` (existing)
 
-2. **Lazy Module Dump (`functions.ll`):**
-   - `parse_bitcode_in_context(ctx, membuf, lazy=True)` crashes on module disposal
-   - The lazy-loaded module may have different lifetime requirements
+**Fix Options:**
+1. Add C++ binding to get syncscope name from ID (requires C++ API access)
+2. Translate syncscope IDs by maintaining a mapping during cloning
+3. Skip custom syncscopes in echo.py (document as limitation)
 
-3. **Object File (`objectfile.ll`):**
-   - Test with null/empty input may trigger edge cases
-   - May need better error handling
+---
 
-**Fix Strategy:**
-- Investigate each crash individually
-- Ensure validity tokens are checked before LLVM API calls
-- May require C++ binding fixes for proper lifetime management
+### Category 3: Lazy Module Missing "Materializable" Comment (1 test)
 
-### Category 3: Error Message Format (1 test)
+**Tests Affected:**
+- `functions.ll` (`--lazy-module-dump` command)
+
+**Root Cause:**
+Two issues:
+1. `module_ops.py` doesn't pass `lazy=True` to the parse function
+2. `parse_bitcode_from_bytes` doesn't have a `lazy` parameter (only `parse_bitcode_from_file` does)
+
+When truly lazy-loaded, LLVM's `PrintModuleToString` automatically includes `; Materializable` comments before function definitions with empty bodies `{}`.
+
+**Regression Test:** `tests/regressions/test_lazy_materializable.py`
+
+**Fix:**
+1. Add `lazy` parameter to `parse_bitcode_from_bytes` C++ binding (use `LLVMGetBitcodeModuleInContext2` instead of `LLVMParseBitcodeInContext2`)
+2. Update `module_ops.py` to use `lazy=True` for `--lazy-module-dump`
+
+---
+
+### Category 4: Error Message Format (1 test)
 
 **Tests Affected:**
 - `invalid-bitcode.test`
 
 **Root Cause:**
-Error message format differs between Python and C implementations.
+The Python exception wrapper adds extra text to error messages.
 
-**Expected (C version):**
+**Expected (C):**
 ```
 Error parsing bitcode: Unknown attribute kind (255)
 ```
 
-**Actual (Python version):**
+**Actual (Python):**
 ```
-Error: Unknown attribute kind (255)
+Error parsing bitcode: Failed to parse LLVM IR:
+  error: Unknown attribute kind (255)
 ```
+
+**Regression Test:** `tests/regressions/test_error_message_format.py`
 
 **Fix:**
-Update error message format in `module_ops.py` to match C version.
+HACK in `module_ops.py` to extract the clean error message:
+```python
+def extract_error_message(exception_msg: str) -> str:
+    """Extract core error message from LLVMParseError format."""
+    for line in exception_msg.strip().split("\n"):
+        line = line.strip()
+        if line.startswith("error:"):
+            return line[len("error:"):].strip()
+    return exception_msg
+```
 
-### Category 4: Debug Info (1 test)
+---
+
+### Category 5: DIBuilder Metadata ID Mismatch (1 test)
 
 **Tests Affected:**
 - `debug_info_new_format.ll`
 
 **Root Cause:**
-Complex DIBuilder test - needs investigation to determine specific failure.
+The Python implementation creates 1 extra metadata node before the DISubprogram, resulting in `!dbg !45` instead of `!dbg !44`.
 
-**Fix Strategy:**
-Run test in isolation and analyze the specific failure point.
+Analysis shows:
+- Python: 54 metadata nodes before DISubprogram
+- C: 53 metadata nodes before DISubprogram
+
+This indicates the order of metadata creation differs between implementations.
+
+**Regression Test:** `tests/regressions/test_dibuilder_metadata.py`
+
+**Fix:**
+Compare `llvm_c_test/debuginfo.py` with `llvm-c/llvm-c-test/debuginfo.c` to find where the extra metadata is being created or where order differs.
 
 ---
 
 ## Implementation Phases
 
-### Phase 1: Fix Echo vmap Key Issue
-
-**Priority:** High (fixes 6 tests, straightforward fix)
+### Phase 1: ModuleID Fix (Highest Impact)
+**Priority:** High (fixes 6 tests)
 **Effort:** Low
-**Risk:** Low
-
 **File:** `llvm_c_test/echo.py`
 
-**Changes:**
-1. Update type annotations for `vmap` and `bb_map` dictionaries
-2. Replace all `id(src)` dictionary keys with `src` directly
-3. Same for `bb_map` with BasicBlock keys
-
-**Lines to modify:**
-- Line 322: `self.vmap: dict[int, llvm.Value]` → `self.vmap: dict[llvm.Value, llvm.Value]`
-- Line 323: `self.bb_map: dict[int, llvm.BasicBlock]` → `self.bb_map: dict[llvm.BasicBlock, llvm.BasicBlock]`
-- Line 354: `self.vmap[id(src_cur)]` → `self.vmap[src_cur]`
-- Line 397-398: `if id(src) in self.vmap` → `if src in self.vmap`
-- Line 439, 441: Same pattern
-- Line 691: `self.vmap[id(src)]` → `self.vmap[src]`
-- Line 935: `self.vmap[id(src)]` → `self.vmap[src]`
-- Lines 950-951, 960: `bb_map` changes
-
-### Phase 2: Fix Error Message Format
-
-**Priority:** Medium (fixes 1 test, easy fix)
+### Phase 2: Error Message Format Fix
+**Priority:** Medium (fixes 1 test)
 **Effort:** Low
-**Risk:** Low
-
 **File:** `llvm_c_test/module_ops.py`
 
-**Changes:**
-Update error message format to match C version:
-- "Error parsing bitcode: ..." for bitcode errors
-- "Error with new bitcode parser: ..." for new API errors
+### Phase 3: Lazy Module Support
+**Priority:** Medium (fixes 1 test)
+**Effort:** Medium
+**Files:** `src/llvm-nanobind.cpp`, `llvm_c_test/module_ops.py`
 
-### Phase 3: Investigate Memory Crashes
+### Phase 4: DIBuilder Metadata Order
+**Priority:** Medium (fixes 1 test)
+**Effort:** Medium-High (requires careful comparison)
+**File:** `llvm_c_test/debuginfo.py`
 
-**Priority:** High (3 tests, requires investigation)
-**Effort:** Medium-High
-**Risk:** Medium
-
-**Strategy:**
-1. Run each crashing test in isolation with debugging
-2. Identify the specific API causing the crash
-3. Check if validity tokens are being used correctly
-4. May need C++ binding modifications
-
-**Sub-tasks:**
-- [ ] Investigate diagnostic handler crash
-- [ ] Investigate lazy-module-dump crash
-- [ ] Investigate objectfile test requirements
-
-### Phase 4: Fix Debug Info Test
-
-**Priority:** Low (1 test, complex)
-**Effort:** Unknown
-**Risk:** Unknown
-
-**Strategy:**
-1. Run `--test-dibuilder` in isolation
-2. Capture full error output
-3. Compare with C version output
-4. Identify specific DIBuilder API issues
+### Phase 5: Syncscope Support
+**Priority:** Low (fixes 1 test, complex)
+**Effort:** High (may need C++ binding work)
+**Files:** `src/llvm-nanobind.cpp`, `llvm_c_test/echo.py`
 
 ---
 
-## Testing Strategy
+## Summary Table
 
-```bash
-# Run all tests with Python implementation
-uv run run_llvm_c_tests.py --use-python
-
-# Run specific test
-cat llvm-c/llvm-c-test/inputs/atomics.ll | ./llvm-bin llvm-as | \
-  uv run llvm-c-test --echo
-
-# Compare with C version
-cat llvm-c/llvm-c-test/inputs/atomics.ll | ./llvm-bin llvm-as | \
-  ./build/llvm-c-test --echo
-```
+| Root Cause | Tests | Regression Test | Fix Effort | Phase |
+|------------|-------|-----------------|------------|-------|
+| ModuleID `<bytes>` vs `<stdin>` | 6 | `test_module_id_stdin.py` | Low | 1 |
+| Error message format | 1 | `test_error_message_format.py` | Low | 2 |
+| Lazy module support | 1 | `test_lazy_materializable.py` | Medium | 3 |
+| DIBuilder metadata order | 1 | `test_dibuilder_metadata.py` | Medium-High | 4 |
+| Custom syncscope crash | 1 | `test_syncscope_crash.py` | High | 5 |
+| **Total** | **10** | | | |
 
 ---
 
@@ -197,15 +182,3 @@ All 23 lit tests pass with `--use-python`:
 uv run run_llvm_c_tests.py --use-python
 # Expected: 23 tests passed, 0 failed
 ```
-
----
-
-## Summary Statistics
-
-| Phase | Tests Fixed | Effort | Status |
-|-------|-------------|--------|--------|
-| Phase 1: vmap keys | 6 | Low | Pending |
-| Phase 2: Error messages | 1 | Low | Pending |
-| Phase 3: Memory crashes | 3 | Medium | Pending |
-| Phase 4: Debug info | 1 | Unknown | Pending |
-| **Total** | **11** | | |
