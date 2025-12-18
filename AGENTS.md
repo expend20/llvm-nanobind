@@ -51,7 +51,7 @@ uv run coverage report --include="llvm_c_test/*"  # Show llvm_c_test coverage on
 
 ## Testing Pattern (Golden Master)
 C++ tests output LLVM IR to stdout → saved as `tests/output/*.ll` → Python tests must produce identical output.
-Tests must be deterministic (no timestamps, PIDs, addresses). See `devdocs/plan.md` for templates.
+Tests must be deterministic (no timestamps, PIDs, addresses). See `devdocs/archive/bindings.md` for details.
 
 ## Debugging Hard Crashes
 
@@ -70,3 +70,20 @@ See `devdocs/DEBUGGING.md` for detailed debugging guidelines and patterns.
 - **CMake can't find LLVM**: Ask the user to configure the build manually once, this will create `.llvm-prefix` used for the rest of the build.
 - **Type stubs not updating**: Rebuild with `uv sync`
 - **Import errors in Python**: The llvm module is dynamically generated; type checkers need the stubs
+
+## Development Documentation (devdocs/)
+
+The `devdocs/` directory tracks multi-phase tasks and preserves key learnings.
+
+**For in-progress tasks:** Create `devdocs/<task>/plan.md` and `progress.md` to track work across sessions.
+
+**For completed tasks:** Extract key learnings into `devdocs/archive/<task>.md` and delete the plan/progress files.
+
+**Reference docs:** `DEBUGGING.md`, `memory-model.md`, `lit-tests.md` contain active technical documentation.
+
+See `devdocs/README.md` for the full methodology.
+
+**Important:** Task creation and archival are user-initiated. The agent should:
+- Update `progress.md` as work progresses
+- Suggest when a task might be ready for archival
+- Only create/archive tasks when explicitly asked by the user
