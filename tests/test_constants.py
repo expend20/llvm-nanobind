@@ -181,27 +181,17 @@ def main():
             print("; Test: test_constants")
             print(";")
             print("; Integer constants:")
-            print(f";   const_0 value (zext): {llvm.const_int_get_zext_value(const_0)}")
-            print(
-                f";   const_42 value (zext): {llvm.const_int_get_zext_value(const_42)}"
-            )
-            print(
-                f";   const_neg1 value (sext): {llvm.const_int_get_sext_value(const_neg1)}"
-            )
-            print(
-                f";   const_max_u32 value (zext): {llvm.const_int_get_zext_value(const_max_u32)}"
-            )
+            print(f";   const_0 value (zext): {const_0.const_zext_value}")
+            print(f";   const_42 value (zext): {const_42.const_zext_value}")
+            print(f";   const_neg1 value (sext): {const_neg1.const_sext_value}")
+            print(f";   const_max_u32 value (zext): {const_max_u32.const_zext_value}")
             print(";")
             print("; Value checks:")
             print(
                 f";   const_42 is constant: {'yes' if const_42.is_constant else 'no'}"
             )
-            print(
-                f";   null_i32 is null: {'yes' if llvm.value_is_null(null_i32) else 'no'}"
-            )
-            print(
-                f";   null_ptr is null: {'yes' if llvm.value_is_null(null_ptr) else 'no'}"
-            )
+            print(f";   null_i32 is null: {'yes' if null_i32.is_null else 'no'}")
+            print(f";   null_ptr is null: {'yes' if null_ptr.is_null else 'no'}")
             print(f";   undef_i32 is undef: {'yes' if undef_i32.is_undef else 'no'}")
             print(
                 f";   poison_i32 is poison: {'yes' if poison_i32.is_poison else 'no'}"

@@ -1322,6 +1322,27 @@ struct LLVMValueWrapper {
     return LLVMIsNull(m_ref);
   }
 
+  // Constant integer value access
+  unsigned long long const_zext_value() const {
+    check_valid();
+    if (!LLVMIsAConstantInt(m_ref))
+      throw LLVMAssertionError("const_zext_value requires a constant integer");
+    return LLVMConstIntGetZExtValue(m_ref);
+  }
+
+  long long const_sext_value() const {
+    check_valid();
+    if (!LLVMIsAConstantInt(m_ref))
+      throw LLVMAssertionError("const_sext_value requires a constant integer");
+    return LLVMConstIntGetSExtValue(m_ref);
+  }
+
+  // Check if value is ValueAsMetadata
+  bool is_value_as_metadata() const {
+    check_valid();
+    return LLVMIsAValueAsMetadata(m_ref) != nullptr;
+  }
+
   // Intrinsic support
   unsigned get_intrinsic_id() const {
     check_valid();
@@ -1813,6 +1834,24 @@ struct LLVMValueWrapper {
   }
 
   LLVMBasicBlockWrapper value_as_basic_block() const;
+
+  // Constant bitcast - creates a ConstantExpr bitcast
+  LLVMValueWrapper const_bitcast(const LLVMTypeWrapper &ty) const {
+    check_valid();
+    ty.check_valid();
+    return LLVMValueWrapper(LLVMConstBitCast(m_ref, ty.m_ref), m_context_token);
+  }
+
+  // Delete an instruction from its parent basic block
+  void delete_instruction() {
+    check_valid();
+    LLVMDeleteInstruction(m_ref);
+    m_ref = nullptr; // Invalidate after deletion
+  }
+
+  // Convert value to metadata - declared here, implemented after
+  // LLVMMetadataWrapper
+  LLVMMetadataWrapper as_metadata() const;
 };
 
 // =============================================================================
@@ -4434,22 +4473,6 @@ LLVMValueWrapper const_named_struct(const LLVMTypeWrapper &struct_ty,
       struct_ty.m_context_token);
 }
 
-// Value inspection helpers
-bool value_is_null(const LLVMValueWrapper &val) {
-  val.check_valid();
-  return LLVMIsNull(val.m_ref);
-}
-
-unsigned long long const_int_get_zext_value(const LLVMValueWrapper &val) {
-  val.check_valid();
-  return LLVMConstIntGetZExtValue(val.m_ref);
-}
-
-long long const_int_get_sext_value(const LLVMValueWrapper &val) {
-  val.check_valid();
-  return LLVMConstIntGetSExtValue(val.m_ref);
-}
-
 LLVMValueWrapper
 const_int_of_arbitrary_precision(const LLVMTypeWrapper &ty,
                                  const std::vector<uint64_t> &words) {
@@ -4467,14 +4490,6 @@ LLVMValueWrapper const_data_array(const LLVMTypeWrapper &elem_ty,
   return LLVMValueWrapper(
       LLVMConstDataArray(elem_ty.m_ref, data.c_str(), data.size()),
       elem_ty.m_context_token);
-}
-
-LLVMValueWrapper const_bitcast(const LLVMValueWrapper &val,
-                               const LLVMTypeWrapper &ty) {
-  val.check_valid();
-  ty.check_valid();
-  return LLVMValueWrapper(LLVMConstBitCast(val.m_ref, ty.m_ref),
-                          val.m_context_token);
 }
 
 LLVMValueWrapper const_gep_with_no_wrap_flags(
@@ -5393,6 +5408,12 @@ inline LLVMMetadataWrapper LLVMValueMetadataEntriesWrapper_get_metadata(
       entries.m_context_token);
 }
 
+// Implementation of LLVMValueWrapper::as_metadata() - needs LLVMMetadataWrapper
+inline LLVMMetadataWrapper LLVMValueWrapper::as_metadata() const {
+  check_valid();
+  return LLVMMetadataWrapper(LLVMValueAsMetadata(m_ref), m_context_token);
+}
+
 // =============================================================================
 // Module Registration
 // =============================================================================
@@ -5836,32 +5857,37 @@ NB_MODULE(llvm, m) {
       .def_prop_ro("next_instruction", &LLVMValueWrapper::next_instruction)
       .def_prop_ro("prev_instruction", &LLVMValueWrapper::prev_instruction)
       // Instruction predicates
-      .def("is_a_call_inst", &LLVMValueWrapper::is_a_call_inst)
-      .def("is_declaration", &LLVMValueWrapper::is_declaration)
+      .def_prop_ro("is_a_call_inst", &LLVMValueWrapper::is_a_call_inst)
+      .def_prop_ro("is_declaration", &LLVMValueWrapper::is_declaration)
       // Operand access
       .def("get_num_operands", &LLVMValueWrapper::get_num_operands)
       .def("get_operand", &LLVMValueWrapper::get_operand, "index"_a)
       // Constant type checking
-      .def("is_a_global_value", &LLVMValueWrapper::is_a_global_value)
-      .def("is_a_function", &LLVMValueWrapper::is_a_function)
-      .def("is_a_global_variable", &LLVMValueWrapper::is_a_global_variable)
-      .def("is_a_global_alias", &LLVMValueWrapper::is_a_global_alias)
-      .def("is_a_constant_int", &LLVMValueWrapper::is_a_constant_int)
-      .def("is_a_constant_fp", &LLVMValueWrapper::is_a_constant_fp)
-      .def("is_a_constant_aggregate_zero",
+      .def_prop_ro("is_a_global_value", &LLVMValueWrapper::is_a_global_value)
+      .def_prop_ro("is_a_function", &LLVMValueWrapper::is_a_function)
+      .def_prop_ro("is_a_global_variable", &LLVMValueWrapper::is_a_global_variable)
+      .def_prop_ro("is_a_global_alias", &LLVMValueWrapper::is_a_global_alias)
+      .def_prop_ro("is_a_constant_int", &LLVMValueWrapper::is_a_constant_int)
+      .def_prop_ro("is_a_constant_fp", &LLVMValueWrapper::is_a_constant_fp)
+      .def_prop_ro("is_a_constant_aggregate_zero",
            &LLVMValueWrapper::is_a_constant_aggregate_zero)
-      .def("is_a_constant_data_array",
+      .def_prop_ro("is_a_constant_data_array",
            &LLVMValueWrapper::is_a_constant_data_array)
-      .def("is_a_constant_array", &LLVMValueWrapper::is_a_constant_array)
-      .def("is_a_constant_struct", &LLVMValueWrapper::is_a_constant_struct)
-      .def("is_a_constant_pointer_null",
+      .def_prop_ro("is_a_constant_array", &LLVMValueWrapper::is_a_constant_array)
+      .def_prop_ro("is_a_constant_struct", &LLVMValueWrapper::is_a_constant_struct)
+      .def_prop_ro("is_a_constant_pointer_null",
            &LLVMValueWrapper::is_a_constant_pointer_null)
-      .def("is_a_constant_vector", &LLVMValueWrapper::is_a_constant_vector)
-      .def("is_a_constant_data_vector",
+      .def_prop_ro("is_a_constant_vector", &LLVMValueWrapper::is_a_constant_vector)
+      .def_prop_ro("is_a_constant_data_vector",
            &LLVMValueWrapper::is_a_constant_data_vector)
-      .def("is_a_constant_expr", &LLVMValueWrapper::is_a_constant_expr)
-      .def("is_a_constant_ptr_auth", &LLVMValueWrapper::is_a_constant_ptr_auth)
-      .def("is_null", &LLVMValueWrapper::is_null)
+      .def_prop_ro("is_a_constant_expr", &LLVMValueWrapper::is_a_constant_expr)
+      .def_prop_ro("is_a_constant_ptr_auth", &LLVMValueWrapper::is_a_constant_ptr_auth)
+      .def_prop_ro("is_null", &LLVMValueWrapper::is_null)
+      // Constant integer value access
+      .def_prop_ro("const_zext_value", &LLVMValueWrapper::const_zext_value)
+      .def_prop_ro("const_sext_value", &LLVMValueWrapper::const_sext_value)
+      // Value as metadata check
+      .def_prop_ro("is_value_as_metadata", &LLVMValueWrapper::is_value_as_metadata)
       // Intrinsic support
       .def("get_intrinsic_id", &LLVMValueWrapper::get_intrinsic_id)
       // Constant data access
@@ -5931,7 +5957,7 @@ NB_MODULE(llvm, m) {
       .def("get_num_operand_bundles",
            &LLVMValueWrapper::get_num_operand_bundles)
       // Phase 5.8: Inline assembly support
-      .def("is_a_inline_asm", &LLVMValueWrapper::is_a_inline_asm)
+      .def_prop_ro("is_a_inline_asm", &LLVMValueWrapper::is_a_inline_asm)
       .def("get_inline_asm_asm_string",
            &LLVMValueWrapper::get_inline_asm_asm_string)
       .def("get_inline_asm_constraint_string",
@@ -6004,7 +6030,7 @@ NB_MODULE(llvm, m) {
       .def("get_arg_operand", &LLVMValueWrapper::get_arg_operand, "index"_a)
       // Instruction manipulation
       .def("remove_from_parent", &LLVMValueWrapper::remove_from_parent)
-      .def("is_a_instruction", &LLVMValueWrapper::is_a_instruction)
+      .def_prop_ro("is_a_instruction", &LLVMValueWrapper::is_a_instruction)
       // BasicBlock properties
       .def("get_instruction_parent", &LLVMValueWrapper::get_instruction_parent)
       .def("get_normal_dest", &LLVMValueWrapper::get_normal_dest)
@@ -6032,7 +6058,14 @@ NB_MODULE(llvm, m) {
            "Copy all metadata from this global value.")
       .def("instruction_get_all_metadata_other_than_debug_loc",
            &LLVMValueWrapper::instruction_get_all_metadata_other_than_debug_loc,
-           "Get all metadata from this instruction except debug locations.");
+           "Get all metadata from this instruction except debug locations.")
+      // Value API refactor methods
+      .def("const_bitcast", &LLVMValueWrapper::const_bitcast, "type"_a,
+           R"(Create a constant bitcast expression.)")
+      .def("as_metadata", &LLVMValueWrapper::as_metadata,
+           R"(Convert value to metadata.)")
+      .def("delete_instruction", &LLVMValueWrapper::delete_instruction,
+           R"(Delete this instruction from its parent basic block.)");
 
   // BasicBlock wrapper
   nb::class_<LLVMBasicBlockWrapper>(m, "BasicBlock")
@@ -6502,13 +6535,6 @@ NB_MODULE(llvm, m) {
         "dont_null_terminate"_a = false, R"(Create a string constant.)");
   m.def("const_named_struct", &const_named_struct, "struct_ty"_a, "vals"_a,
         R"(Create a named struct constant.)");
-  // Value inspection functions
-  m.def("value_is_null", &value_is_null, "val"_a,
-        R"(Check if a value is null.)");
-  m.def("const_int_get_zext_value", &const_int_get_zext_value, "val"_a,
-        R"(Get the zero-extended value of an integer constant.)");
-  m.def("const_int_get_sext_value", &const_int_get_sext_value, "val"_a,
-        R"(Get the sign-extended value of an integer constant.)");
   // Advanced constant creation (for echo command and complex use cases)
   m.def(
       "const_int_of_arbitrary_precision", &const_int_of_arbitrary_precision,
@@ -6516,8 +6542,6 @@ NB_MODULE(llvm, m) {
       R"(Create an integer constant of arbitrary precision from 64-bit words (little-endian).)");
   m.def("const_data_array", &const_data_array, "elem_ty"_a, "data"_a,
         R"(Create a constant data array from raw bytes.)");
-  m.def("const_bitcast", &const_bitcast, "val"_a, "ty"_a,
-        R"(Create a constant bitcast expression.)");
   m.def("const_gep_with_no_wrap_flags", &const_gep_with_no_wrap_flags, "ty"_a,
         "ptr"_a, "indices"_a, "no_wrap_flags"_a,
         R"(Create a constant GEP expression with no-wrap flags.)");
@@ -6988,16 +7012,6 @@ NB_MODULE(llvm, m) {
       "name"_a, R"(Get metadata kind ID for name.)");
 
   m.def(
-      "delete_instruction",
-      [](LLVMValueWrapper &inst) {
-        inst.check_valid();
-        LLVMDeleteInstruction(inst.m_ref);
-        // Invalidate the wrapper after deletion
-        inst.m_ref = nullptr;
-      },
-      "inst"_a, R"(Delete an instruction.)");
-
-  m.def(
       "get_module_context",
       [](const LLVMModuleWrapper &mod) -> LLVMContextWrapper * {
         mod.check_valid();
@@ -7008,15 +7022,6 @@ NB_MODULE(llvm, m) {
         return new LLVMContextWrapper(mod.m_ctx_ref, mod.m_context_token);
       },
       nb::rv_policy::take_ownership, "mod"_a, R"(Get module's context.)");
-
-  m.def(
-      "is_a_value_as_metadata",
-      [](const LLVMValueWrapper &val) {
-        val.check_valid();
-        LLVMValueRef result = LLVMIsAValueAsMetadata(val.m_ref);
-        return result != nullptr;
-      },
-      "val"_a, R"(Check if value is ValueAsMetadata.)");
 
   // ==========================================================================
   // Diagnostic Handler Support
@@ -7587,15 +7592,6 @@ NB_MODULE(llvm, m) {
                                 ctx.m_token);
       },
       "ctx"_a, "md"_a, R"(Convert metadata to value.)");
-
-  m.def(
-      "value_as_metadata",
-      [](const LLVMValueWrapper &val) -> LLVMMetadataWrapper {
-        val.check_valid();
-        return LLVMMetadataWrapper(LLVMValueAsMetadata(val.m_ref),
-                                   val.m_context_token);
-      },
-      "val"_a, R"(Convert value to metadata.)");
 
   m.def(
       "set_subprogram",

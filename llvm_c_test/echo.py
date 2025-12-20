@@ -28,7 +28,7 @@ class TypeCloner:
         if isinstance(src, llvm.Value):
             # For functions/globals, use global_get_value_type() instead of .type
             # because .type returns the pointer type, not the actual function type
-            if src.is_a_function() or src.is_a_global_variable():
+            if src.is_a_function or src.is_a_global_variable:
                 return self.clone(src.global_get_value_type())
             return self.clone(src.type)
 
@@ -130,11 +130,11 @@ def clone_constant_impl(cst: llvm.Value, m: llvm.Module) -> llvm.Value:
         raise RuntimeError("Expected a constant")
 
     # Maybe it is a symbol
-    if cst.is_a_global_value():
+    if cst.is_a_global_value:
         name = cst.name
 
         # Try function
-        if cst.is_a_function():
+        if cst.is_a_function:
             check_value_kind(cst, llvm.ValueKind.Function)
 
             dst = None
@@ -151,7 +151,7 @@ def clone_constant_impl(cst: llvm.Value, m: llvm.Module) -> llvm.Value:
             raise RuntimeError("Could not find function")
 
         # Try global variable
-        if cst.is_a_global_variable():
+        if cst.is_a_global_variable:
             check_value_kind(cst, llvm.ValueKind.GlobalVariable)
             dst = m.get_global(name)
             if dst:
@@ -159,7 +159,7 @@ def clone_constant_impl(cst: llvm.Value, m: llvm.Module) -> llvm.Value:
             raise RuntimeError("Could not find variable")
 
         # Try global alias
-        if cst.is_a_global_alias():
+        if cst.is_a_global_alias:
             check_value_kind(cst, llvm.ValueKind.GlobalAlias)
             dst = m.get_named_global_alias(name)
             if dst:
@@ -170,25 +170,25 @@ def clone_constant_impl(cst: llvm.Value, m: llvm.Module) -> llvm.Value:
         sys.exit(-1)
 
     # Try integer literal
-    if cst.is_a_constant_int():
+    if cst.is_a_constant_int:
         check_value_kind(cst, llvm.ValueKind.ConstantInt)
         ty = TypeCloner(m).clone(cst)
-        return ty.constant(llvm.const_int_get_zext_value(cst), False)
+        return ty.constant(cst.const_zext_value, False)
 
     # Try zeroinitializer
-    if cst.is_a_constant_aggregate_zero():
+    if cst.is_a_constant_aggregate_zero:
         check_value_kind(cst, llvm.ValueKind.ConstantAggregateZero)
         return TypeCloner(m).clone(cst).null()
 
     # Try constant data array
-    if cst.is_a_constant_data_array():
+    if cst.is_a_constant_data_array:
         check_value_kind(cst, llvm.ValueKind.ConstantDataArray)
         ty = TypeCloner(m).clone(cst)
         size, data = cst.get_raw_data_values()
         return llvm.const_data_array(ty.element_type, data)
 
     # Try constant array
-    if cst.is_a_constant_array():
+    if cst.is_a_constant_array:
         check_value_kind(cst, llvm.ValueKind.ConstantArray)
         ty = TypeCloner(m).clone(cst)
         elt_count = ty.array_length
@@ -198,7 +198,7 @@ def clone_constant_impl(cst: llvm.Value, m: llvm.Module) -> llvm.Value:
         return llvm.const_array(ty.element_type, elts)
 
     # Try constant struct
-    if cst.is_a_constant_struct():
+    if cst.is_a_constant_struct:
         check_value_kind(cst, llvm.ValueKind.ConstantStruct)
         ty = TypeCloner(m).clone(cst)
         elt_count = ty.struct_element_count
@@ -208,7 +208,7 @@ def clone_constant_impl(cst: llvm.Value, m: llvm.Module) -> llvm.Value:
         return llvm.const_struct(elts, ty.is_packed_struct, llvm.get_module_context(m))
 
     # Try ConstantPointerNull
-    if cst.is_a_constant_pointer_null():
+    if cst.is_a_constant_pointer_null:
         check_value_kind(cst, llvm.ValueKind.ConstantPointerNull)
         ty = TypeCloner(m).clone(cst)
         return ty.null()
@@ -224,19 +224,19 @@ def clone_constant_impl(cst: llvm.Value, m: llvm.Module) -> llvm.Value:
         return TypeCloner(m).clone(cst).poison()
 
     # Try null
-    if cst.is_null():
+    if cst.is_null:
         check_value_kind(cst, llvm.ValueKind.ConstantTokenNone)
         ty = TypeCloner(m).clone(cst)
         return ty.null()
 
     # Try float literal
-    if cst.is_a_constant_fp():
+    if cst.is_a_constant_fp:
         check_value_kind(cst, llvm.ValueKind.ConstantFP)
         raise RuntimeError("ConstantFP is not supported")
 
     # Try ConstantVector or ConstantDataVector
-    if cst.is_a_constant_vector() or cst.is_a_constant_data_vector():
-        if cst.is_a_constant_vector():
+    if cst.is_a_constant_vector or cst.is_a_constant_data_vector:
+        if cst.is_a_constant_vector:
             check_value_kind(cst, llvm.ValueKind.ConstantVector)
         else:
             check_value_kind(cst, llvm.ValueKind.ConstantDataVector)
@@ -248,7 +248,7 @@ def clone_constant_impl(cst: llvm.Value, m: llvm.Module) -> llvm.Value:
         return llvm.const_vector(elts)
 
     # Try ConstantPtrAuth
-    if cst.is_a_constant_ptr_auth():
+    if cst.is_a_constant_ptr_auth:
         ptr = clone_constant(cst.get_constant_ptr_auth_pointer(), m)
         key = clone_constant(cst.get_constant_ptr_auth_key(), m)
         disc = clone_constant(cst.get_constant_ptr_auth_discriminator(), m)
@@ -256,7 +256,7 @@ def clone_constant_impl(cst: llvm.Value, m: llvm.Module) -> llvm.Value:
         return llvm.const_ptr_auth(ptr, key, disc, addr_disc)
 
     # At this point, if it's not a constant expression, it's unsupported
-    if not cst.is_a_constant_expr():
+    if not cst.is_a_constant_expr:
         raise RuntimeError("Unsupported constant kind")
 
     # At this point, it must be a constant expression
@@ -264,8 +264,8 @@ def clone_constant_impl(cst: llvm.Value, m: llvm.Module) -> llvm.Value:
 
     op = cst.get_const_opcode()
     if op == llvm.Opcode.BitCast:
-        return llvm.const_bitcast(
-            clone_constant(cst.get_operand(0), m), TypeCloner(m).clone(cst)
+        return clone_constant(cst.get_operand(0), m).const_bitcast(
+            TypeCloner(m).clone(cst)
         )
     elif op == llvm.Opcode.GetElementPtr:
         elem_ty = TypeCloner(m).clone(cst.get_gep_source_element_type())
@@ -291,7 +291,7 @@ def clone_constant(cst: llvm.Value, m: llvm.Module) -> llvm.Value:
 
 def clone_inline_asm(asm: llvm.Value, m: llvm.Module) -> llvm.Value:
     """Clone an inline assembly value."""
-    if not asm.is_a_inline_asm():
+    if not asm.is_a_inline_asm:
         raise RuntimeError("Expected inline assembly")
 
     asm_string = asm.get_inline_asm_asm_string()
@@ -401,10 +401,10 @@ class FunCloner:
             return self.vmap[src]
 
         # Inline assembly is a Value, but not an Instruction
-        if src.is_a_inline_asm():
+        if src.is_a_inline_asm:
             return clone_inline_asm(src, self.module)
 
-        if not src.is_a_instruction():
+        if not src.is_a_instruction:
             raise RuntimeError("Expected an instruction")
 
         # Create the instruction in the right basic block
@@ -433,7 +433,7 @@ class FunCloner:
     def clone_instruction(self, src: llvm.Value, builder: llvm.Builder) -> llvm.Value:
         """Clone a single instruction."""
         check_value_kind(src, llvm.ValueKind.Instruction)
-        if not src.is_a_instruction():
+        if not src.is_a_instruction:
             raise RuntimeError("Expected an instruction")
 
         name = src.name

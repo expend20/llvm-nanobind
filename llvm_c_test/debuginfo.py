@@ -478,10 +478,10 @@ def test_dibuilder():
         # Create subrange type with metadata bounds
         foo_val3 = i64_type.constant(8)
         foo_val4 = i64_type.constant(4)
-        lo = llvm.value_as_metadata(foo_val1)
-        hi = llvm.value_as_metadata(foo_val2)
-        strd = llvm.value_as_metadata(foo_val3)
-        bias = llvm.value_as_metadata(foo_val4)
+        lo = foo_val1.as_metadata()
+        hi = foo_val2.as_metadata()
+        strd = foo_val3.as_metadata()
+        bias = foo_val4.as_metadata()
 
         subrange_md_ty = llvm.dibuilder_create_subrange_type(
             dib, file_md, "foo", 42, file_md, 64, 0, 0, int64_ty, lo, hi, strd, bias

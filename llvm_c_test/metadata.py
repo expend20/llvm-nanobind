@@ -52,7 +52,7 @@ def set_metadata():
                 llvm.set_metadata(ret_inst, kind_id, md_node)
 
                 # Delete the instruction
-                llvm.delete_instruction(ret_inst)
+                ret_inst.delete_instruction()
 
         return 0
     except Exception as e:
@@ -81,7 +81,7 @@ def is_a_value_as_metadata():
                 md_node = llvm.md_node([val])
 
                 # Check if it's ValueAsMetadata
-                is_vam = llvm.is_a_value_as_metadata(md_node)
+                is_vam = md_node.is_value_as_metadata
 
                 # The test just checks this doesn't crash
                 # md_node wrapping a constant should be ValueAsMetadata

@@ -59,7 +59,7 @@ def test_callsite_attributes():
                     inst = bb.first_instruction
                     while inst is not None:
                         # Check if it's a call instruction
-                        if inst.is_a_call_inst():
+                        if inst.is_a_call_inst:
                             # Read call site attributes at different indices
                             idx = llvm.AttributeFunctionIndex
                             while idx <= param_count:

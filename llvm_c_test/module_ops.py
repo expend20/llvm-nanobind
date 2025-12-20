@@ -84,7 +84,7 @@ def module_list_functions():
         with ctx.parse_bitcode_from_bytes(bitcode) as mod:
             # Iterate through functions
             for func in mod.functions:
-                if func.is_declaration():
+                if func.is_declaration:
                     print(f"FunctionDeclaration: {func.name}")
                 else:
                     bb_count = func.basic_block_count
@@ -103,7 +103,7 @@ def module_list_functions():
                             nisn += 1
 
                             # Check if it's a call instruction
-                            if inst.is_a_call_inst():
+                            if inst.is_a_call_inst:
                                 # Get the called function (last operand)
                                 num_ops = inst.get_num_operands()
                                 if num_ops > 0:
@@ -136,7 +136,7 @@ def module_list_globals():
                 ty = g.type
                 ty_str = str(ty)
 
-                if g.is_declaration():
+                if g.is_declaration:
                     print(f"GlobalDeclaration: {g.name} {ty_str}")
                 else:
                     print(f"GlobalDefinition: {g.name} {ty_str}")

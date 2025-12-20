@@ -157,7 +157,7 @@ def main():
             )
             print(f";   has initializer: {'yes' if init else 'no'}")
             if init:
-                print(f";   initializer value: {llvm.const_int_get_zext_value(init)}")
+                print(f";   initializer value: {init.const_zext_value}")
             else:
                 print(";   initializer value: None")
             print(";")
