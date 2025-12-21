@@ -184,6 +184,8 @@ difficult to trigger through lit tests.
 - `LLVMUseWrapper` class for use-def chain iteration
 - `Use.next_use`, `Use.user`, `Use.used_value` properties
 - `Value.first_use` property
+- `Value.uses` property (pythonic list of all uses)
+- `Value.users` property (pythonic list of all user values)
 - `Value.delete()` method (for globals)
 - `Function.delete()` method
 

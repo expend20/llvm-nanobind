@@ -1013,6 +1013,29 @@ struct LLVMValueWrapper {
     return LLVMUseWrapper(use, m_context_token);
   }
 
+  // Get all uses of this value as a vector (pythonic iteration)
+  std::vector<LLVMUseWrapper> uses() const {
+    check_valid();
+    std::vector<LLVMUseWrapper> result;
+    for (LLVMUseRef use = LLVMGetFirstUse(m_ref); use != nullptr;
+         use = LLVMGetNextUse(use)) {
+      result.emplace_back(use, m_context_token);
+    }
+    return result;
+  }
+
+  // Get all users of this value as a vector (pythonic iteration)
+  // Forward declared - implemented after LLVMValueWrapper is complete
+  std::vector<LLVMValueWrapper> users() const {
+    check_valid();
+    std::vector<LLVMValueWrapper> result;
+    for (LLVMUseRef use = LLVMGetFirstUse(m_ref); use != nullptr;
+         use = LLVMGetNextUse(use)) {
+      result.emplace_back(LLVMGetUser(use), m_context_token);
+    }
+    return result;
+  }
+
   std::optional<LLVMValueWrapper> next_global() const {
     check_valid();
     LLVMValueRef next = LLVMGetNextGlobal(m_ref);
@@ -1820,6 +1843,11 @@ struct LLVMValueWrapper {
     return LLVMIsAInstruction(m_ref) != nullptr;
   }
 
+  bool is_a_terminator_inst() const {
+    check_valid();
+    return LLVMIsATerminatorInst(m_ref) != nullptr;
+  }
+
   // BasicBlock properties - forward declared
   LLVMBasicBlockWrapper get_instruction_parent() const;
   LLVMBasicBlockWrapper get_normal_dest() const;
@@ -1991,6 +2019,40 @@ struct LLVMBasicBlockWrapper {
     check_valid();
     other.check_valid();
     LLVMMoveBasicBlockAfter(m_ref, other.m_ref);
+  }
+
+  // Get successor blocks (blocks this block branches to)
+  std::vector<LLVMBasicBlockWrapper> successors() const {
+    check_valid();
+    LLVMValueRef term = LLVMGetBasicBlockTerminator(m_ref);
+    if (!term)
+      return {}; // No terminator = no successors
+    unsigned num = LLVMGetNumSuccessors(term);
+    std::vector<LLVMBasicBlockWrapper> result;
+    result.reserve(num);
+    for (unsigned i = 0; i < num; ++i) {
+      result.emplace_back(LLVMGetSuccessor(term, i), m_context_token);
+    }
+    return result;
+  }
+
+  // Get predecessor blocks (blocks that branch to this block)
+  // Uses the use-def chain: iterates through uses of this block's value,
+  // finds terminator instructions that use it, and returns their parent blocks.
+  std::vector<LLVMBasicBlockWrapper> predecessors() const {
+    check_valid();
+    std::vector<LLVMBasicBlockWrapper> result;
+    LLVMValueRef block_value = LLVMBasicBlockAsValue(m_ref);
+
+    for (LLVMUseRef use = LLVMGetFirstUse(block_value); use != nullptr;
+         use = LLVMGetNextUse(use)) {
+      LLVMValueRef user = LLVMGetUser(use);
+      if (LLVMIsATerminatorInst(user)) {
+        LLVMBasicBlockRef pred = LLVMGetInstructionParent(user);
+        result.emplace_back(pred, m_context_token);
+      }
+    }
+    return result;
   }
 };
 
@@ -7030,6 +7092,8 @@ NB_MODULE(llvm, m) {
       .def_prop_ro("is_undef", &LLVMValueWrapper::is_undef)
       .def_prop_ro("is_poison", &LLVMValueWrapper::is_poison)
       .def_prop_ro("first_use", &LLVMValueWrapper::first_use)
+      .def_prop_ro("uses", &LLVMValueWrapper::uses)
+      .def_prop_ro("users", &LLVMValueWrapper::users)
       .def_prop_ro("next_global", &LLVMValueWrapper::next_global)
       .def_prop_ro("prev_global", &LLVMValueWrapper::prev_global)
       .def("add_incoming", &phi_add_incoming, "val"_a, "bb"_a)
@@ -7254,6 +7318,8 @@ NB_MODULE(llvm, m) {
       // Instruction manipulation
       .def("remove_from_parent", &LLVMValueWrapper::remove_from_parent)
       .def_prop_ro("is_instruction", &LLVMValueWrapper::is_a_instruction)
+      .def_prop_ro("is_terminator_inst",
+                   &LLVMValueWrapper::is_a_terminator_inst)
       // BasicBlock properties
       .def_prop_ro("instruction_parent",
                    &LLVMValueWrapper::get_instruction_parent)
@@ -7329,6 +7395,8 @@ NB_MODULE(llvm, m) {
       .def_prop_ro("last_instruction", &LLVMBasicBlockWrapper::last_instruction)
       .def_prop_ro("instructions", &LLVMBasicBlockWrapper::instructions)
       .def_prop_ro("parent", &LLVMBasicBlockWrapper::parent)
+      .def_prop_ro("successors", &LLVMBasicBlockWrapper::successors)
+      .def_prop_ro("predecessors", &LLVMBasicBlockWrapper::predecessors)
       .def("move_before", &LLVMBasicBlockWrapper::move_before, "other"_a)
       .def("move_after", &LLVMBasicBlockWrapper::move_after, "other"_a);
 

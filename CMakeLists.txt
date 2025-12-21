@@ -537,6 +537,34 @@ if(NOT CMKR_VS_STARTUP_PROJECT)
 	set_property(DIRECTORY ${PROJECT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT test_struct)
 endif()
 
+# Target: test_predecessors
+set(test_predecessors_SOURCES
+	cmake.toml
+	"tests/test_predecessors.cpp"
+)
+
+add_executable(test_predecessors)
+
+target_sources(test_predecessors PRIVATE ${test_predecessors_SOURCES})
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${test_predecessors_SOURCES})
+
+target_compile_features(test_predecessors PRIVATE
+	cxx_std_20
+)
+
+if(NOT TARGET LLVM-C-Wrapper)
+	message(FATAL_ERROR "Target \"LLVM-C-Wrapper\" referenced by \"test_predecessors\" does not exist!")
+endif()
+
+target_link_libraries(test_predecessors PRIVATE
+	LLVM-C-Wrapper
+)
+
+get_directory_property(CMKR_VS_STARTUP_PROJECT DIRECTORY ${PROJECT_SOURCE_DIR} DEFINITION VS_STARTUP_PROJECT)
+if(NOT CMKR_VS_STARTUP_PROJECT)
+	set_property(DIRECTORY ${PROJECT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT test_predecessors)
+endif()
+
 # Target: test_symbol_size_crash
 set(test_symbol_size_crash_SOURCES
 	cmake.toml

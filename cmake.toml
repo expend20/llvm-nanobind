@@ -102,6 +102,10 @@ sources = ["tests/test_factorial.cpp"]
 type = "test"
 sources = ["tests/test_struct.cpp"]
 
+[target.test_predecessors]
+type = "test"
+sources = ["tests/test_predecessors.cpp"]
+
 # Regression test for LLVM bug
 [target.test_symbol_size_crash]
 type = "test"
