@@ -194,6 +194,8 @@ def main():
 
     # Verify required LLVM tools exist
     required_tools = ["llvm-as", "llvm-dis", "FileCheck", "not"]
+    if sys.platform == "win32":
+        required_tools = [tool + ".exe" for tool in required_tools]
     missing_tools = []
     for tool in required_tools:
         if not (llvm_tools_dir / tool).exists():
@@ -224,7 +226,7 @@ def main():
     # Build lit command - use lit from the same venv/environment as this script
     # Try to find lit executable in the same directory as the Python interpreter
     python_dir = Path(sys.executable).parent
-    lit_exe = python_dir / "lit"
+    lit_exe = python_dir / (sys.platform == "win32" and "lit.exe" or "lit")
 
     # Default options: single-threaded, deterministic order
     # User can override with e.g. -j 10 for parallel execution

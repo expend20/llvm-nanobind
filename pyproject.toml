@@ -45,6 +45,9 @@ cache-keys = [
     { file = "CMakeLists.txt" },
     { file = "src/**/*.cpp" },
     { file = "src/**/*.h" },
+    { file = "llvm-c/llvm-c-test/*.c" },
+    { file = "llvm-c/llvm-c-test/*.cpp" },
+    { file = "llvm-c/llvm-c-test/*.h" },
 ]
 
 [tool.ty.environment]

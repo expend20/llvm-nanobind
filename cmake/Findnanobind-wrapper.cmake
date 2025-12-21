@@ -72,6 +72,19 @@ function(nanobind_add_typed_module name)
         ${ARGN}
     )
 
+    # Copy runtime DLLs next to the module for testing on Windows
+    # Filter out Python and system DLLs
+    set(dll_filter_regex "python[0-9]*\\.dll|system32|Python[0-9]*/|api-ms-")
+    set(filtered_runtime_dlls $<LIST:FILTER,$<TARGET_RUNTIME_DLLS:${name}>,EXCLUDE,${dll_filter_regex}>)
+    if(WIN32)
+        add_custom_command(
+            TARGET ${name}
+            POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different ${filtered_runtime_dlls} $<TARGET_FILE_DIR:${name}>
+            COMMAND_EXPAND_LISTS
+        )
+    endif()
+
     # Generate type stubs for the extension module
     nanobind_add_stub(
         ${name}_stub
@@ -100,4 +113,10 @@ function(nanobind_add_typed_module name)
         DESTINATION ${name}
         RENAME __init__.pyi
     )
+    if(WIN32)
+        install(
+          FILES ${filtered_runtime_dlls}
+          DESTINATION ${name}
+        )
+    endif()
 endfunction()

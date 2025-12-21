@@ -101,3 +101,73 @@ For development documentation, see `devdocs/README.md`.
 This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
 
 LLVM is licensed under the Apache License v2.0 with LLVM Exceptions.
+
+## Windows
+
+Download LLVM+Clang:
+
+- https://github.com/vovkos/llvm-package-windows/releases/download/llvm-21.1.1/llvm-21.1.1-windows-amd64-msvc17-msvcrt.7z
+- https://github.com/vovkos/llvm-package-windows/releases/download/clang-20.1.8/clang-20.1.8-windows-amd64-msvc17-msvcrt.7z
+
+Merge them together in `C:\llvm-21.1.1`.
+
+Create `CMakeUserPresets.json`:
+
+```json
+{
+    "version": 3,
+    "configurePresets": [
+        {
+            "name": "clang-cl",
+            "displayName": "Ninja with clang-cl",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build",
+            "cacheVariables": {
+                "CMAKE_C_COMPILER": "C:/Program Files/LLVM/bin/clang-cl.exe",
+                "CMAKE_CXX_COMPILER": "C:/Program Files/LLVM/bin/clang-cl.exe",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+                "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+                "CMAKE_PREFIX_PATH": "d:/llvm-21.1.1"
+            }
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "clang-cl",
+            "configurePreset": "clang-cl"
+        }
+    ]
+}
+```
+
+Create a virtual environment:
+
+```bash
+uv venv
+```
+
+Activate the virtual environment:
+
+```bash
+.venv/Scripts/activate
+```
+
+Configure the CMake project (this should find the Python from your venv):
+
+```bash
+cmake --preset clang-cl
+```
+
+_Note_: This saves the LLVM prefix to a file called `.llvm-prefix`, make sure to delete that if you change the LLVM prefix path.
+
+Build the bindings:
+
+```bash
+cmake --build build
+```
+
+After that works you can build the Python package with `uv`:
+
+```bash
+uv sync --verbose
+```

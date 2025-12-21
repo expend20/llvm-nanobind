@@ -4,6 +4,8 @@ cmake-build*/
 CMakerLists.txt
 CMakeLists.txt.user
 
+CMakeUserPresets.json
+
 .cache/
 
 .venv/

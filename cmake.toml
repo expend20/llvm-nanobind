@@ -1,5 +1,5 @@
 [cmake]
-version = "3.18"
+version = "3.27" # IMPORTED_RUNTIME_ARTIFACTS, $<LIST:FILTER,...>
 cmkr-include = "cmake/cmkr.cmake"
 
 [project]
@@ -39,6 +39,7 @@ type = "test"
 sources = ["llvm-c/llvm-c-test/*.c", "llvm-c/llvm-c-test/*.cpp"]
 headers = ["llvm-c/llvm-c-test/*.h"]
 properties = { OUTPUT_NAME = "llvm-c-test" }
+link-libraries = ["::LLVM-Wrapper"]
 
 # Test targets
 [target.test_context]
