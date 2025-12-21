@@ -16,12 +16,9 @@ def main():
             print(func.name)
             histogram = {}
             for block in func.basic_blocks:
-                # TODO: proper iterator for instructions
-                inst = block.first_instruction
-                while inst is not None:
-                    opcode = inst.get_instruction_opcode() # TODO: make property
+                for inst in block.instructions:
+                    opcode = inst.opcode
                     histogram[opcode] = histogram.get(opcode, 0) + 1
-                    inst = inst.next_instruction
             print("  Instruction Histogram:")
             for opcode, count in histogram.items():
                 print(f"    {opcode}: {count}")

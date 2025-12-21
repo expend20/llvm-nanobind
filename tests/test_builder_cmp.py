@@ -179,18 +179,10 @@ def main():
             print(";   Constant: true, false")
             print(";")
             print("; Predicate extraction:")
-            print(
-                f";   icmp_eq predicate: {int_pred_name(icmp_eq.get_icmp_predicate())}"
-            )
-            print(
-                f";   icmp_slt predicate: {int_pred_name(icmp_slt.get_icmp_predicate())}"
-            )
-            print(
-                f";   fcmp_oeq predicate: {real_pred_name(fcmp_oeq.get_fcmp_predicate())}"
-            )
-            print(
-                f";   fcmp_uno predicate: {real_pred_name(fcmp_uno.get_fcmp_predicate())}"
-            )
+            print(f";   icmp_eq predicate: {int_pred_name(icmp_eq.icmp_predicate)}")
+            print(f";   icmp_slt predicate: {int_pred_name(icmp_slt.icmp_predicate)}")
+            print(f";   fcmp_oeq predicate: {real_pred_name(fcmp_oeq.fcmp_predicate)}")
+            print(f";   fcmp_uno predicate: {real_pred_name(fcmp_uno.fcmp_predicate)}")
             print(";")
             print("; Select instruction: cond ? true_val : false_val")
             print()

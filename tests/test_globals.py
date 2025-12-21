@@ -49,56 +49,56 @@ def main():
             # Basic global variable
             # ==========================================
             global_counter = mod.add_global(i32, "counter")
-            global_counter.set_initializer(i32.constant(0))
+            global_counter.initializer = i32.constant(0)
 
             # ==========================================
             # Constant global
             # ==========================================
             global_const = mod.add_global(i32, "magic_number")
-            global_const.set_initializer(i32.constant(42))
+            global_const.initializer = i32.constant(42)
             global_const.set_constant(True)
 
             # ==========================================
             # Global with alignment
             # ==========================================
             global_aligned = mod.add_global(i64, "aligned_var")
-            global_aligned.set_initializer(i64.constant(0))
-            global_aligned.set_alignment(16)
+            global_aligned.initializer = i64.constant(0)
+            global_aligned.alignment = 16
 
             # ==========================================
             # Global with linkage
             # ==========================================
             global_internal = mod.add_global(i32, "internal_var")
-            global_internal.set_initializer(i32.constant(100))
-            global_internal.set_linkage(llvm.Linkage.Internal)
+            global_internal.initializer = i32.constant(100)
+            global_internal.linkage = llvm.Linkage.Internal
 
             global_private = mod.add_global(i32, "private_var")
-            global_private.set_initializer(i32.constant(200))
-            global_private.set_linkage(llvm.Linkage.Private)
+            global_private.initializer = i32.constant(200)
+            global_private.linkage = llvm.Linkage.Private
 
             global_weak = mod.add_global(i32, "weak_var")
-            global_weak.set_initializer(i32.constant(300))
-            global_weak.set_linkage(llvm.Linkage.WeakAny)
+            global_weak.initializer = i32.constant(300)
+            global_weak.linkage = llvm.Linkage.WeakAny
 
             # ==========================================
             # Global with visibility
             # ==========================================
             global_hidden = mod.add_global(i32, "hidden_var")
-            global_hidden.set_initializer(i32.constant(0))
-            global_hidden.set_visibility(llvm.Visibility.Hidden)
+            global_hidden.initializer = i32.constant(0)
+            global_hidden.visibility = llvm.Visibility.Hidden
 
             # ==========================================
             # Global with section
             # ==========================================
             global_section = mod.add_global(i32, "section_var")
-            global_section.set_initializer(i32.constant(0))
-            global_section.set_section(".mydata")
+            global_section.initializer = i32.constant(0)
+            global_section.section = ".mydata"
 
             # ==========================================
             # Thread-local global
             # ==========================================
             global_tls = mod.add_global(i32, "tls_var")
-            global_tls.set_initializer(i32.constant(0))
+            global_tls.initializer = i32.constant(0)
             global_tls.set_thread_local(True)
 
             # ==========================================
@@ -111,13 +111,13 @@ def main():
             # Global in address space
             # ==========================================
             global_addrspace = mod.add_global_in_address_space(i32, "addrspace_var", 1)
-            global_addrspace.set_initializer(i32.constant(0))
+            global_addrspace.initializer = i32.constant(0)
 
             # ==========================================
             # Global to be deleted
             # ==========================================
             global_delete = mod.add_global(i32, "to_be_deleted")
-            global_delete.set_initializer(i32.constant(999))
+            global_delete.initializer = i32.constant(999)
 
             # Count globals before deletion
             count_before = len(mod.globals)
@@ -133,7 +133,7 @@ def main():
             found_nonexist = mod.get_global("nonexistent")
 
             # Get initializer
-            init = global_const.get_initializer()
+            init = global_const.initializer
 
             # Verify module
             if not mod.verify():
@@ -147,13 +147,13 @@ def main():
             print(";")
             print("; counter:")
             print(
-                f";   is constant: {'yes' if global_counter.is_global_constant() else 'no'}"
+                f";   is constant: {'yes' if global_counter.is_global_constant else 'no'}"
             )
-            print(f";   linkage: {linkage_name(global_counter.get_linkage())}")
+            print(f";   linkage: {linkage_name(global_counter.linkage)}")
             print(";")
             print("; magic_number:")
             print(
-                f";   is constant: {'yes' if global_const.is_global_constant() else 'no'}"
+                f";   is constant: {'yes' if global_const.is_global_constant else 'no'}"
             )
             print(f";   has initializer: {'yes' if init else 'no'}")
             if init:
@@ -162,25 +162,25 @@ def main():
                 print(";   initializer value: None")
             print(";")
             print("; aligned_var:")
-            print(f";   alignment: {global_aligned.get_alignment()}")
+            print(f";   alignment: {global_aligned.alignment}")
             print(";")
             print("; internal_var:")
-            print(f";   linkage: {linkage_name(global_internal.get_linkage())}")
+            print(f";   linkage: {linkage_name(global_internal.linkage)}")
             print(";")
             print("; hidden_var:")
-            print(f";   visibility: {visibility_name(global_hidden.get_visibility())}")
+            print(f";   visibility: {visibility_name(global_hidden.visibility)}")
             print(";")
             print("; section_var:")
-            print(f";   section: {global_section.get_section()}")
+            print(f";   section: {global_section.section}")
             print(";")
             print("; tls_var:")
             print(
-                f";   is thread local: {'yes' if global_tls.is_thread_local() else 'no'}"
+                f";   is thread local: {'yes' if global_tls.is_thread_local else 'no'}"
             )
             print(";")
             print("; extern_var:")
             print(
-                f";   is externally initialized: {'yes' if global_extern.is_externally_initialized() else 'no'}"
+                f";   is externally initialized: {'yes' if global_extern.is_externally_initialized else 'no'}"
             )
             print(";")
             print("; Lookup tests:")

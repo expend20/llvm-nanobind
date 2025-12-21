@@ -103,9 +103,9 @@ def module_list_functions():
                             nisn += 1
 
                             # Check if it's a call instruction
-                            if inst.is_a_call_inst:
+                            if inst.is_call_inst:
                                 # Get the called function (last operand)
-                                num_ops = inst.get_num_operands()
+                                num_ops = inst.num_operands
                                 if num_ops > 0:
                                     callee = inst.get_operand(num_ops - 1)
                                     print(f" calls: {callee.name}")

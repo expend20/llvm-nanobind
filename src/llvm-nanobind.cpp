@@ -1825,6 +1825,7 @@ struct LLVMValueWrapper {
   LLVMBasicBlockWrapper get_normal_dest() const;
   std::optional<LLVMBasicBlockWrapper> get_unwind_dest() const;
   LLVMBasicBlockWrapper get_successor(unsigned index) const;
+  std::vector<LLVMBasicBlockWrapper> successors() const;
   LLVMBasicBlockWrapper get_callbr_default_dest() const;
   unsigned get_callbr_num_indirect_dests() const;
   LLVMBasicBlockWrapper get_callbr_indirect_dest(unsigned index) const;
@@ -1938,12 +1939,27 @@ struct LLVMBasicBlockWrapper {
     return LLVMBasicBlockWrapper(prev, m_context_token);
   }
 
-  std::optional<LLVMValueWrapper> terminator() const {
+  bool has_terminator() const {
+    check_valid();
+    return LLVMGetBasicBlockTerminator(m_ref) != nullptr;
+  }
+
+  LLVMValueWrapper terminator() const {
     check_valid();
     LLVMValueRef term = LLVMGetBasicBlockTerminator(m_ref);
     if (!term)
-      return std::nullopt;
+      throw LLVMAssertionError("BasicBlock has no terminator");
     return LLVMValueWrapper(term, m_context_token);
+  }
+
+  std::vector<LLVMValueWrapper> instructions() const {
+    check_valid();
+    std::vector<LLVMValueWrapper> result;
+    for (LLVMValueRef inst = LLVMGetFirstInstruction(m_ref); inst;
+         inst = LLVMGetNextInstruction(inst)) {
+      result.emplace_back(inst, m_context_token);
+    }
+    return result;
   }
 
   std::optional<LLVMValueWrapper> first_instruction() const {
@@ -2278,6 +2294,17 @@ LLVMValueWrapper::get_successor(unsigned index) const {
   if (!bb)
     throw LLVMAssertionError("Invalid successor index");
   return LLVMBasicBlockWrapper(bb, m_context_token);
+}
+
+inline std::vector<LLVMBasicBlockWrapper> LLVMValueWrapper::successors() const {
+  check_valid();
+  unsigned num = LLVMGetNumSuccessors(m_ref);
+  std::vector<LLVMBasicBlockWrapper> result;
+  result.reserve(num);
+  for (unsigned i = 0; i < num; ++i) {
+    result.emplace_back(LLVMGetSuccessor(m_ref, i), m_context_token);
+  }
+  return result;
 }
 
 inline LLVMBasicBlockWrapper LLVMValueWrapper::get_callbr_default_dest() const {
@@ -7007,75 +7034,72 @@ NB_MODULE(llvm, m) {
       .def_prop_ro("prev_global", &LLVMValueWrapper::prev_global)
       .def("add_incoming", &phi_add_incoming, "val"_a, "bb"_a)
       .def("add_case", &switch_add_case, "val"_a, "bb"_a)
-      .def("set_initializer", &global_set_initializer, "init"_a)
-      .def("get_initializer", &global_get_initializer)
+      .def_prop_rw("initializer", &global_get_initializer,
+                   &global_set_initializer)
       .def("set_constant", &global_set_constant, "is_const"_a)
-      .def("is_global_constant", &global_is_constant)
-      .def("set_linkage", &global_set_linkage, "linkage"_a)
-      .def("get_linkage", &global_get_linkage)
-      .def("set_visibility", &global_set_visibility, "vis"_a)
-      .def("get_visibility", &global_get_visibility)
-      .def("set_alignment", &global_set_alignment, "align"_a)
-      .def("get_alignment", &global_get_alignment)
-      .def("set_section", &global_set_section, "section"_a)
-      .def("get_section", &global_get_section)
+      .def_prop_ro("is_global_constant", &global_is_constant)
+      .def_prop_rw("linkage", &global_get_linkage, &global_set_linkage)
+      .def_prop_rw("visibility", &global_get_visibility, &global_set_visibility)
+      .def_prop_rw("alignment", &global_get_alignment, &global_set_alignment)
+      .def_prop_rw("section", &global_get_section, &global_set_section)
       .def("set_thread_local", &global_set_thread_local, "is_tls"_a)
-      .def("is_thread_local", &global_is_thread_local)
+      .def_prop_ro("is_thread_local", &global_is_thread_local)
       .def("set_externally_initialized", &global_set_externally_initialized,
            "is_ext"_a)
-      .def("is_externally_initialized", &global_is_externally_initialized)
+      .def_prop_ro("is_externally_initialized",
+                   &global_is_externally_initialized)
       .def("delete_global", &global_delete)
       .def("delete", &global_delete) // Alias for delete_global
       // PHI helpers
-      .def("count_incoming", &phi_count_incoming)
+      .def_prop_ro("num_incoming", &phi_count_incoming)
       .def("get_incoming_value", &phi_get_incoming_value, "index"_a)
       .def("get_incoming_block", &phi_get_incoming_block, "index"_a)
       // Branch instruction helpers
-      .def("is_conditional", &instruction_is_conditional)
-      .def("get_condition", &instruction_get_condition)
-      .def("get_num_successors", &instruction_get_num_successors)
+      .def_prop_ro("is_conditional", &instruction_is_conditional)
+      .def_prop_ro("condition", &instruction_get_condition)
+      .def_prop_ro("num_successors", &instruction_get_num_successors)
       .def("get_successor", &instruction_get_successor, "index"_a)
+      .def_prop_ro("successors", &LLVMValueWrapper::successors)
       // Load/Store helpers
       .def("set_volatile", &instruction_set_volatile, "is_volatile"_a)
-      .def("get_volatile", &instruction_get_volatile)
+      .def_prop_ro("is_volatile", &instruction_get_volatile)
       .def("set_inst_alignment", &instruction_set_alignment, "align"_a)
-      .def("get_inst_alignment", &instruction_get_alignment)
+      .def_prop_ro("inst_alignment", &instruction_get_alignment)
       // Comparison helpers
-      .def("get_icmp_predicate", &instruction_get_icmp_predicate)
-      .def("get_fcmp_predicate", &instruction_get_fcmp_predicate)
+      .def_prop_ro("icmp_predicate", &instruction_get_icmp_predicate)
+      .def_prop_ro("fcmp_predicate", &instruction_get_fcmp_predicate)
       // Instruction iteration
       .def_prop_ro("next_instruction", &LLVMValueWrapper::next_instruction)
       .def_prop_ro("prev_instruction", &LLVMValueWrapper::prev_instruction)
       // Instruction predicates
-      .def_prop_ro("is_a_call_inst", &LLVMValueWrapper::is_a_call_inst)
+      .def_prop_ro("is_call_inst", &LLVMValueWrapper::is_a_call_inst)
       .def_prop_ro("is_declaration", &LLVMValueWrapper::is_declaration)
       // Operand access
-      .def("get_num_operands", &LLVMValueWrapper::get_num_operands)
+      .def_prop_ro("num_operands", &LLVMValueWrapper::get_num_operands)
       .def("get_operand", &LLVMValueWrapper::get_operand, "index"_a)
       // Constant type checking
-      .def_prop_ro("is_a_global_value", &LLVMValueWrapper::is_a_global_value)
-      .def_prop_ro("is_a_function", &LLVMValueWrapper::is_a_function)
-      .def_prop_ro("is_a_global_variable",
+      .def_prop_ro("is_global_value", &LLVMValueWrapper::is_a_global_value)
+      .def_prop_ro("is_function", &LLVMValueWrapper::is_a_function)
+      .def_prop_ro("is_global_variable",
                    &LLVMValueWrapper::is_a_global_variable)
-      .def_prop_ro("is_a_global_alias", &LLVMValueWrapper::is_a_global_alias)
-      .def_prop_ro("is_a_constant_int", &LLVMValueWrapper::is_a_constant_int)
-      .def_prop_ro("is_a_constant_fp", &LLVMValueWrapper::is_a_constant_fp)
-      .def_prop_ro("is_a_constant_aggregate_zero",
+      .def_prop_ro("is_global_alias", &LLVMValueWrapper::is_a_global_alias)
+      .def_prop_ro("is_constant_int", &LLVMValueWrapper::is_a_constant_int)
+      .def_prop_ro("is_constant_fp", &LLVMValueWrapper::is_a_constant_fp)
+      .def_prop_ro("is_constant_aggregate_zero",
                    &LLVMValueWrapper::is_a_constant_aggregate_zero)
-      .def_prop_ro("is_a_constant_data_array",
+      .def_prop_ro("is_constant_data_array",
                    &LLVMValueWrapper::is_a_constant_data_array)
-      .def_prop_ro("is_a_constant_array",
-                   &LLVMValueWrapper::is_a_constant_array)
-      .def_prop_ro("is_a_constant_struct",
+      .def_prop_ro("is_constant_array", &LLVMValueWrapper::is_a_constant_array)
+      .def_prop_ro("is_constant_struct",
                    &LLVMValueWrapper::is_a_constant_struct)
-      .def_prop_ro("is_a_constant_pointer_null",
+      .def_prop_ro("is_constant_pointer_null",
                    &LLVMValueWrapper::is_a_constant_pointer_null)
-      .def_prop_ro("is_a_constant_vector",
+      .def_prop_ro("is_constant_vector",
                    &LLVMValueWrapper::is_a_constant_vector)
-      .def_prop_ro("is_a_constant_data_vector",
+      .def_prop_ro("is_constant_data_vector",
                    &LLVMValueWrapper::is_a_constant_data_vector)
-      .def_prop_ro("is_a_constant_expr", &LLVMValueWrapper::is_a_constant_expr)
-      .def_prop_ro("is_a_constant_ptr_auth",
+      .def_prop_ro("is_constant_expr", &LLVMValueWrapper::is_a_constant_expr)
+      .def_prop_ro("is_constant_ptr_auth",
                    &LLVMValueWrapper::is_a_constant_ptr_auth)
       .def_prop_ro("is_null", &LLVMValueWrapper::is_null)
       // Constant integer value access
@@ -7085,169 +7109,174 @@ NB_MODULE(llvm, m) {
       .def_prop_ro("is_value_as_metadata",
                    &LLVMValueWrapper::is_value_as_metadata)
       // Intrinsic support
-      .def("get_intrinsic_id", &LLVMValueWrapper::get_intrinsic_id)
+      .def_prop_ro("intrinsic_id", &LLVMValueWrapper::get_intrinsic_id)
       // Constant data access
-      .def("get_raw_data_values", &LLVMValueWrapper::get_raw_data_values)
+      .def_prop_ro("raw_data_values", &LLVMValueWrapper::get_raw_data_values)
       .def("get_aggregate_element", &LLVMValueWrapper::get_aggregate_element,
            "index"_a)
       // Constant expression support
-      .def("get_const_opcode", &LLVMValueWrapper::get_const_opcode)
-      .def("get_gep_source_element_type",
-           &LLVMValueWrapper::get_gep_source_element_type)
-      .def("get_num_indices", &LLVMValueWrapper::get_num_indices)
-      .def("get_gep_no_wrap_flags", &LLVMValueWrapper::get_gep_no_wrap_flags)
+      .def_prop_ro("const_opcode", &LLVMValueWrapper::get_const_opcode)
+      .def_prop_ro("gep_source_element_type",
+                   &LLVMValueWrapper::get_gep_source_element_type)
+      .def_prop_ro("num_indices", &LLVMValueWrapper::get_num_indices)
+      .def_prop_ro("gep_no_wrap_flags",
+                   &LLVMValueWrapper::get_gep_no_wrap_flags)
       // Pointer auth constant support
-      .def("get_constant_ptr_auth_pointer",
-           &LLVMValueWrapper::get_constant_ptr_auth_pointer)
-      .def("get_constant_ptr_auth_key",
-           &LLVMValueWrapper::get_constant_ptr_auth_key)
-      .def("get_constant_ptr_auth_discriminator",
-           &LLVMValueWrapper::get_constant_ptr_auth_discriminator)
-      .def("get_constant_ptr_auth_addr_discriminator",
-           &LLVMValueWrapper::get_constant_ptr_auth_addr_discriminator)
+      .def_prop_ro("constant_ptr_auth_pointer",
+                   &LLVMValueWrapper::get_constant_ptr_auth_pointer)
+      .def_prop_ro("constant_ptr_auth_key",
+                   &LLVMValueWrapper::get_constant_ptr_auth_key)
+      .def_prop_ro("constant_ptr_auth_discriminator",
+                   &LLVMValueWrapper::get_constant_ptr_auth_discriminator)
+      .def_prop_ro("constant_ptr_auth_addr_discriminator",
+                   &LLVMValueWrapper::get_constant_ptr_auth_addr_discriminator)
       // Parameter iteration
       .def_prop_ro("next_param", &LLVMValueWrapper::next_param)
       .def_prop_ro("prev_param", &LLVMValueWrapper::prev_param)
       // Global alias iteration
       .def_prop_ro("next_global_alias", &LLVMValueWrapper::next_global_alias)
       .def_prop_ro("prev_global_alias", &LLVMValueWrapper::prev_global_alias)
-      .def("alias_get_aliasee", &LLVMValueWrapper::alias_get_aliasee)
+      .def_prop_ro("aliasee", &LLVMValueWrapper::alias_get_aliasee)
       .def("alias_set_aliasee", &LLVMValueWrapper::alias_set_aliasee,
            "aliasee"_a)
       // Global IFunc iteration
       .def_prop_ro("next_global_ifunc", &LLVMValueWrapper::next_global_ifunc)
       .def_prop_ro("prev_global_ifunc", &LLVMValueWrapper::prev_global_ifunc)
-      .def("get_global_ifunc_resolver",
-           &LLVMValueWrapper::get_global_ifunc_resolver)
+      .def_prop_ro("global_ifunc_resolver",
+                   &LLVMValueWrapper::get_global_ifunc_resolver)
       .def("set_global_ifunc_resolver",
            &LLVMValueWrapper::set_global_ifunc_resolver, "resolver"_a)
       // Global properties
-      .def("global_get_value_type", &LLVMValueWrapper::global_get_value_type)
-      .def("get_unnamed_address", &LLVMValueWrapper::get_unnamed_address)
-      .def("set_unnamed_address", &LLVMValueWrapper::set_unnamed_address,
-           "unnamed_addr"_a)
-      .def("has_personality_fn", &LLVMValueWrapper::has_personality_fn)
-      .def("get_personality_fn", &LLVMValueWrapper::get_personality_fn)
+      .def_prop_ro("global_value_type",
+                   &LLVMValueWrapper::global_get_value_type)
+      .def_prop_rw("unnamed_address", &LLVMValueWrapper::get_unnamed_address,
+                   &LLVMValueWrapper::set_unnamed_address)
+      .def_prop_ro("has_personality_fn", &LLVMValueWrapper::has_personality_fn)
+      .def_prop_ro("personality_fn", &LLVMValueWrapper::get_personality_fn)
       .def("set_personality_fn", &LLVMValueWrapper::set_personality_fn, "fn"_a)
-      .def("has_prefix_data", &LLVMValueWrapper::has_prefix_data)
-      .def("get_prefix_data", &LLVMValueWrapper::get_prefix_data)
+      .def_prop_ro("has_prefix_data", &LLVMValueWrapper::has_prefix_data)
+      .def_prop_ro("prefix_data", &LLVMValueWrapper::get_prefix_data)
       .def("set_prefix_data", &LLVMValueWrapper::set_prefix_data, "data"_a)
-      .def("has_prologue_data", &LLVMValueWrapper::has_prologue_data)
-      .def("get_prologue_data", &LLVMValueWrapper::get_prologue_data)
+      .def_prop_ro("has_prologue_data", &LLVMValueWrapper::has_prologue_data)
+      .def_prop_ro("prologue_data", &LLVMValueWrapper::get_prologue_data)
       .def("set_prologue_data", &LLVMValueWrapper::set_prologue_data, "data"_a)
       // Instruction properties
-      .def("get_instruction_opcode", &LLVMValueWrapper::get_instruction_opcode)
+      .def_prop_ro("opcode", &LLVMValueWrapper::get_instruction_opcode)
       // Instruction flags
-      .def("get_nsw", &LLVMValueWrapper::get_nsw)
-      .def("get_nuw", &LLVMValueWrapper::get_nuw)
-      .def("get_exact", &LLVMValueWrapper::get_exact)
-      .def("get_nneg", &LLVMValueWrapper::get_nneg)
+      .def_prop_ro("nsw", &LLVMValueWrapper::get_nsw)
+      .def_prop_ro("nuw", &LLVMValueWrapper::get_nuw)
+      .def_prop_ro("exact", &LLVMValueWrapper::get_exact)
+      .def_prop_ro("nneg", &LLVMValueWrapper::get_nneg)
       // Memory access properties (ordering not duplicated)
-      .def("get_ordering", &LLVMValueWrapper::get_ordering)
+      .def_prop_ro("ordering", &LLVMValueWrapper::get_ordering)
       // Call/invoke properties
-      .def("get_num_arg_operands", &LLVMValueWrapper::get_num_arg_operands)
+      .def_prop_ro("num_arg_operands", &LLVMValueWrapper::get_num_arg_operands)
       // Alloca properties
-      .def("get_allocated_type", &LLVMValueWrapper::get_allocated_type)
+      .def_prop_ro("allocated_type", &LLVMValueWrapper::get_allocated_type)
       .def_prop_ro("value_kind", &LLVMValueWrapper::value_kind)
       // Phase 5.7: Operand bundle support
-      .def("get_num_operand_bundles",
-           &LLVMValueWrapper::get_num_operand_bundles)
+      .def_prop_ro("num_operand_bundles",
+                   &LLVMValueWrapper::get_num_operand_bundles)
       // Phase 5.8: Inline assembly support
-      .def_prop_ro("is_a_inline_asm", &LLVMValueWrapper::is_a_inline_asm)
-      .def("get_inline_asm_asm_string",
-           &LLVMValueWrapper::get_inline_asm_asm_string)
-      .def("get_inline_asm_constraint_string",
-           &LLVMValueWrapper::get_inline_asm_constraint_string)
-      .def("get_inline_asm_dialect", &LLVMValueWrapper::get_inline_asm_dialect)
-      .def("get_inline_asm_function_type",
-           &LLVMValueWrapper::get_inline_asm_function_type)
-      .def("get_inline_asm_has_side_effects",
-           &LLVMValueWrapper::get_inline_asm_has_side_effects)
-      .def("get_inline_asm_needs_aligned_stack",
-           &LLVMValueWrapper::get_inline_asm_needs_aligned_stack)
-      .def("get_inline_asm_can_unwind",
-           &LLVMValueWrapper::get_inline_asm_can_unwind)
+      .def_prop_ro("is_inline_asm", &LLVMValueWrapper::is_a_inline_asm)
+      .def_prop_ro("inline_asm_asm_string",
+                   &LLVMValueWrapper::get_inline_asm_asm_string)
+      .def_prop_ro("inline_asm_constraint_string",
+                   &LLVMValueWrapper::get_inline_asm_constraint_string)
+      .def_prop_ro("inline_asm_dialect",
+                   &LLVMValueWrapper::get_inline_asm_dialect)
+      .def_prop_ro("inline_asm_function_type",
+                   &LLVMValueWrapper::get_inline_asm_function_type)
+      .def_prop_ro("inline_asm_has_side_effects",
+                   &LLVMValueWrapper::get_inline_asm_has_side_effects)
+      .def_prop_ro("inline_asm_needs_aligned_stack",
+                   &LLVMValueWrapper::get_inline_asm_needs_aligned_stack)
+      .def_prop_ro("inline_asm_can_unwind",
+                   &LLVMValueWrapper::get_inline_asm_can_unwind)
       // Phase 5.9: Flag setters
       .def("set_nsw", &LLVMValueWrapper::set_nsw, "nsw"_a)
       .def("set_nuw", &LLVMValueWrapper::set_nuw, "nuw"_a)
       .def("set_exact", &LLVMValueWrapper::set_exact, "exact"_a)
       .def("set_nneg", &LLVMValueWrapper::set_nneg, "nneg"_a)
-      .def("get_is_disjoint", &LLVMValueWrapper::get_is_disjoint)
+      .def_prop_ro("is_disjoint", &LLVMValueWrapper::get_is_disjoint)
       .def("set_is_disjoint", &LLVMValueWrapper::set_is_disjoint,
            "is_disjoint"_a)
-      .def("get_icmp_same_sign", &LLVMValueWrapper::get_icmp_same_sign)
+      .def_prop_ro("icmp_same_sign", &LLVMValueWrapper::get_icmp_same_sign)
       .def("set_icmp_same_sign", &LLVMValueWrapper::set_icmp_same_sign,
            "same_sign"_a)
       .def("set_ordering", &LLVMValueWrapper::set_ordering, "ordering"_a)
       .def("set_volatile", &LLVMValueWrapper::set_volatile, "is_volatile"_a)
       // Atomic properties
-      .def("is_atomic", &LLVMValueWrapper::is_atomic)
-      .def("get_atomic_sync_scope_id",
-           &LLVMValueWrapper::get_atomic_sync_scope_id)
+      .def_prop_ro("is_atomic", &LLVMValueWrapper::is_atomic)
+      .def_prop_ro("atomic_sync_scope_id",
+                   &LLVMValueWrapper::get_atomic_sync_scope_id)
       .def("set_atomic_sync_scope_id",
            &LLVMValueWrapper::set_atomic_sync_scope_id, "scope_id"_a)
-      .def("get_atomic_rmw_bin_op", &LLVMValueWrapper::get_atomic_rmw_bin_op)
-      .def("get_cmpxchg_success_ordering",
-           &LLVMValueWrapper::get_cmpxchg_success_ordering)
-      .def("get_cmpxchg_failure_ordering",
-           &LLVMValueWrapper::get_cmpxchg_failure_ordering)
-      .def("get_weak", &LLVMValueWrapper::get_weak)
+      .def_prop_ro("atomic_rmw_bin_op",
+                   &LLVMValueWrapper::get_atomic_rmw_bin_op)
+      .def_prop_ro("cmpxchg_success_ordering",
+                   &LLVMValueWrapper::get_cmpxchg_success_ordering)
+      .def_prop_ro("cmpxchg_failure_ordering",
+                   &LLVMValueWrapper::get_cmpxchg_failure_ordering)
+      .def_prop_ro("weak", &LLVMValueWrapper::get_weak)
       .def("set_weak", &LLVMValueWrapper::set_weak, "is_weak"_a)
       // Tail call kind
-      .def("get_tail_call_kind", &LLVMValueWrapper::get_tail_call_kind)
+      .def_prop_ro("tail_call_kind", &LLVMValueWrapper::get_tail_call_kind)
       .def("set_tail_call_kind", &LLVMValueWrapper::set_tail_call_kind,
            "kind"_a)
       // Called function
-      .def("get_called_function_type",
-           &LLVMValueWrapper::get_called_function_type)
-      .def("get_called_value", &LLVMValueWrapper::get_called_value)
-      // Branch properties
-      .def("is_conditional", &LLVMValueWrapper::is_conditional)
-      .def("get_condition", &LLVMValueWrapper::get_condition)
+      .def_prop_ro("called_function_type",
+                   &LLVMValueWrapper::get_called_function_type)
+      .def_prop_ro("called_value", &LLVMValueWrapper::get_called_value)
+      // Branch properties (duplicated from instruction helpers with same name)
+      // Note: is_conditional and condition already defined as properties above
       // Landing pad properties
-      .def("get_num_clauses", &LLVMValueWrapper::get_num_clauses)
+      .def_prop_ro("num_clauses", &LLVMValueWrapper::get_num_clauses)
       .def("get_clause", &LLVMValueWrapper::get_clause, "index"_a)
-      .def("is_cleanup", &LLVMValueWrapper::is_cleanup)
+      .def_prop_ro("is_cleanup", &LLVMValueWrapper::is_cleanup)
       .def("set_cleanup", &LLVMValueWrapper::set_cleanup, "is_cleanup"_a)
       // Catch switch/pad properties
-      .def("get_parent_catch_switch",
-           &LLVMValueWrapper::get_parent_catch_switch)
-      .def("get_num_handlers", &LLVMValueWrapper::get_num_handlers)
+      .def_prop_ro("parent_catch_switch",
+                   &LLVMValueWrapper::get_parent_catch_switch)
+      .def_prop_ro("num_handlers", &LLVMValueWrapper::get_num_handlers)
       // Shuffle vector mask
-      .def("get_num_mask_elements", &LLVMValueWrapper::get_num_mask_elements)
+      .def_prop_ro("num_mask_elements",
+                   &LLVMValueWrapper::get_num_mask_elements)
       .def("get_mask_value", &LLVMValueWrapper::get_mask_value, "index"_a)
       // Fast-math flags
-      .def("can_use_fast_math_flags",
-           &LLVMValueWrapper::can_use_fast_math_flags)
-      .def("get_fast_math_flags", &LLVMValueWrapper::get_fast_math_flags)
+      .def_prop_ro("can_use_fast_math_flags",
+                   &LLVMValueWrapper::can_use_fast_math_flags)
+      .def_prop_ro("fast_math_flags", &LLVMValueWrapper::get_fast_math_flags)
       .def("set_fast_math_flags", &LLVMValueWrapper::set_fast_math_flags,
            "flags"_a)
       // Call instruction arg operand
       .def("get_arg_operand", &LLVMValueWrapper::get_arg_operand, "index"_a)
       // Instruction manipulation
       .def("remove_from_parent", &LLVMValueWrapper::remove_from_parent)
-      .def_prop_ro("is_a_instruction", &LLVMValueWrapper::is_a_instruction)
+      .def_prop_ro("is_instruction", &LLVMValueWrapper::is_a_instruction)
       // BasicBlock properties
-      .def("get_instruction_parent", &LLVMValueWrapper::get_instruction_parent)
-      .def("get_normal_dest", &LLVMValueWrapper::get_normal_dest)
-      .def("get_unwind_dest", &LLVMValueWrapper::get_unwind_dest)
+      .def_prop_ro("instruction_parent",
+                   &LLVMValueWrapper::get_instruction_parent)
+      .def_prop_ro("normal_dest", &LLVMValueWrapper::get_normal_dest)
+      .def_prop_ro("unwind_dest", &LLVMValueWrapper::get_unwind_dest)
       .def("get_successor", &LLVMValueWrapper::get_successor, "index"_a)
-      .def("get_callbr_default_dest",
-           &LLVMValueWrapper::get_callbr_default_dest)
-      .def("get_callbr_num_indirect_dests",
-           &LLVMValueWrapper::get_callbr_num_indirect_dests)
+      .def_prop_ro("callbr_default_dest",
+                   &LLVMValueWrapper::get_callbr_default_dest)
+      .def_prop_ro("callbr_num_indirect_dests",
+                   &LLVMValueWrapper::get_callbr_num_indirect_dests)
       .def("get_callbr_indirect_dest",
            &LLVMValueWrapper::get_callbr_indirect_dest, "index"_a)
       // Value/BasicBlock conversion
-      .def("value_is_basic_block", &LLVMValueWrapper::value_is_basic_block)
+      .def_prop_ro("value_is_basic_block",
+                   &LLVMValueWrapper::value_is_basic_block)
       .def("value_as_basic_block", &LLVMValueWrapper::value_as_basic_block)
       // Echo command support - landing pad and catch switch operations
       .def("add_clause", &LLVMValueWrapper::add_clause, "clause_val"_a)
       .def("add_handler", &LLVMValueWrapper::add_handler, "handler"_a)
-      .def("get_handlers", &LLVMValueWrapper::get_handlers)
+      .def_prop_ro("handlers", &LLVMValueWrapper::get_handlers)
       .def("get_operand_bundle_at_index",
            &LLVMValueWrapper::get_operand_bundle_at_index, "index"_a)
-      .def("get_indices", &LLVMValueWrapper::get_indices)
+      .def_prop_ro("indices", &LLVMValueWrapper::get_indices)
       // Global/instruction metadata for echo command
       .def("global_copy_all_metadata",
            &LLVMValueWrapper::global_copy_all_metadata,
@@ -7293,10 +7322,12 @@ NB_MODULE(llvm, m) {
       .def("as_value", &LLVMBasicBlockWrapper::as_value)
       .def_prop_ro("next_block", &LLVMBasicBlockWrapper::next_block)
       .def_prop_ro("prev_block", &LLVMBasicBlockWrapper::prev_block)
+      .def_prop_ro("has_terminator", &LLVMBasicBlockWrapper::has_terminator)
       .def_prop_ro("terminator", &LLVMBasicBlockWrapper::terminator)
       .def_prop_ro("first_instruction",
                    &LLVMBasicBlockWrapper::first_instruction)
       .def_prop_ro("last_instruction", &LLVMBasicBlockWrapper::last_instruction)
+      .def_prop_ro("instructions", &LLVMBasicBlockWrapper::instructions)
       .def_prop_ro("parent", &LLVMBasicBlockWrapper::parent)
       .def("move_before", &LLVMBasicBlockWrapper::move_before, "other"_a)
       .def("move_after", &LLVMBasicBlockWrapper::move_after, "other"_a);

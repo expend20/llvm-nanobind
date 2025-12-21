@@ -113,20 +113,18 @@ def main():
             print(";   struct GEP (field access)")
             print(";")
             print("; Alignment checks:")
-            print(
-                f";   alloca_aligned alignment: {alloca_aligned.get_inst_alignment()}"
-            )
-            print(f";   aligned_load alignment: {aligned_load.get_inst_alignment()}")
+            print(f";   alloca_aligned alignment: {alloca_aligned.inst_alignment}")
+            print(f";   aligned_load alignment: {aligned_load.inst_alignment}")
             print(";")
             print("; Volatile checks:")
             print(
-                f";   volatile_store is volatile: {'yes' if volatile_store.get_volatile() else 'no'}"
+                f";   volatile_store is volatile: {'yes' if volatile_store.is_volatile else 'no'}"
             )
             print(
-                f";   volatile_load is volatile: {'yes' if volatile_load.get_volatile() else 'no'}"
+                f";   volatile_load is volatile: {'yes' if volatile_load.is_volatile else 'no'}"
             )
             print(
-                f";   regular store is volatile: {'yes' if store.get_volatile() else 'no'}"
+                f";   regular store is volatile: {'yes' if store.is_volatile else 'no'}"
             )
             print()
 

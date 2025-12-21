@@ -133,7 +133,9 @@ def build_llvm_c_test_cmd(
         coverage_run = os.environ.get("COVERAGE_RUN")
 
         # On Windows, quote the Python executable path to handle backslashes in bash
-        python_exe = f'"{sys.executable}"' if sys.platform == "win32" else sys.executable
+        python_exe = (
+            f'"{sys.executable}"' if sys.platform == "win32" else sys.executable
+        )
 
         if coverage_run:
             # Use coverage run with --parallel-mode so each invocation creates
@@ -151,12 +153,12 @@ def build_llvm_c_test_cmd(
         llvm_c_test_exe = project_root / "build" / "llvm-c-test"
         if sys.platform == "win32":
             llvm_c_test_exe = llvm_c_test_exe.with_suffix(".exe")
-        
+
         # On Windows, quote the path to handle backslashes in bash
         exe_path = str(llvm_c_test_exe)
         if sys.platform == "win32":
             exe_path = f'"{exe_path}"'
-        
+
         return exe_path, extra_env
 
 

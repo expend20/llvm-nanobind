@@ -44,8 +44,8 @@ def test_get_unwind_dest_returns_none_when_not_present():
                 # Create cleanupret WITHOUT unwind destination
                 cleanup_ret = builder.cleanup_ret(cleanup_pad, None)
 
-                # Verify that get_unwind_dest returns None
-                unwind_dest = cleanup_ret.get_unwind_dest()
+                # Verify that unwind_dest returns None
+                unwind_dest = cleanup_ret.unwind_dest
                 assert unwind_dest is None, f"Expected None, got {unwind_dest}"
 
 
@@ -90,8 +90,8 @@ def test_get_unwind_dest_returns_block_when_present():
                 landing.set_cleanup(True)
                 builder.ret_void()
 
-                # Verify get_unwind_dest returns the unwind block
-                result = invoke.get_unwind_dest()
+                # Verify unwind_dest returns the unwind block
+                result = invoke.unwind_dest
                 assert result is not None, "Expected unwind block"
                 assert result.name == "unwind", (
                     f"Expected 'unwind', got '{result.name}'"

@@ -149,15 +149,13 @@ def main():
             print(";")
             print("; Branch analysis:")
             print(
-                f";   unconditional br is conditional: {'yes' if br_inst.is_conditional() else 'no'}"
+                f";   unconditional br is conditional: {'yes' if br_inst.is_conditional else 'no'}"
             )
             print(
-                f";   conditional br is conditional: {'yes' if cond_br.is_conditional() else 'no'}"
+                f";   conditional br is conditional: {'yes' if cond_br.is_conditional else 'no'}"
             )
-            print(
-                f";   unconditional br num successors: {br_inst.get_num_successors()}"
-            )
-            print(f";   conditional br num successors: {cond_br.get_num_successors()}")
+            print(f";   unconditional br num successors: {br_inst.num_successors}")
+            print(f";   conditional br num successors: {cond_br.num_successors}")
             print(";")
             print(f"; Current insert block: {current_block.name}")
             print()

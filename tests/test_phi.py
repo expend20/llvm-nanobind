@@ -112,18 +112,18 @@ def main():
             print("; Test: test_phi")
             print(";")
             print("; Diamond pattern PHI:")
-            print(f";   phi incoming count: {phi.count_incoming()}")
+            print(f";   phi incoming count: {phi.num_incoming}")
 
             # Get incoming values and blocks
-            for i in range(phi.count_incoming()):
+            for i in range(phi.num_incoming):
                 val = phi.get_incoming_value(i)
                 blk = phi.get_incoming_block(i)
                 print(f";   incoming[{i}]: value={val.name}, block={blk.name}")
 
             print(";")
             print("; Loop PHIs:")
-            print(f";   i_phi incoming count: {i_phi.count_incoming()}")
-            print(f";   sum_phi incoming count: {sum_phi.count_incoming()}")
+            print(f";   i_phi incoming count: {i_phi.num_incoming}")
+            print(f";   sum_phi incoming count: {sum_phi.num_incoming}")
 
             print()
 

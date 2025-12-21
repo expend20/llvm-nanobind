@@ -149,7 +149,7 @@ def main():
             origin_vals = [i32.constant(0), i32.constant(0)]
             origin_const = llvm.const_named_struct(point_ty, origin_vals)
             origin_global = mod.add_global(point_ty, "origin")
-            origin_global.set_initializer(origin_const)
+            origin_global.initializer = origin_const
             origin_global.set_constant(True)
 
             # Verify module

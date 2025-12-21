@@ -117,59 +117,59 @@ def main():
             # Add globals to expose constants in output
             # ==========================================
             g = mod.add_global(i32, "const_42")
-            g.set_initializer(const_42)
+            g.initializer = const_42
             g.set_constant(True)
 
             g = mod.add_global(i32, "const_neg1")
-            g.set_initializer(const_neg1)
+            g.initializer = const_neg1
             g.set_constant(True)
 
             g = mod.add_global(i64, "const_i64")
-            g.set_initializer(const_i64)
+            g.initializer = const_i64
             g.set_constant(True)
 
             g = mod.add_global(i128, "const_i128")
-            g.set_initializer(const_i128)
+            g.initializer = const_i128
             g.set_constant(True)
 
             g = mod.add_global(f64, "const_pi")
-            g.set_initializer(const_pi)
+            g.initializer = const_pi
             g.set_constant(True)
 
             g = mod.add_global(i32, "all_ones")
-            g.set_initializer(all_ones)
+            g.initializer = all_ones
             g.set_constant(True)
 
             g = mod.add_global(i32, "undef_val")
-            g.set_initializer(undef_i32)
+            g.initializer = undef_i32
 
             g = mod.add_global(i32, "poison_val")
-            g.set_initializer(poison_i32)
+            g.initializer = poison_i32
 
             # Get array type for const_string
             str_arr_ty = i8.array(len(str_val) + 1)
             g = mod.add_global(str_arr_ty, "hello_string")
-            g.set_initializer(const_string)
+            g.initializer = const_string
             g.set_constant(True)
 
             arr_ty = i32.array(5)
             g = mod.add_global(arr_ty, "const_array")
-            g.set_initializer(const_array)
+            g.initializer = const_array
             g.set_constant(True)
 
             # Struct type for global
             anon_struct_ty = ctx.types.struct([i32, f64, i64], packed=False)
             g = mod.add_global(anon_struct_ty, "const_struct")
-            g.set_initializer(const_struct)
+            g.initializer = const_struct
             g.set_constant(True)
 
             g = mod.add_global(named_struct_ty, "const_point")
-            g.set_initializer(const_named_struct)
+            g.initializer = const_named_struct
             g.set_constant(True)
 
             vec_ty = i32.vector(4)
             g = mod.add_global(vec_ty, "const_vector")
-            g.set_initializer(const_vector)
+            g.initializer = const_vector
             g.set_constant(True)
 
             # Verify module

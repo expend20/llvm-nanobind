@@ -48,7 +48,7 @@ def test_syncscope_clone():
             assert src_inst is not None, (
                 "Basic block must have at least one instruction"
             )
-            sync_scope_id = src_inst.get_atomic_sync_scope_id()
+            sync_scope_id = src_inst.atomic_sync_scope_id
 
             print(f"Source sync_scope_id={sync_scope_id}", file=sys.stderr)
 
@@ -105,7 +105,7 @@ def test_syncscope_clone():
                         sync_scope_id,
                     )
                     atomic.set_volatile(True)
-                    atomic.set_alignment(8)
+                    atomic.alignment = 8
 
                     print("Atomic created", file=sys.stderr)
 
