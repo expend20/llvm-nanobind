@@ -21,9 +21,9 @@
 #include <llvm-c/IRReader.h>
 #include <llvm-c/Linker.h>
 #include <llvm-c/Object.h>
-#include <llvm-c/Transforms/PassBuilder.h>
 #include <llvm-c/Target.h>
 #include <llvm-c/TargetMachine.h>
+#include <llvm-c/Transforms/PassBuilder.h>
 
 namespace nb = nanobind;
 namespace fs = std::filesystem;
@@ -256,6 +256,49 @@ struct LLVMAttributeWrapper {
     check_valid();
     return LLVMGetEnumAttributeValue(m_ref);
   }
+
+  /// Check if this is an enum attribute.
+  /// Wraps LLVMIsEnumAttribute.
+  bool is_enum_attribute() const {
+    check_valid();
+    return LLVMIsEnumAttribute(m_ref);
+  }
+
+  /// Check if this is a string attribute.
+  /// Wraps LLVMIsStringAttribute.
+  bool is_string_attribute() const {
+    check_valid();
+    return LLVMIsStringAttribute(m_ref);
+  }
+
+  /// Check if this is a type attribute.
+  /// Wraps LLVMIsTypeAttribute.
+  bool is_type_attribute() const {
+    check_valid();
+    return LLVMIsTypeAttribute(m_ref);
+  }
+
+  /// Get the string attribute kind (key).
+  /// Wraps LLVMGetStringAttributeKind.
+  std::string get_string_kind() const {
+    check_valid();
+    if (!LLVMIsStringAttribute(m_ref))
+      throw LLVMError("Attribute is not a string attribute");
+    unsigned len;
+    const char *kind = LLVMGetStringAttributeKind(m_ref, &len);
+    return std::string(kind, len);
+  }
+
+  /// Get the string attribute value.
+  /// Wraps LLVMGetStringAttributeValue.
+  std::string get_string_value() const {
+    check_valid();
+    if (!LLVMIsStringAttribute(m_ref))
+      throw LLVMError("Attribute is not a string attribute");
+    unsigned len;
+    const char *val = LLVMGetStringAttributeValue(m_ref, &len);
+    return std::string(val, len);
+  }
 };
 
 // =============================================================================
@@ -417,6 +460,15 @@ struct LLVMTypeWrapper {
     return LLVMIsOpaqueStruct(m_ref);
   }
 
+  /// Check if this is a literal (unnamed) struct type.
+  /// Wraps LLVMIsLiteralStruct.
+  bool is_literal_struct() const {
+    check_valid();
+    if (!is_struct())
+      throw LLVMAssertionError("Type is not a struct type");
+    return LLVMIsLiteralStruct(m_ref);
+  }
+
   std::optional<std::string> get_struct_name() const {
     check_valid();
     if (!is_struct())
@@ -563,8 +615,15 @@ struct LLVMTypeWrapper {
   // Integer constant: ty.constant(42)
   LLVMValueWrapper constant(long long val, bool sign_extend = false) const;
 
+  // Integer constant from string: ty.constant_from_string("123456789", 10)
+  LLVMValueWrapper constant_from_string(const std::string &text,
+                                        unsigned radix = 10) const;
+
   // Float constant: ty.real_constant(3.14)
   LLVMValueWrapper real_constant(double val) const;
+
+  // Float constant from string: ty.real_constant_from_string("3.14159")
+  LLVMValueWrapper real_constant_from_string(const std::string &text) const;
 
   // Null value (works for all types): ty.null()
   LLVMValueWrapper null() const;
@@ -1259,6 +1318,16 @@ struct LLVMValueWrapper {
     if (!op)
       throw LLVMAssertionError("Invalid operand index");
     return LLVMValueWrapper(op, m_context_token);
+  }
+
+  /// Set the operand at the given index.
+  /// Wraps LLVMSetOperand.
+  void set_operand(unsigned index, const LLVMValueWrapper &val) {
+    check_valid();
+    val.check_valid();
+    if (index >= static_cast<unsigned>(LLVMGetNumOperands(m_ref)))
+      throw LLVMAssertionError("Invalid operand index");
+    LLVMSetOperand(m_ref, index, val.m_ref);
   }
 
   // Constant type checking for echo command
@@ -2331,9 +2400,7 @@ struct LLVMFunctionWrapper : LLVMValueWrapper {
   }
 
   /// Check if this function is an intrinsic.
-  bool is_intrinsic() const {
-    return intrinsic_id() != 0;
-  }
+  bool is_intrinsic() const { return intrinsic_id() != 0; }
 
   // =========================================================================
   // Personality function (for exception handling)
@@ -2372,7 +2439,8 @@ struct LLVMFunctionWrapper : LLVMValueWrapper {
   std::optional<std::string> get_gc() const {
     check_valid();
     const char *gc = LLVMGetGC(m_ref);
-    if (!gc) return std::nullopt;
+    if (!gc)
+      return std::nullopt;
     return std::string(gc);
   }
 
@@ -2403,6 +2471,30 @@ inline LLVMValueWrapper LLVMTypeWrapper::real_constant(double val) const {
   if (!is_float())
     throw LLVMAssertionError("real_constant() requires floating-point type");
   return LLVMValueWrapper(LLVMConstReal(m_ref, val), m_context_token);
+}
+
+inline LLVMValueWrapper
+LLVMTypeWrapper::constant_from_string(const std::string &text,
+                                      unsigned radix) const {
+  check_valid();
+  if (!is_integer())
+    throw LLVMAssertionError("constant_from_string() requires integer type");
+  if (radix < 2 || radix > 36)
+    throw LLVMAssertionError("radix must be between 2 and 36");
+  return LLVMValueWrapper(
+      LLVMConstIntOfStringAndSize(m_ref, text.c_str(), text.size(), radix),
+      m_context_token);
+}
+
+inline LLVMValueWrapper
+LLVMTypeWrapper::real_constant_from_string(const std::string &text) const {
+  check_valid();
+  if (!is_float())
+    throw LLVMAssertionError(
+        "real_constant_from_string() requires floating-point type");
+  return LLVMValueWrapper(
+      LLVMConstRealOfStringAndSize(m_ref, text.c_str(), text.size()),
+      m_context_token);
 }
 
 inline LLVMValueWrapper LLVMTypeWrapper::null() const {
@@ -3253,6 +3345,19 @@ struct LLVMBuilderWrapper : NoMoveCopy {
         m_context_token);
   }
 
+  /// Cast a pointer to a different address space.
+  /// Wraps LLVMBuildAddrSpaceCast.
+  LLVMValueWrapper addr_space_cast(const LLVMValueWrapper &val,
+                                   const LLVMTypeWrapper &ty,
+                                   const std::string &name = "") {
+    check_valid();
+    val.check_valid();
+    ty.check_valid();
+    return LLVMValueWrapper(
+        LLVMBuildAddrSpaceCast(m_ref, val.m_ref, ty.m_ref, name.c_str()),
+        m_context_token);
+  }
+
   // Control flow
   LLVMValueWrapper ret(const LLVMValueWrapper &val) {
     check_valid();
@@ -3648,6 +3753,17 @@ struct LLVMBuilderWrapper : NoMoveCopy {
         m_context_token);
   }
 
+  /// Build a memory fence instruction.
+  /// Wraps LLVMBuildFence.
+  LLVMValueWrapper fence(LLVMAtomicOrdering ordering,
+                         bool single_thread = false,
+                         const std::string &name = "") {
+    check_valid();
+    return LLVMValueWrapper(
+        LLVMBuildFence(m_ref, ordering, single_thread, name.c_str()),
+        m_context_token);
+  }
+
   // Fence with sync scope
   LLVMValueWrapper fence_sync_scope(LLVMAtomicOrdering ordering,
                                     unsigned sync_scope_id,
@@ -3957,7 +4073,7 @@ struct LLVMModuleWrapper : NoMoveCopy {
   }
 
   // ==========================================================================
-  // Linker - Module linking functionality  
+  // Linker - Module linking functionality
   // ==========================================================================
 
   /// Link another module into this module.
@@ -3976,8 +4092,6 @@ struct LLVMModuleWrapper : NoMoveCopy {
     }
   }
 
-
-
   // ==========================================================================
   // Module printing to file
   // ==========================================================================
@@ -3989,10 +4103,12 @@ struct LLVMModuleWrapper : NoMoveCopy {
     char *error = nullptr;
     if (LLVMPrintModuleToFile(m_ref, filename.c_str(), &error)) {
       std::string msg = error ? error : "Unknown error";
-      if (error) LLVMDisposeMessage(error);
+      if (error)
+        LLVMDisposeMessage(error);
       throw LLVMError("Failed to print module to file: " + msg);
     }
-    if (error) LLVMDisposeMessage(error);
+    if (error)
+      LLVMDisposeMessage(error);
   }
 
   // Global alias support for echo command
@@ -4148,6 +4264,19 @@ struct LLVMModuleWrapper : NoMoveCopy {
   // Declared here, implemented after LLVMMetadataWrapper
   void add_named_metadata_operand(const std::string &name,
                                   const LLVMMetadataWrapper &md);
+
+  // =========================================================================
+  // Module Flags API
+  // =========================================================================
+
+  /// Add a module-level flag.
+  /// Wraps LLVMAddModuleFlag.
+  void add_module_flag(LLVMModuleFlagBehavior behavior, const std::string &key,
+                       const LLVMMetadataWrapper &val);
+
+  /// Get a module-level flag by key.
+  /// Wraps LLVMGetModuleFlag.
+  std::optional<LLVMMetadataWrapper> get_module_flag(const std::string &key);
 
   // =========================================================================
   // Module API Refactor: Methods moved from global functions
@@ -4522,6 +4651,16 @@ struct LLVMContextWrapper : NoMoveCopy {
   LLVMAttributeWrapper create_enum_attribute(unsigned kind_id, uint64_t val) {
     check_valid();
     LLVMAttributeRef ref = LLVMCreateEnumAttribute(m_ref, kind_id, val);
+    return LLVMAttributeWrapper(ref, m_token);
+  }
+
+  /// Create a string attribute.
+  /// Wraps LLVMCreateStringAttribute.
+  LLVMAttributeWrapper create_string_attribute(const std::string &key,
+                                               const std::string &value) {
+    check_valid();
+    LLVMAttributeRef ref = LLVMCreateStringAttribute(
+        m_ref, key.c_str(), key.size(), value.c_str(), value.size());
     return LLVMAttributeWrapper(ref, m_token);
   }
 
@@ -5316,15 +5455,18 @@ std::optional<LLVMTargetWrapper> get_first_target() {
 }
 
 // Get target from triple
-std::optional<LLVMTargetWrapper> get_target_from_triple(const std::string &triple) {
+std::optional<LLVMTargetWrapper>
+get_target_from_triple(const std::string &triple) {
   LLVMTargetRef ref = nullptr;
   char *error = nullptr;
   if (LLVMGetTargetFromTriple(triple.c_str(), &ref, &error)) {
     std::string msg = error ? error : "Unknown error";
-    if (error) LLVMDisposeMessage(error);
+    if (error)
+      LLVMDisposeMessage(error);
     throw LLVMError("Failed to get target from triple: " + msg);
   }
-  if (error) LLVMDisposeMessage(error);
+  if (error)
+    LLVMDisposeMessage(error);
   if (ref)
     return LLVMTargetWrapper(ref);
   return std::nullopt;
@@ -5368,9 +5510,7 @@ std::string get_host_cpu_features() {
 }
 
 // Native target initialization
-bool initialize_native_target() {
-  return LLVMInitializeNativeTarget() == 0;
-}
+bool initialize_native_target() { return LLVMInitializeNativeTarget() == 0; }
 
 bool initialize_native_asm_printer() {
   return LLVMInitializeNativeAsmPrinter() == 0;
@@ -5393,7 +5533,7 @@ struct LLVMTargetDataWrapper : NoMoveCopy {
   bool m_owned = true;
 
   LLVMTargetDataWrapper() = default;
-  explicit LLVMTargetDataWrapper(LLVMTargetDataRef ref, bool owned = true) 
+  explicit LLVMTargetDataWrapper(LLVMTargetDataRef ref, bool owned = true)
       : m_ref(ref), m_owned(owned) {}
 
   ~LLVMTargetDataWrapper() {
@@ -5468,7 +5608,7 @@ struct LLVMTargetDataWrapper : NoMoveCopy {
     return LLVMPreferredAlignmentOfGlobal(m_ref, gv.m_ref);
   }
 
-  unsigned element_at_offset(const LLVMTypeWrapper &struct_ty, 
+  unsigned element_at_offset(const LLVMTypeWrapper &struct_ty,
                              unsigned long long offset) const {
     check_valid();
     struct_ty.check_valid();
@@ -5486,7 +5626,8 @@ struct LLVMTargetDataWrapper : NoMoveCopy {
                                 unsigned address_space = 0) const {
     check_valid();
     ctx.check_valid();
-    LLVMTypeRef ty = LLVMIntPtrTypeForASInContext(ctx.m_ref, m_ref, address_space);
+    LLVMTypeRef ty =
+        LLVMIntPtrTypeForASInContext(ctx.m_ref, m_ref, address_space);
     return new LLVMTypeWrapper(ty, ctx.m_token);
   }
 };
@@ -5585,10 +5726,12 @@ struct LLVMTargetMachineWrapper : NoMoveCopy {
     if (LLVMTargetMachineEmitToFile(m_ref, mod.m_ref, filename.c_str(),
                                     file_type, &error)) {
       std::string msg = error ? error : "Unknown error";
-      if (error) LLVMDisposeMessage(error);
+      if (error)
+        LLVMDisposeMessage(error);
       throw LLVMError("Failed to emit to file: " + msg);
     }
-    if (error) LLVMDisposeMessage(error);
+    if (error)
+      LLVMDisposeMessage(error);
   }
 
   // Emit to memory buffer - returns bytes
@@ -5601,11 +5744,13 @@ struct LLVMTargetMachineWrapper : NoMoveCopy {
     if (LLVMTargetMachineEmitToMemoryBuffer(m_ref, mod.m_ref, file_type, &error,
                                             &buf)) {
       std::string msg = error ? error : "Unknown error";
-      if (error) LLVMDisposeMessage(error);
+      if (error)
+        LLVMDisposeMessage(error);
       throw LLVMError("Failed to emit to memory buffer: " + msg);
     }
-    if (error) LLVMDisposeMessage(error);
-    
+    if (error)
+      LLVMDisposeMessage(error);
+
     const char *data = LLVMGetBufferStart(buf);
     size_t size = LLVMGetBufferSize(buf);
     nb::bytes result(data, size);
@@ -5615,15 +5760,17 @@ struct LLVMTargetMachineWrapper : NoMoveCopy {
 };
 
 // Create target machine from target
-LLVMTargetMachineWrapper *create_target_machine(
-    const LLVMTargetWrapper &target, const std::string &triple,
-    const std::string &cpu, const std::string &features,
-    LLVMCodeGenOptLevel opt_level, LLVMRelocMode reloc_mode,
-    LLVMCodeModel code_model) {
+LLVMTargetMachineWrapper *create_target_machine(const LLVMTargetWrapper &target,
+                                                const std::string &triple,
+                                                const std::string &cpu,
+                                                const std::string &features,
+                                                LLVMCodeGenOptLevel opt_level,
+                                                LLVMRelocMode reloc_mode,
+                                                LLVMCodeModel code_model) {
   target.check_valid();
   LLVMTargetMachineRef ref = LLVMCreateTargetMachine(
-      target.m_ref, triple.c_str(), cpu.c_str(), features.c_str(),
-      opt_level, reloc_mode, code_model);
+      target.m_ref, triple.c_str(), cpu.c_str(), features.c_str(), opt_level,
+      reloc_mode, code_model);
   if (!ref) {
     throw LLVMError("Failed to create target machine");
   }
@@ -5637,9 +5784,7 @@ LLVMTargetMachineWrapper *create_target_machine(
 struct LLVMPassBuilderOptionsWrapper : NoMoveCopy {
   LLVMPassBuilderOptionsRef m_ref = nullptr;
 
-  LLVMPassBuilderOptionsWrapper() {
-    m_ref = LLVMCreatePassBuilderOptions();
-  }
+  LLVMPassBuilderOptionsWrapper() { m_ref = LLVMCreatePassBuilderOptions(); }
 
   ~LLVMPassBuilderOptionsWrapper() {
     if (m_ref) {
@@ -5729,7 +5874,7 @@ void run_passes(LLVMModuleWrapper &mod, const std::string &passes,
     opts->check_valid();
     opts_ref = opts->m_ref;
   }
-  
+
   LLVMErrorRef err = LLVMRunPasses(mod.m_ref, passes.c_str(), tm_ref, opts_ref);
   if (err) {
     char *msg = LLVMGetErrorMessage(err);
@@ -5814,6 +5959,14 @@ struct LLVMDisasmContextWrapper : NoMoveCopy {
         bytes.size() - offset, pc, outline, sizeof(outline));
 
     return {consumed, std::string(outline)};
+  }
+
+  /// Set disassembler options.
+  /// Returns true on success (1 on success, 0 on failure in C API).
+  /// Wraps LLVMSetDisasmOptions.
+  bool set_options(uint64_t options) {
+    check_valid();
+    return LLVMSetDisasmOptions(m_ref, options) != 0;
   }
 };
 
@@ -6642,6 +6795,27 @@ LLVMModuleWrapper::add_named_metadata_operand(const std::string &name,
   // Need to convert metadata to value first for LLVMAddNamedMetadataOperand
   LLVMValueRef val = LLVMMetadataAsValue(m_ctx_ref, md.m_ref);
   LLVMAddNamedMetadataOperand(m_ref, name.c_str(), val);
+}
+
+// Implementation of LLVMModuleWrapper::add_module_flag() - needs
+// LLVMMetadataWrapper
+inline void LLVMModuleWrapper::add_module_flag(LLVMModuleFlagBehavior behavior,
+                                               const std::string &key,
+                                               const LLVMMetadataWrapper &val) {
+  check_valid();
+  val.check_valid();
+  LLVMAddModuleFlag(m_ref, behavior, key.c_str(), key.size(), val.m_ref);
+}
+
+// Implementation of LLVMModuleWrapper::get_module_flag() - needs
+// LLVMMetadataWrapper
+inline std::optional<LLVMMetadataWrapper>
+LLVMModuleWrapper::get_module_flag(const std::string &key) {
+  check_valid();
+  LLVMMetadataRef md = LLVMGetModuleFlag(m_ref, key.c_str(), key.size());
+  if (!md)
+    return std::nullopt;
+  return LLVMMetadataWrapper(md, m_context_token);
 }
 
 // Implementation of LLVMFunctionWrapper::set_subprogram() - needs
@@ -7599,6 +7773,26 @@ NB_MODULE(llvm, m) {
       .value("Common", LLVMCommonLinkage)
       .export_values();
 
+  nb::enum_<LLVMModuleFlagBehavior>(
+      m, "ModuleFlagBehavior",
+      R"(Module flag merge behavior for LLVMAddModuleFlag.)")
+      .value("Error", LLVMModuleFlagBehaviorError,
+             "Emit an error if two values disagree, otherwise use the operand.")
+      .value("Warning", LLVMModuleFlagBehaviorWarning,
+             "Emit a warning if two values disagree.")
+      .value("Require", LLVMModuleFlagBehaviorRequire,
+             "Adds a requirement that another module flag be present and have "
+             "a specified value.")
+      .value("Override", LLVMModuleFlagBehaviorOverride,
+             "Uses the specified value, regardless of the behavior or value of "
+             "the other module.")
+      .value("Append", LLVMModuleFlagBehaviorAppend,
+             "Appends the two values, which are required to be metadata nodes.")
+      .value(
+          "AppendUnique", LLVMModuleFlagBehaviorAppendUnique,
+          "Appends the two values, dropping duplicates from the second list.")
+      .export_values();
+
   nb::enum_<LLVMVisibility>(m, "Visibility")
       .value("Default", LLVMDefaultVisibility)
       .value("Hidden", LLVMHiddenVisibility)
@@ -7849,6 +8043,8 @@ NB_MODULE(llvm, m) {
       .def_prop_ro("is_sized", &LLVMTypeWrapper::is_sized)
       .def_prop_ro("is_packed_struct", &LLVMTypeWrapper::is_packed_struct)
       .def_prop_ro("is_opaque_struct", &LLVMTypeWrapper::is_opaque_struct)
+      .def_prop_ro("is_literal_struct", &LLVMTypeWrapper::is_literal_struct,
+                   "Check if this is a literal (unnamed) struct type.")
       .def_prop_ro("struct_name", &LLVMTypeWrapper::get_struct_name)
       .def_prop_ro("is_vararg", &LLVMTypeWrapper::is_vararg_function)
       .def("get_struct_element_type", &LLVMTypeWrapper::get_struct_element_type,
@@ -7878,8 +8074,29 @@ NB_MODULE(llvm, m) {
       .def("constant", &LLVMTypeWrapper::constant, "val"_a,
            "sign_extend"_a = false,
            R"(Create an integer constant of this type.)")
+      .def("constant_from_string", &LLVMTypeWrapper::constant_from_string,
+           "text"_a, "radix"_a = 10,
+           R"(Create an integer constant from a string.
+
+Useful for large integers that don't fit in Python int.
+
+Args:
+    text: The number as a string (e.g., "12345678901234567890")
+    radix: The radix (base), 2-36. Default is 10.
+
+Wraps LLVMConstIntOfStringAndSize.)")
       .def("real_constant", &LLVMTypeWrapper::real_constant, "val"_a,
            R"(Create a floating-point constant of this type.)")
+      .def("real_constant_from_string",
+           &LLVMTypeWrapper::real_constant_from_string, "text"_a,
+           R"(Create a floating-point constant from a string.
+
+Useful for precise floating-point values.
+
+Args:
+    text: The number as a string (e.g., "3.14159265358979323846")
+
+Wraps LLVMConstRealOfStringAndSize.)")
       .def("null", &LLVMTypeWrapper::null,
            R"(Create a null value of this type.)")
       .def("all_ones", &LLVMTypeWrapper::all_ones,
@@ -7980,6 +8197,10 @@ NB_MODULE(llvm, m) {
       // Operand access
       .def_prop_ro("num_operands", &LLVMValueWrapper::get_num_operands)
       .def("get_operand", &LLVMValueWrapper::get_operand, "index"_a)
+      .def("set_operand", &LLVMValueWrapper::set_operand, "index"_a, "val"_a,
+           R"(Set the operand at the given index.
+
+Wraps LLVMSetOperand.)")
       // Constant type checking
       .def_prop_ro("is_global_value", &LLVMValueWrapper::is_a_global_value)
       .def_prop_ro("is_function", &LLVMValueWrapper::is_a_function)
@@ -8360,17 +8581,18 @@ Example:
       // Intrinsic functions
       // =====================================================================
       .def_prop_ro("intrinsic_id", &LLVMFunctionWrapper::intrinsic_id,
-           R"(Get the intrinsic ID for this function.
+                   R"(Get the intrinsic ID for this function.
            
            Returns 0 if the function is not an intrinsic.
            Wraps LLVMGetIntrinsicID.)")
       .def_prop_ro("is_intrinsic", &LLVMFunctionWrapper::is_intrinsic,
-           R"(Check if this function is an intrinsic.)")
+                   R"(Check if this function is an intrinsic.)")
       // =====================================================================
       // Personality function (for exception handling)
       // =====================================================================
-      .def_prop_ro("has_personality_fn", &LLVMFunctionWrapper::has_personality_fn,
-           R"(Check if this function has a personality function.
+      .def_prop_ro("has_personality_fn",
+                   &LLVMFunctionWrapper::has_personality_fn,
+                   R"(Check if this function has a personality function.
            
            Wraps LLVMHasPersonalityFn.)")
       .def("get_personality_fn", &LLVMFunctionWrapper::get_personality_fn,
@@ -8378,7 +8600,8 @@ Example:
            
            Returns None if no personality function is set.
            Wraps LLVMGetPersonalityFn.)")
-      .def("set_personality_fn", &LLVMFunctionWrapper::set_personality_fn, "fn"_a,
+      .def("set_personality_fn", &LLVMFunctionWrapper::set_personality_fn,
+           "fn"_a,
            R"(Set the personality function.
            
            Wraps LLVMSetPersonalityFn.)")
@@ -8486,6 +8709,11 @@ Example:
            "name"_a = "")
       .def("int_cast2", &LLVMBuilderWrapper::int_cast2, "val"_a, "ty"_a,
            "is_signed"_a, "name"_a = "")
+      .def("addr_space_cast", &LLVMBuilderWrapper::addr_space_cast, "val"_a,
+           "ty"_a, "name"_a = "",
+           R"(Cast a pointer to a different address space.
+
+Wraps LLVMBuildAddrSpaceCast.)")
       // Control flow
       .def("ret", &LLVMBuilderWrapper::ret, "val"_a)
       .def("ret_void", &LLVMBuilderWrapper::ret_void)
@@ -8527,6 +8755,16 @@ Example:
            &LLVMBuilderWrapper::atomic_cmpxchg_sync_scope, "ptr"_a, "cmp"_a,
            "new_val"_a, "success_ordering"_a, "failure_ordering"_a,
            "sync_scope_id"_a)
+      .def("fence", &LLVMBuilderWrapper::fence, "ordering"_a,
+           "single_thread"_a = false, "name"_a = "",
+           R"(Build a memory fence instruction.
+
+Args:
+    ordering: The memory ordering constraint (AtomicOrdering enum)
+    single_thread: If true, only synchronizes with this thread (default false)
+    name: Optional name for the instruction
+
+Wraps LLVMBuildFence.)")
       .def("fence_sync_scope", &LLVMBuilderWrapper::fence_sync_scope,
            "ordering"_a, "sync_scope_id"_a, "name"_a = "")
       .def("insert_into_builder_with_name",
@@ -8602,7 +8840,22 @@ Example:
       .def_prop_ro("kind", &LLVMAttributeWrapper::get_kind,
                    "Get the kind ID of this enum attribute.")
       .def_prop_ro("value", &LLVMAttributeWrapper::get_value,
-                   "Get the value of this enum attribute (0 if none).");
+                   "Get the value of this enum attribute (0 if none).")
+      .def_prop_ro("is_enum_attribute",
+                   &LLVMAttributeWrapper::is_enum_attribute,
+                   "Check if this is an enum attribute.")
+      .def_prop_ro("is_string_attribute",
+                   &LLVMAttributeWrapper::is_string_attribute,
+                   "Check if this is a string attribute.")
+      .def_prop_ro("is_type_attribute",
+                   &LLVMAttributeWrapper::is_type_attribute,
+                   "Check if this is a type attribute.")
+      .def_prop_ro("string_kind", &LLVMAttributeWrapper::get_string_kind,
+                   "Get the key of this string attribute (raises if not a "
+                   "string attribute).")
+      .def_prop_ro("string_value", &LLVMAttributeWrapper::get_string_value,
+                   "Get the value of this string attribute (raises if not a "
+                   "string attribute).");
 
   // Value metadata entries wrapper (for global/instruction metadata copying)
   nb::class_<LLVMValueMetadataEntriesWrapper>(m, "ValueMetadataEntries")
@@ -8697,7 +8950,8 @@ Example:
                path: Output file path
                
            Wraps LLVMWriteBitcodeToFile.)")
-      .def("write_bitcode_to_memory_buffer", &LLVMModuleWrapper::write_bitcode_to_memory_buffer,
+      .def("write_bitcode_to_memory_buffer",
+           &LLVMModuleWrapper::write_bitcode_to_memory_buffer,
            R"(Write the module as bitcode to a bytes object.
            
            Returns:
@@ -8726,6 +8980,29 @@ Example:
       .def("add_named_metadata_operand",
            &LLVMModuleWrapper::add_named_metadata_operand, "name"_a, "md"_a,
            R"(Add operand to named metadata.)")
+      // =====================================================================
+      // Module Flags API
+      // =====================================================================
+      .def("add_module_flag", &LLVMModuleWrapper::add_module_flag, "behavior"_a,
+           "key"_a, "val"_a,
+           R"(Add a module-level flag.
+
+Args:
+    behavior: The merge behavior (ModuleFlagBehavior enum)
+    key: The flag name
+    val: The metadata value
+
+Wraps LLVMAddModuleFlag.)")
+      .def("get_module_flag", &LLVMModuleWrapper::get_module_flag, "key"_a,
+           R"(Get a module-level flag by key.
+
+Args:
+    key: The flag name
+
+Returns:
+    The metadata value, or None if not found.
+
+Wraps LLVMGetModuleFlag.)")
       // =====================================================================
       // Module API Refactor: Methods moved from global functions
       // =====================================================================
@@ -8854,9 +9131,21 @@ Example:
       // Diagnostics
       .def("get_diagnostics", &LLVMContextWrapper::get_diagnostics)
       .def("clear_diagnostics", &LLVMContextWrapper::clear_diagnostics)
-      // Attribute creation method (moved from global function)
+      // Attribute creation methods (moved from global function)
       .def("create_enum_attribute", &LLVMContextWrapper::create_enum_attribute,
            "kind_id"_a, "val"_a, R"(Create an enum attribute.)")
+      .def("create_string_attribute",
+           &LLVMContextWrapper::create_string_attribute, "key"_a, "value"_a,
+           R"(Create a string attribute.
+
+Args:
+    key: The attribute key (e.g., "target-cpu")
+    value: The attribute value (e.g., "skylake")
+
+Returns:
+    A new string attribute.
+
+Wraps LLVMCreateStringAttribute.)")
       // Metadata creation methods (moved from global functions)
       .def("md_string", &LLVMContextWrapper::md_string, "str"_a,
            R"(Create metadata string in context.)")
@@ -9019,7 +9308,7 @@ Example:
         R"(Get the first registered target (returns None if no targets).
         
         Wraps LLVMGetFirstTarget.)");
-  
+
   // Native target initialization
   m.def("initialize_native_target", &initialize_native_target,
         R"(Initialize the native target.
@@ -9077,21 +9366,21 @@ Example:
   // ==========================================================================
 
   nb::enum_<LLVMCodeGenOptLevel>(m, "CodeGenOptLevel",
-        R"(Code generation optimization level.)")
+                                 R"(Code generation optimization level.)")
       .value("None_", LLVMCodeGenLevelNone, "No optimization")
       .value("Less", LLVMCodeGenLevelLess, "Less optimization (O1)")
       .value("Default", LLVMCodeGenLevelDefault, "Default optimization (O2)")
-      .value("Aggressive", LLVMCodeGenLevelAggressive, "Aggressive optimization (O3)");
+      .value("Aggressive", LLVMCodeGenLevelAggressive,
+             "Aggressive optimization (O3)");
 
   nb::enum_<LLVMRelocMode>(m, "RelocMode",
-        R"(Relocation model for code generation.)")
+                           R"(Relocation model for code generation.)")
       .value("Default", LLVMRelocDefault, "Default relocation model")
       .value("Static", LLVMRelocStatic, "Static relocation model")
       .value("PIC", LLVMRelocPIC, "Position-independent code")
       .value("DynamicNoPic", LLVMRelocDynamicNoPic, "Dynamic, no PIC");
 
-  nb::enum_<LLVMCodeModel>(m, "CodeModel",
-        R"(Code model for code generation.)")
+  nb::enum_<LLVMCodeModel>(m, "CodeModel", R"(Code model for code generation.)")
       .value("Default", LLVMCodeModelDefault, "Default code model")
       .value("JITDefault", LLVMCodeModelJITDefault, "JIT default code model")
       .value("Tiny", LLVMCodeModelTiny, "Tiny code model")
@@ -9101,18 +9390,18 @@ Example:
       .value("Large", LLVMCodeModelLarge, "Large code model");
 
   nb::enum_<LLVMCodeGenFileType>(m, "CodeGenFileType",
-        R"(Type of file to generate.)")
+                                 R"(Type of file to generate.)")
       .value("AssemblyFile", LLVMAssemblyFile, "Assembly file (.s)")
       .value("ObjectFile", LLVMObjectFile, "Object file (.o)");
 
-  nb::enum_<LLVMGlobalISelAbortMode>(m, "GlobalISelAbortMode",
-        R"(Global instruction selection abort mode.)")
+  nb::enum_<LLVMGlobalISelAbortMode>(
+      m, "GlobalISelAbortMode", R"(Global instruction selection abort mode.)")
       .value("Enable", LLVMGlobalISelAbortEnable)
       .value("Disable", LLVMGlobalISelAbortDisable)
       .value("DisableWithDiag", LLVMGlobalISelAbortDisableWithDiag);
 
   nb::enum_<LLVMByteOrdering>(m, "ByteOrdering",
-        R"(Byte ordering (endianness).)")
+                              R"(Byte ordering (endianness).)")
       .value("BigEndian", LLVMBigEndian)
       .value("LittleEndian", LLVMLittleEndian);
 
@@ -9121,36 +9410,42 @@ Example:
   // ==========================================================================
 
   nb::class_<LLVMTargetDataWrapper>(m, "TargetData",
-        R"(Target data layout information.
+                                    R"(Target data layout information.
         
         Provides information about type sizes and alignment for a specific target.)")
       .def("__str__", &LLVMTargetDataWrapper::to_string)
       .def_prop_ro("byte_order", &LLVMTargetDataWrapper::byte_order,
-           R"(Get the byte ordering (endianness).)")
-      .def("pointer_size", &LLVMTargetDataWrapper::pointer_size, 
+                   R"(Get the byte ordering (endianness).)")
+      .def("pointer_size", &LLVMTargetDataWrapper::pointer_size,
            "address_space"_a = 0,
            R"(Get pointer size in bytes for the given address space.)")
       .def("size_of_type_in_bits", &LLVMTargetDataWrapper::size_of_type_in_bits,
            "ty"_a, R"(Get size of type in bits.)")
       .def("store_size_of_type", &LLVMTargetDataWrapper::store_size_of_type,
            "ty"_a, R"(Get store size of type in bytes.)")
-      .def("abi_size_of_type", &LLVMTargetDataWrapper::abi_size_of_type,
-           "ty"_a, R"(Get ABI size of type in bytes.)")
-      .def("abi_alignment_of_type", &LLVMTargetDataWrapper::abi_alignment_of_type,
-           "ty"_a, R"(Get ABI alignment of type in bytes.)")
-      .def("call_frame_alignment_of_type", &LLVMTargetDataWrapper::call_frame_alignment_of_type,
-           "ty"_a, R"(Get call frame alignment of type in bytes.)")
-      .def("preferred_alignment_of_type", &LLVMTargetDataWrapper::preferred_alignment_of_type,
-           "ty"_a, R"(Get preferred alignment of type in bytes.)")
-      .def("preferred_alignment_of_global", &LLVMTargetDataWrapper::preferred_alignment_of_global,
-           "gv"_a, R"(Get preferred alignment of global variable in bytes.)")
+      .def("abi_size_of_type", &LLVMTargetDataWrapper::abi_size_of_type, "ty"_a,
+           R"(Get ABI size of type in bytes.)")
+      .def("abi_alignment_of_type",
+           &LLVMTargetDataWrapper::abi_alignment_of_type, "ty"_a,
+           R"(Get ABI alignment of type in bytes.)")
+      .def("call_frame_alignment_of_type",
+           &LLVMTargetDataWrapper::call_frame_alignment_of_type, "ty"_a,
+           R"(Get call frame alignment of type in bytes.)")
+      .def("preferred_alignment_of_type",
+           &LLVMTargetDataWrapper::preferred_alignment_of_type, "ty"_a,
+           R"(Get preferred alignment of type in bytes.)")
+      .def("preferred_alignment_of_global",
+           &LLVMTargetDataWrapper::preferred_alignment_of_global, "gv"_a,
+           R"(Get preferred alignment of global variable in bytes.)")
       .def("element_at_offset", &LLVMTargetDataWrapper::element_at_offset,
-           "struct_ty"_a, "offset"_a, R"(Get element index at byte offset in struct.)")
+           "struct_ty"_a, "offset"_a,
+           R"(Get element index at byte offset in struct.)")
       .def("offset_of_element", &LLVMTargetDataWrapper::offset_of_element,
            "struct_ty"_a, "elem"_a, R"(Get byte offset of element in struct.)")
-      .def("int_ptr_type", &LLVMTargetDataWrapper::int_ptr_type,
-           "ctx"_a, "address_space"_a = 0, nb::rv_policy::take_ownership,
-           R"(Get the integer type that is the same size as a pointer on this target.
+      .def(
+          "int_ptr_type", &LLVMTargetDataWrapper::int_ptr_type, "ctx"_a,
+          "address_space"_a = 0, nb::rv_policy::take_ownership,
+          R"(Get the integer type that is the same size as a pointer on this target.
 
 Args:
     ctx: The LLVM context to create the type in.
@@ -9172,17 +9467,18 @@ Wraps LLVMIntPtrTypeForASInContext.)");
   // ==========================================================================
 
   nb::class_<LLVMTargetMachineWrapper>(m, "TargetMachine",
-        R"(Target machine for code generation.
+                                       R"(Target machine for code generation.
         
         Use create_target_machine() to create a TargetMachine.)")
       .def_prop_ro("target", &LLVMTargetMachineWrapper::get_target,
-           R"(Get the target for this machine.)")
+                   R"(Get the target for this machine.)")
       .def_prop_ro("triple", &LLVMTargetMachineWrapper::get_triple,
-           R"(Get the target triple.)")
+                   R"(Get the target triple.)")
       .def_prop_ro("cpu", &LLVMTargetMachineWrapper::get_cpu,
-           R"(Get the CPU name.)")
-      .def_prop_ro("feature_string", &LLVMTargetMachineWrapper::get_feature_string,
-           R"(Get the feature string.)")
+                   R"(Get the CPU name.)")
+      .def_prop_ro("feature_string",
+                   &LLVMTargetMachineWrapper::get_feature_string,
+                   R"(Get the feature string.)")
       .def("create_data_layout", &LLVMTargetMachineWrapper::create_data_layout,
            nb::rv_policy::take_ownership,
            R"(Create a TargetData from this target machine.)")
@@ -9192,12 +9488,14 @@ Wraps LLVMIntPtrTypeForASInContext.)");
            "enable"_a, R"(Enable/disable fast instruction selection.)")
       .def("set_global_isel", &LLVMTargetMachineWrapper::set_global_isel,
            "enable"_a, R"(Enable/disable global instruction selection.)")
-      .def("set_global_isel_abort", &LLVMTargetMachineWrapper::set_global_isel_abort,
-           "mode"_a, R"(Set global instruction selection abort mode.)")
-      .def("set_machine_outliner", &LLVMTargetMachineWrapper::set_machine_outliner,
-           "enable"_a, R"(Enable/disable machine outliner.)")
-      .def("emit_to_file", &LLVMTargetMachineWrapper::emit_to_file,
-           "mod"_a, "filename"_a, "file_type"_a,
+      .def("set_global_isel_abort",
+           &LLVMTargetMachineWrapper::set_global_isel_abort, "mode"_a,
+           R"(Set global instruction selection abort mode.)")
+      .def("set_machine_outliner",
+           &LLVMTargetMachineWrapper::set_machine_outliner, "enable"_a,
+           R"(Enable/disable machine outliner.)")
+      .def("emit_to_file", &LLVMTargetMachineWrapper::emit_to_file, "mod"_a,
+           "filename"_a, "file_type"_a,
            R"(Emit the module to a file.
            
            Args:
@@ -9206,8 +9504,9 @@ Wraps LLVMIntPtrTypeForASInContext.)");
                file_type: Type of file (AssemblyFile or ObjectFile)
                
            Wraps LLVMTargetMachineEmitToFile.)")
-      .def("emit_to_memory_buffer", &LLVMTargetMachineWrapper::emit_to_memory_buffer,
-           "mod"_a, "file_type"_a,
+      .def("emit_to_memory_buffer",
+           &LLVMTargetMachineWrapper::emit_to_memory_buffer, "mod"_a,
+           "file_type"_a,
            R"(Emit the module to a memory buffer.
            
            Args:
@@ -9219,12 +9518,11 @@ Wraps LLVMIntPtrTypeForASInContext.)");
                
            Wraps LLVMTargetMachineEmitToMemoryBuffer.)");
 
-  m.def("create_target_machine", &create_target_machine,
-        "target"_a, "triple"_a, "cpu"_a = "", "features"_a = "",
+  m.def("create_target_machine", &create_target_machine, "target"_a, "triple"_a,
+        "cpu"_a = "", "features"_a = "",
         "opt_level"_a = LLVMCodeGenLevelDefault,
         "reloc_mode"_a = LLVMRelocDefault,
-        "code_model"_a = LLVMCodeModelDefault,
-        nb::rv_policy::take_ownership,
+        "code_model"_a = LLVMCodeModelDefault, nb::rv_policy::take_ownership,
         R"(Create a target machine for code generation.
         
         Args:
@@ -9246,38 +9544,49 @@ Wraps LLVMIntPtrTypeForASInContext.)");
   // ==========================================================================
 
   nb::class_<LLVMPassBuilderOptionsWrapper>(m, "PassBuilderOptions",
-        R"(Options for the pass builder.
+                                            R"(Options for the pass builder.
         
         Used to configure optimization passes when calling run_passes().)")
       .def(nb::init<>())
       .def("set_verify_each", &LLVMPassBuilderOptionsWrapper::set_verify_each,
            "verify"_a, R"(Verify the module after each pass.)")
-      .def("set_debug_logging", &LLVMPassBuilderOptionsWrapper::set_debug_logging,
-           "enable"_a, R"(Enable debug logging for passes.)")
-      .def("set_loop_interleaving", &LLVMPassBuilderOptionsWrapper::set_loop_interleaving,
-           "enable"_a, R"(Enable loop interleaving.)")
-      .def("set_loop_vectorization", &LLVMPassBuilderOptionsWrapper::set_loop_vectorization,
-           "enable"_a, R"(Enable loop vectorization.)")
-      .def("set_slp_vectorization", &LLVMPassBuilderOptionsWrapper::set_slp_vectorization,
-           "enable"_a, R"(Enable SLP (Superword-Level Parallelism) vectorization.)")
-      .def("set_loop_unrolling", &LLVMPassBuilderOptionsWrapper::set_loop_unrolling,
-           "enable"_a, R"(Enable loop unrolling.)")
-      .def("set_forget_all_scev_in_loop_unroll", &LLVMPassBuilderOptionsWrapper::set_forget_all_scev_in_loop_unroll,
+      .def("set_debug_logging",
+           &LLVMPassBuilderOptionsWrapper::set_debug_logging, "enable"_a,
+           R"(Enable debug logging for passes.)")
+      .def("set_loop_interleaving",
+           &LLVMPassBuilderOptionsWrapper::set_loop_interleaving, "enable"_a,
+           R"(Enable loop interleaving.)")
+      .def("set_loop_vectorization",
+           &LLVMPassBuilderOptionsWrapper::set_loop_vectorization, "enable"_a,
+           R"(Enable loop vectorization.)")
+      .def("set_slp_vectorization",
+           &LLVMPassBuilderOptionsWrapper::set_slp_vectorization, "enable"_a,
+           R"(Enable SLP (Superword-Level Parallelism) vectorization.)")
+      .def("set_loop_unrolling",
+           &LLVMPassBuilderOptionsWrapper::set_loop_unrolling, "enable"_a,
+           R"(Enable loop unrolling.)")
+      .def("set_forget_all_scev_in_loop_unroll",
+           &LLVMPassBuilderOptionsWrapper::set_forget_all_scev_in_loop_unroll,
            "forget"_a, R"(Forget all SCEV information during loop unrolling.)")
-      .def("set_licm_mssa_opt_cap", &LLVMPassBuilderOptionsWrapper::set_licm_mssa_opt_cap,
-           "cap"_a, R"(Set LICM MSSA optimization cap.)")
-      .def("set_licm_mssa_no_acc_for_promotion_cap", &LLVMPassBuilderOptionsWrapper::set_licm_mssa_no_acc_for_promotion_cap,
+      .def("set_licm_mssa_opt_cap",
+           &LLVMPassBuilderOptionsWrapper::set_licm_mssa_opt_cap, "cap"_a,
+           R"(Set LICM MSSA optimization cap.)")
+      .def("set_licm_mssa_no_acc_for_promotion_cap",
+           &LLVMPassBuilderOptionsWrapper::
+               set_licm_mssa_no_acc_for_promotion_cap,
            "cap"_a, R"(Set LICM MSSA no-acc-for-promotion cap.)")
-      .def("set_call_graph_profile", &LLVMPassBuilderOptionsWrapper::set_call_graph_profile,
-           "enable"_a, R"(Enable call graph profile.)")
-      .def("set_merge_functions", &LLVMPassBuilderOptionsWrapper::set_merge_functions,
-           "enable"_a, R"(Enable function merging.)")
-      .def("set_inliner_threshold", &LLVMPassBuilderOptionsWrapper::set_inliner_threshold,
-           "threshold"_a, R"(Set the inliner threshold.)");
+      .def("set_call_graph_profile",
+           &LLVMPassBuilderOptionsWrapper::set_call_graph_profile, "enable"_a,
+           R"(Enable call graph profile.)")
+      .def("set_merge_functions",
+           &LLVMPassBuilderOptionsWrapper::set_merge_functions, "enable"_a,
+           R"(Enable function merging.)")
+      .def("set_inliner_threshold",
+           &LLVMPassBuilderOptionsWrapper::set_inliner_threshold, "threshold"_a,
+           R"(Set the inliner threshold.)");
 
-  m.def("run_passes", &run_passes,
-        "mod"_a, "passes"_a, "target_machine"_a.none() = nullptr,
-        "options"_a.none() = nullptr,
+  m.def("run_passes", &run_passes, "mod"_a, "passes"_a,
+        "target_machine"_a.none() = nullptr, "options"_a.none() = nullptr,
         R"doc(Run optimization passes on a module.
         
         Args:
@@ -9318,7 +9627,24 @@ Wraps LLVMIntPtrTypeForASInContext.)");
                
            Returns:
                Tuple of (bytes_consumed, disassembly_string)
-               If bytes_consumed is 0, disassembly failed.)");
+               If bytes_consumed is 0, disassembly failed.)")
+      .def("set_options", &LLVMDisasmContextWrapper::set_options, "options"_a,
+           R"(Set disassembler options.
+
+Args:
+    options: Bitmask of disassembler options (use DisasmOption_* constants)
+
+Returns:
+    True on success, False on failure.
+
+Wraps LLVMSetDisasmOptions.)");
+
+  // Disassembler option constants
+  m.attr("DisasmOption_UseMarkup") = nb::int_(1);
+  m.attr("DisasmOption_PrintImmHex") = nb::int_(2);
+  m.attr("DisasmOption_AsmPrinterVariant") = nb::int_(4);
+  m.attr("DisasmOption_SetInstrComments") = nb::int_(8);
+  m.attr("DisasmOption_PrintLatency") = nb::int_(16);
 
   m.def("create_disasm_cpu_features", &create_disasm_cpu_features, "triple"_a,
         "cpu"_a = "", "features"_a = "", nb::rv_policy::take_ownership,
@@ -9819,10 +10145,7 @@ Wraps LLVMIntPtrTypeForASInContext.)");
 
   m.def(
       "intrinsic_is_overloaded",
-      [](unsigned id) -> bool {
-        return LLVMIntrinsicIsOverloaded(id);
-      },
-      "id"_a,
+      [](unsigned id) -> bool { return LLVMIntrinsicIsOverloaded(id); }, "id"_a,
       R"(Check if an intrinsic is overloaded.
       
       Overloaded intrinsics require type parameters to get a declaration.

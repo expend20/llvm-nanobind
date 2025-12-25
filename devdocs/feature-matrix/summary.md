@@ -60,21 +60,21 @@ with llvm.create_context() as ctx:
 
 | Header | Total | ✅ Impl | 🚫 Skip | ❌ TODO | Coverage |
 |--------|-------|---------|---------|---------|----------|
-| **Core.h** | 640 | 413 | 44 | 183 | 64.5% |
+| **Core.h** | 640 | 445 | 44 | 151 | **70%** |
 | **DebugInfo.h** | 99 | ~50 | 0 | ~49 | ~50% |
 | **Target.h** | 22 | 22 | 0 | 0 | **100%** |
 | **TargetMachine.h** | 29 | 14 | 9 | 6 | **79%** |
 | **Object.h** | 31 | 23 | 0 | 8 | 74% |
-| **Analysis.h** | 4 | 2 | 0 | 2 | 50% |
-| **BitReader.h** | 8 | 3 | 4 | 1 | 37.5% |
+| **Analysis.h** | 4 | 2 | 2 | 0 | **100%** |
+| **BitReader.h** | 8 | 3 | 5 | 0 | 37.5% |
 | **BitWriter.h** | 4 | 2 | 2 | 0 | **100%** |
 | **IRReader.h** | 1 | 1 | 0 | 0 | 100% |
 | **PassBuilder.h** | 15 | 15 | 0 | 0 | **100%** |
-| **Disassembler.h** | 6 | 3 | 0 | 3 | 50% |
+| **Disassembler.h** | 6 | 4 | 0 | 2 | **67%** |
 | **Linker.h** | 1 | 1 | 0 | 0 | **100%** |
 | **Error.h** | 7 | 0 | 7 | 0 | 0%* |
 | **Other** | 12 | 0 | 0 | 12 | 0% |
-| **Total** | **~880** | **~549** | **~66** | **~265** | **~70%** |
+| **Total** | **~880** | **~582** | **~69** | **~229** | **~74%** |
 
 *Error.h uses Python exceptions instead of C-style error handling.
 
@@ -198,6 +198,34 @@ All functions using `LLVMGetGlobalContext()` - safety risk.
 
 ---
 
+## Remaining Features (Low Priority)
+
+### Not Yet Implemented
+
+| Category | Functions | Priority | Notes |
+|----------|-----------|----------|-------|
+| Type Attributes | 3 | Medium | `create_type_attribute`, range attributes |
+| Module Flag Iteration | 5 | Medium | Iterate all module flags |
+| Attribute Management | 5 | Medium | Get/remove attributes at index |
+| Builder Position | 4 | Medium | Position control, FP math tags |
+| Cast Convenience | 7 | Low | ZExtOrBitCast, etc. |
+| Indirect Branch | 2 | Low | Computed goto support |
+| Memory Buffer | 2 | Low | stdin, memory range |
+
+### Advanced Features (Not Tracked)
+
+| Feature | Functions | Use Case |
+|---------|-----------|----------|
+| ORC JIT | ~90 | Runtime code generation |
+| COMDAT | 5 | Windows COFF linking |
+| Error Handling | 3 | Custom fatal error handlers |
+| Support | 4 | JIT symbol resolution |
+| Remarks | ~24 | Optimization diagnostics |
+
+See [progress.md](progress.md) for detailed breakdown.
+
+---
+
 ## Detailed Matrix Files
 
 | File | Contents | 
@@ -205,7 +233,7 @@ All functions using `LLVMGetGlobalContext()` - safety risk.
 | [core.md](core.md) | Core.h - All 640 functions with Python API |
 | [debuginfo.md](debuginfo.md) | DebugInfo.h - 99 functions with examples |
 | [target.md](target.md) | Target/TargetMachine - 68 functions |
-| [misc.md](misc.md) | All other headers |
+| [misc.md](misc.md) | All other headers + advanced features |
 
 ---
 

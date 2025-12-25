@@ -89,12 +89,12 @@ except llvm.LLVMParseError:
 | `LLVMCreateTypeAttribute` | ❌ | TODO |
 | `LLVMGetTypeAttributeValue` | ❌ | TODO |
 | `LLVMCreateConstantRangeAttribute` | ❌ | TODO |
-| `LLVMCreateStringAttribute` | ❌ | TODO |
-| `LLVMGetStringAttributeKind` | ❌ | TODO |
-| `LLVMGetStringAttributeValue` | ❌ | TODO |
-| `LLVMIsEnumAttribute` | ❌ | TODO |
-| `LLVMIsStringAttribute` | ❌ | TODO |
-| `LLVMIsTypeAttribute` | ❌ | TODO |
+| `LLVMCreateStringAttribute` | ✅ | `ctx.create_string_attribute(key, val)` |
+| `LLVMGetStringAttributeKind` | ✅ | `attr.string_kind` |
+| `LLVMGetStringAttributeValue` | ✅ | `attr.string_value` |
+| `LLVMIsEnumAttribute` | ✅ | `attr.is_enum_attribute` |
+| `LLVMIsStringAttribute` | ✅ | `attr.is_string_attribute` |
+| `LLVMIsTypeAttribute` | ✅ | `attr.is_type_attribute` |
 
 ```python
 # Adding noinline attribute to a function
@@ -152,8 +152,8 @@ with ctx.create_module("example") as mod:
 | `LLVMModuleFlagEntriesGetFlagBehavior` | ❌ | TODO |
 | `LLVMModuleFlagEntriesGetKey` | ❌ | TODO |
 | `LLVMModuleFlagEntriesGetMetadata` | ❌ | TODO |
-| `LLVMGetModuleFlag` | ❌ | TODO |
-| `LLVMAddModuleFlag` | ❌ | TODO |
+| `LLVMGetModuleFlag` | ✅ | `mod.get_module_flag(key)` |
+| `LLVMAddModuleFlag` | ✅ | `mod.add_module_flag(behavior, key, val)` |
 
 ### Module Output
 
@@ -363,7 +363,7 @@ print(fn_ty.is_vararg)      # False
 | `LLVMStructGetTypeAtIndex` | `ty.get_struct_element_type(idx)` | `elem = ty.get_struct_element_type(0)` |
 | `LLVMIsPackedStruct` | `ty.is_packed_struct` | `if ty.is_packed_struct:` |
 | `LLVMIsOpaqueStruct` | `ty.is_opaque_struct` | `if ty.is_opaque_struct:` |
-| `LLVMIsLiteralStruct` | ❌ | TODO |
+| `LLVMIsLiteralStruct` | ✅ | `ty.is_literal_struct` |
 | `LLVMStructType` | 🚫 | Uses global context |
 
 ```python
@@ -485,7 +485,7 @@ while use:
 |-------|------------|---------|
 | `LLVMGetNumOperands` | `val.num_operands` | `n = val.num_operands` |
 | `LLVMGetOperand` | `val.get_operand(idx)` | `op = val.get_operand(0)` |
-| `LLVMSetOperand` | ❌ | TODO |
+| `LLVMSetOperand` | ✅ | `val.set_operand(index, val)` |
 | `LLVMGetOperandUse` | ❌ | TODO |
 
 ---
@@ -498,11 +498,11 @@ while use:
 |-------|------------|---------|
 | `LLVMConstInt` | `ty.constant(val, sign_extend=False)` | `five = i32.constant(5)` |
 | `LLVMConstIntOfArbitraryPrecision` | ❌ | TODO |
-| `LLVMConstIntOfString` | ❌ | TODO |
-| `LLVMConstIntOfStringAndSize` | ❌ | TODO |
+| `LLVMConstIntOfString` | ✅ | `ty.constant_from_string(text, radix)` |
+| `LLVMConstIntOfStringAndSize` | ✅ | `ty.constant_from_string(text, radix)` |
 | `LLVMConstReal` | `ty.real_constant(val)` | `pi = f64.real_constant(3.14159)` |
-| `LLVMConstRealOfString` | ❌ | TODO |
-| `LLVMConstRealOfStringAndSize` | ❌ | TODO |
+| `LLVMConstRealOfString` | ✅ | `ty.real_constant_from_string(text)` |
+| `LLVMConstRealOfStringAndSize` | ✅ | `ty.real_constant_from_string(text)` |
 | `LLVMConstIntGetZExtValue` | `val.zext_value` | `n = val.zext_value` |
 | `LLVMConstIntGetSExtValue` | `val.sext_value` | `n = val.sext_value` |
 
@@ -1006,7 +1006,7 @@ is_less_float = b.fcmp(llvm.RealPredicate.OLT, x, y, "lt")
 | `LLVMBuildIntToPtr` | `b.inttoptr(val, ty, name)` | `ptr = b.inttoptr(int_val, ptr_ty)` |
 | `LLVMBuildBitCast` | `b.bitcast(val, ty, name)` | `cast = b.bitcast(val, other_ty)` |
 | `LLVMBuildIntCast2` | `b.int_cast2(val, ty, is_signed, name)` | - |
-| `LLVMBuildAddrSpaceCast` | ❌ | TODO |
+| `LLVMBuildAddrSpaceCast` | ✅ | `b.addr_space_cast(val, ty, name)` |
 | `LLVMBuildZExtOrBitCast` | ❌ | TODO |
 | `LLVMBuildSExtOrBitCast` | ❌ | TODO |
 | `LLVMBuildTruncOrBitCast` | ❌ | TODO |
@@ -1136,7 +1136,7 @@ with ctx.create_builder(loop_bb) as b:
 
 | C API | Python API | Example |
 |-------|------------|---------|
-| `LLVMBuildFence` | ❌ | TODO (use sync_scope version) |
+| `LLVMBuildFence` | ✅ | `b.fence(ordering, single_thread, name)` |
 | `LLVMBuildFenceSyncScope` | `b.fence_sync_scope(ord, scope, name)` | - |
 | `LLVMBuildAtomicRMW` | ❌ | TODO (use sync_scope version) |
 | `LLVMBuildAtomicRMWSyncScope` | `b.atomic_rmw_sync_scope(op, ptr, val, ord, scope)` | See below |
