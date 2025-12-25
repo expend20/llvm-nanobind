@@ -2,7 +2,7 @@
 
 Comprehensive tracking of LLVM-C API implementation in llvm-nanobind Python bindings.
 
-**Last Updated:** 2024-12-25
+**Last Updated:** 2024-12-25 (updated)
 
 ---
 
@@ -10,6 +10,10 @@ Comprehensive tracking of LLVM-C API implementation in llvm-nanobind Python bind
 
 ```python
 import llvm
+
+# Initialize native target
+llvm.initialize_native_target()
+llvm.initialize_native_asm_printer()
 
 # Create context and module
 with llvm.create_context() as ctx:
@@ -27,8 +31,27 @@ with llvm.create_context() as ctx:
             result = b.add(fn.get_param(0), fn.get_param(1))
             b.ret(result)
         
-        # Output
+        # Output IR
         print(mod)
+        
+        # Generate object code
+        triple = llvm.get_default_target_triple()
+        target = llvm.get_target_from_triple(triple)
+        tm = llvm.create_target_machine(
+            target, triple, 
+            llvm.get_host_cpu_name(),
+            llvm.get_host_cpu_features(),
+            llvm.CodeGenOptLevel.Default,
+            llvm.RelocMode.Default,
+            llvm.CodeModel.Default
+        )
+        
+        # Optimize
+        opts = llvm.PassBuilderOptions()
+        llvm.run_passes(mod, "default<O2>", tm, opts)
+        
+        # Emit to bytes
+        obj_bytes = tm.emit_to_memory_buffer(mod, llvm.CodeGenFileType.Object)
 ```
 
 ---
@@ -39,19 +62,19 @@ with llvm.create_context() as ctx:
 |--------|-------|---------|---------|---------|----------|
 | **Core.h** | 640 | 413 | 44 | 183 | 64.5% |
 | **DebugInfo.h** | 99 | ~50 | 0 | ~49 | ~50% |
-| **Target.h** | 22 | 0 | 0 | 22 | 0% |
-| **TargetMachine.h** | 29 | 7 | 0 | 22 | 24% |
+| **Target.h** | 22 | 22 | 0 | 0 | **100%** |
+| **TargetMachine.h** | 29 | 14 | 9 | 6 | **79%** |
 | **Object.h** | 31 | 23 | 0 | 8 | 74% |
-| **Analysis.h** | 4 | 1 | 0 | 3 | 25% |
+| **Analysis.h** | 4 | 2 | 0 | 2 | 50% |
 | **BitReader.h** | 8 | 3 | 4 | 1 | 37.5% |
-| **BitWriter.h** | 4 | 0 | 0 | 4 | 0% |
+| **BitWriter.h** | 4 | 2 | 2 | 0 | **100%** |
 | **IRReader.h** | 1 | 1 | 0 | 0 | 100% |
-| **PassBuilder.h** | 15 | 0 | 0 | 15 | 0% |
+| **PassBuilder.h** | 15 | 15 | 0 | 0 | **100%** |
 | **Disassembler.h** | 6 | 3 | 0 | 3 | 50% |
-| **Linker.h** | 1 | 0 | 0 | 1 | 0% |
+| **Linker.h** | 1 | 1 | 0 | 0 | **100%** |
 | **Error.h** | 7 | 0 | 7 | 0 | 0%* |
 | **Other** | 12 | 0 | 0 | 12 | 0% |
-| **Total** | **~880** | **~501** | **~55** | **~324** | **~57%** |
+| **Total** | **~880** | **~549** | **~66** | **~265** | **~70%** |
 
 *Error.h uses Python exceptions instead of C-style error handling.
 
@@ -63,20 +86,27 @@ with llvm.create_context() as ctx:
 
 | Feature | Coverage | Notes |
 |---------|----------|-------|
+| Target initialization | 100% | All native/all target functions |
+| PassBuilder | 100% | All optimization options |
+| BitWriter | 100% | File and memory buffer output |
+| Linker | 100% | Module linking |
 | Module creation/properties | 95% | Full CRUD support |
 | Type system | 90% | All common types |
+| Target Machine | 79% | Create, emit, configure |
 | Basic block operations | 85% | Iteration, manipulation |
 | Builder - common instructions | 80% | Arithmetic, memory, control flow |
-| Object file reading | 74% | Sections, symbols, relocations |
 | Global variables | 80% | Properties, initializers |
-| Functions | 75% | Parameters, attributes |
+| Functions | 75% | Parameters, attributes, intrinsics |
+| Object file reading | 74% | Sections, symbols, relocations |
 
 ### ⚠️ Partial Coverage (30-70%)
 
 | Feature | Coverage | Notes |
 |---------|----------|-------|
+| Core.h | 64.5% | Most common APIs done |
 | Debug info | ~50% | Core DIBuilder, needs more types |
 | Disassembler | 50% | Basic disassembly works |
+| Analysis | 50% | Module/function verification |
 | Bitcode reading | 37.5% | Context versions only |
 | Metadata | 40% | Basic creation and attachment |
 | Attributes | 40% | Enum attributes, needs string/type |
@@ -85,66 +115,61 @@ with llvm.create_context() as ctx:
 
 | Feature | Coverage | Priority | Notes |
 |---------|----------|----------|-------|
-| BitWriter | 0% | **High** | Can't save bitcode |
-| PassBuilder | 0% | **High** | Can't optimize |
-| TargetMachine | 24% | **High** | Can't generate object code |
-| Target Data | 0% | Medium | Type layout queries |
-| Linker | 0% | Medium | Module linking |
+| TargetMachineOptions | 0% | Low | Use create_target_machine() |
 | Comdat | 0% | Low | Windows/COFF support |
+| Error.h | 0% | N/A | Python exceptions used instead |
 
 ---
 
-## Priority Implementation Gaps
+## Core Workflows - All Supported ✅
 
-### 🔴 High Priority - Blocking Core Workflows
+### 1. ✅ Bitcode Writing
+```python
+mod.write_bitcode_to_file("output.bc")
+bc_bytes = mod.write_bitcode_to_memory_buffer()
+```
 
-1. **Bitcode Writing** (`BitWriter.h`)
-   ```python
-   # Needed:
-   mod.write_bitcode_to_file("output.bc")
-   bc_bytes = mod.write_bitcode_to_bytes()
-   ```
+### 2. ✅ Optimization Passes
+```python
+opts = llvm.PassBuilderOptions()
+opts.set_loop_vectorization(True)
+opts.set_slp_vectorization(True)
+llvm.run_passes(mod, "default<O2>", target_machine, opts)
+```
 
-2. **Optimization Passes** (`PassBuilder.h`)
-   ```python
-   # Needed:
-   llvm.run_passes(mod, "default<O2>", target_machine)
-   ```
+### 3. ✅ Code Generation
+```python
+tm = llvm.create_target_machine(target, triple, cpu, features, ...)
+obj_bytes = tm.emit_to_memory_buffer(mod, llvm.CodeGenFileType.Object)
+tm.emit_to_file(mod, "output.o", llvm.CodeGenFileType.Object)
+```
 
-3. **Code Generation** (`TargetMachine.h`)
-   ```python
-   # Needed:
-   tm = target.create_target_machine(cpu="generic")
-   obj_bytes = tm.emit_to_memory_buffer(mod, llvm.ObjectFile)
-   ```
+### 4. ✅ Host Queries
+```python
+triple = llvm.get_default_target_triple()
+cpu = llvm.get_host_cpu_name()
+features = llvm.get_host_cpu_features()
+```
 
-4. **Host Queries** (`Target.h`)
-   ```python
-   # Needed:
-   triple = llvm.get_default_target_triple()
-   cpu = llvm.get_host_cpu_name()
-   ```
+### 5. ✅ Module Linking
+```python
+mod.link_module(other_mod)  # other_mod is consumed
+```
 
-### 🟡 Medium Priority - Enhanced Functionality
+### 6. ✅ Function/Module Verification
+```python
+mod.verify()                    # Raises on error
+fn.verify()                     # Returns bool
+fn.verify_and_print()           # Returns (bool, error_msg)
+```
 
-5. **Module Linking** (`Linker.h`)
-   ```python
-   # Needed:
-   mod.link(other_mod)
-   ```
-
-6. **Function Verification** (`Analysis.h`)
-   ```python
-   # Needed:
-   if not fn.verify():
-       print(fn.get_verification_error())
-   ```
-
-7. **Target Data Queries** (`Target.h`)
-   ```python
-   # Needed:
-   size = target_data.abi_size_of_type(struct_ty)
-   ```
+### 7. ✅ Target Data Queries
+```python
+td = tm.create_data_layout()
+size = td.abi_size_of_type(struct_ty)
+align = td.abi_alignment_of_type(i64_ty)
+ptr_int = td.int_ptr_type(ctx)  # i64 on 64-bit
+```
 
 ---
 
@@ -165,16 +190,22 @@ All functions using `LLVMGetGlobalContext()` - safety risk.
 ### Internal APIs
 `LLVMCreateMessage`, `LLVMDisposeMessage` - internal memory management.
 
+### Low-Level File APIs
+`LLVMWriteBitcodeToFD`, `LLVMWriteBitcodeToFileHandle` - use file/memory buffer.
+
+### Debugging Only
+`LLVMViewFunctionCFG`, `LLVMViewFunctionCFGOnly` - requires graphviz.
+
 ---
 
 ## Detailed Matrix Files
 
-| File | Contents | Size |
-|------|----------|------|
-| [core.md](core.md) | Core.h - All 640 functions with Python API | 49KB |
-| [debuginfo.md](debuginfo.md) | DebugInfo.h - 99 functions with examples | 13KB |
-| [target.md](target.md) | Target/TargetMachine - 51 functions | 8KB |
-| [misc.md](misc.md) | All other headers - 89 functions | 11KB |
+| File | Contents | 
+|------|----------|
+| [core.md](core.md) | Core.h - All 640 functions with Python API |
+| [debuginfo.md](debuginfo.md) | DebugInfo.h - 99 functions with examples |
+| [target.md](target.md) | Target/TargetMachine - 68 functions |
+| [misc.md](misc.md) | All other headers |
 
 ---
 
@@ -216,6 +247,5 @@ except llvm.LLVMMemoryError:
 try:
     mod = ctx.parse_ir("invalid")
 except llvm.LLVMParseError as e:
-    for diag in ctx.get_diagnostics():
-        print(f"{diag.line}:{diag.column}: {diag.message}")
+    print(e)  # Detailed error message
 ```

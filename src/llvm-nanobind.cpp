@@ -5481,6 +5481,14 @@ struct LLVMTargetDataWrapper : NoMoveCopy {
     struct_ty.check_valid();
     return LLVMOffsetOfElement(m_ref, struct_ty.m_ref, elem);
   }
+
+  LLVMTypeWrapper *int_ptr_type(const LLVMContextWrapper &ctx,
+                                unsigned address_space = 0) const {
+    check_valid();
+    ctx.check_valid();
+    LLVMTypeRef ty = LLVMIntPtrTypeForASInContext(ctx.m_ref, m_ref, address_space);
+    return new LLVMTypeWrapper(ty, ctx.m_token);
+  }
 };
 
 LLVMTargetDataWrapper *create_target_data(const std::string &string_rep) {
@@ -9139,7 +9147,19 @@ Example:
       .def("element_at_offset", &LLVMTargetDataWrapper::element_at_offset,
            "struct_ty"_a, "offset"_a, R"(Get element index at byte offset in struct.)")
       .def("offset_of_element", &LLVMTargetDataWrapper::offset_of_element,
-           "struct_ty"_a, "elem"_a, R"(Get byte offset of element in struct.)");
+           "struct_ty"_a, "elem"_a, R"(Get byte offset of element in struct.)")
+      .def("int_ptr_type", &LLVMTargetDataWrapper::int_ptr_type,
+           "ctx"_a, "address_space"_a = 0, nb::rv_policy::take_ownership,
+           R"(Get the integer type that is the same size as a pointer on this target.
+
+Args:
+    ctx: The LLVM context to create the type in.
+    address_space: The address space (default 0).
+
+Returns:
+    An integer type with the same bit width as a pointer.
+
+Wraps LLVMIntPtrTypeForASInContext.)");
 
   m.def("create_target_data", &create_target_data, "string_rep"_a,
         nb::rv_policy::take_ownership,

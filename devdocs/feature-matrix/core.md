@@ -161,7 +161,7 @@ with ctx.create_module("example") as mod:
 |-------|------------|---------|
 | `LLVMPrintModuleToString` | `str(mod)` or `mod.to_string()` | `ir = str(mod)` |
 | `LLVMDumpModule` | ❌ | Use `print(mod)` instead |
-| `LLVMPrintModuleToFile` | ❌ | Write `str(mod)` to file |
+| `LLVMPrintModuleToFile` | ✅ | `mod.print_to_file(filename)` |
 
 ```python
 # Print module IR
@@ -690,14 +690,14 @@ alias = mod.add_alias(fn_ty.pointer(), 0, fn, "alias_name")
 |-------|------------|---------|
 | `LLVMGetFunctionCallConv` | `fn.calling_conv` | `cc = fn.calling_conv` |
 | `LLVMSetFunctionCallConv` | `fn.calling_conv = int` | `fn.calling_conv = llvm.CallConv.Fast` |
-| `LLVMGetGC` | ❌ | TODO |
-| `LLVMSetGC` | ❌ | TODO |
+| `LLVMGetGC` | ✅ | `fn.get_gc()` |
+| `LLVMSetGC` | ✅ | `fn.set_gc(name)` |
 | `LLVMDeleteFunction` | `fn.delete()` | `fn.delete()` |
 | `LLVMHasPersonalityFn` | `fn.has_personality_fn` | `if fn.has_personality_fn:` |
 | `LLVMGetPersonalityFn` | `fn.personality_fn` | `pfn = fn.personality_fn` |
 | `LLVMSetPersonalityFn` | `fn.personality_fn = fn` | `fn.personality_fn = gxx_personality` |
 | `LLVMIntrinsicGetType` | ❌ | TODO |
-| `LLVMLookupIntrinsicID` | ❌ | TODO |
+| `LLVMLookupIntrinsicID` | ✅ | `llvm.lookup_intrinsic_id(name)` |
 | `LLVMGetIntrinsicID` | `fn.intrinsic_id` | `id = fn.intrinsic_id` |
 | `LLVMGetIntrinsicDeclaration` | `mod.get_intrinsic_declaration(id, param_types)` | See below |
 

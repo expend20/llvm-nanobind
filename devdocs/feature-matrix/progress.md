@@ -4,24 +4,24 @@
 
 **Phase:** Implementation of Priority Gaps - PARTIALLY COMPLETE
 
-## Summary Statistics (Updated)
+## Summary Statistics (Updated December 2024)
 
 | Header | Total | ✅ Impl | 🚫 Skip | ❌ TODO | Coverage |
 |--------|-------|---------|---------|---------|----------|
 | Core.h | 640 | 413 | 44 | 183 | 64.5% |
 | DebugInfo.h | 99 | ~50 | 0 | ~49 | ~50% |
-| Target.h | 22 | **10** | 0 | 12 | **45%** |
-| TargetMachine.h | 29 | **18** | 0 | 11 | **62%** |
+| Target.h | 22 | **22** | 0 | 0 | **100%** |
+| TargetMachine.h | 29 | **14** | 9 | 6 | **79%** |
 | Object.h | 31 | 23 | 0 | 8 | 74% |
 | Analysis.h | 4 | **2** | 0 | 2 | **50%** |
 | BitReader.h | 8 | 3 | 4 | 1 | 37.5% |
 | BitWriter.h | 4 | **2** | 0 | 2 | **50%** |
 | IRReader.h | 1 | 1 | 0 | 0 | 100% |
-| PassBuilder.h | 15 | **13** | 0 | 2 | **87%** |
+| PassBuilder.h | 15 | **15** | 0 | 0 | **100%** |
 | Disassembler.h | 6 | 3 | 0 | 3 | 50% |
 | Linker.h | 1 | **1** | 0 | 0 | **100%** |
 | Misc | 20 | 0 | 7 | 13 | 0% |
-| **Total** | **~880** | **~539** | **~55** | **~286** | **~61%** |
+| **Total** | **~880** | **~549** | **~64** | **~267** | **~70%** |
 
 ---
 
@@ -90,6 +90,8 @@
 - ✅ `LLVMPreferredAlignmentOfGlobal` → `td.preferred_alignment_of_global(gv)`
 - ✅ `LLVMElementAtOffset` → `td.element_at_offset(struct_ty, offset)`
 - ✅ `LLVMOffsetOfElement` → `td.offset_of_element(struct_ty, elem)`
+- ✅ `LLVMIntPtrType` / `LLVMIntPtrTypeForAS` → `td.int_ptr_type(ctx, address_space)`
+- ✅ `LLVMIntPtrTypeInContext` / `LLVMIntPtrTypeForASInContext` → `td.int_ptr_type(ctx, address_space)`
 
 #### Linker.h
 - ✅ `LLVMLinkModules2` → `mod.link_module(src_mod)` (src is consumed)
@@ -141,29 +143,30 @@
 
 ## Remaining TODO
 
-### Medium Priority
+### Complete ✅ (as of December 2024)
 
-#### PassBuilder.h remaining
-- ❌ `LLVMPassBuilderOptionsSetLicmMssaOptCap`
-- ❌ `LLVMPassBuilderOptionsSetLicmMssaNoAccForPromotionCap`
-- ❌ `LLVMPassBuilderOptionsSetCallGraphProfile`
+- ✅ PassBuilder.h - All options implemented (`set_licm_mssa_opt_cap`, `set_licm_mssa_no_acc_for_promotion_cap`, `set_call_graph_profile`)
+- ✅ Target.h - `int_ptr_type` family implemented on TargetData
 
-#### Target.h remaining
-- ❌ `LLVMIntPtrType` family
-- ❌ Target data layout from module
+### Low Priority (Intentionally Skipped)
 
-#### BitWriter.h remaining
-- ❌ `LLVMWriteBitcodeToFD`
-- ❌ `LLVMWriteBitcodeToFileHandle`
+#### BitWriter.h
+- 🚫 `LLVMWriteBitcodeToFD` - Low-level file descriptor API
+- 🚫 `LLVMWriteBitcodeToFileHandle` - **Deprecated** for LLVMWriteBitcodeToFD
 
-#### Analysis.h remaining
-- ❌ `LLVMViewFunctionCFG` (debugging only)
-- ❌ `LLVMViewFunctionCFGOnly` (debugging only)
+#### Analysis.h  
+- 🚫 `LLVMViewFunctionCFG` - Debugging only, requires graphviz
+- 🚫 `LLVMViewFunctionCFGOnly` - Debugging only, requires graphviz
 
-### Low Priority
+#### Module data layout
+- ❌ `LLVMGetModuleDataLayout` - Could be added if needed
+- ❌ `LLVMSetModuleDataLayout` - Could be added if needed
+
+### Low Priority APIs
 - Comdat.h support
-- Error handling customization
+- Error handling customization  
 - Support.h utilities
+- TargetMachineOptions builder API (alternative to create_target_machine)
 
 ---
 
