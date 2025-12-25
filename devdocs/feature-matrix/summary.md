@@ -1,10 +1,37 @@
 # Feature Matrix Summary
 
-## Overview
-
-This document tracks the implementation status of LLVM-C APIs in the llvm-nanobind Python bindings.
+Comprehensive tracking of LLVM-C API implementation in llvm-nanobind Python bindings.
 
 **Last Updated:** 2024-12-25
+
+---
+
+## Quick Reference
+
+```python
+import llvm
+
+# Create context and module
+with llvm.create_context() as ctx:
+    with ctx.create_module("example") as mod:
+        # Types
+        i32 = ctx.types.i32
+        fn_ty = ctx.types.function(i32, [i32, i32])
+        
+        # Function and basic block
+        fn = mod.add_function("add", fn_ty)
+        bb = fn.append_basic_block("entry")
+        
+        # Build instructions
+        with ctx.create_builder(bb) as b:
+            result = b.add(fn.get_param(0), fn.get_param(1))
+            b.ret(result)
+        
+        # Output
+        print(mod)
+```
+
+---
 
 ## Coverage Summary
 
@@ -12,133 +39,183 @@ This document tracks the implementation status of LLVM-C APIs in the llvm-nanobi
 |--------|-------|---------|---------|---------|----------|
 | **Core.h** | 640 | 413 | 44 | 183 | 64.5% |
 | **DebugInfo.h** | 99 | ~50 | 0 | ~49 | ~50% |
-| **Target.h** | 22 | 0 | 0 | 22 | 0.0% |
-| **TargetMachine.h** | 29 | 7 | 0 | 22 | 24.1% |
-| **Object.h** | 31 | 23 | 0 | 8 | 74.2% |
-| **Analysis.h** | 4 | 1 | 0 | 3 | 25.0% |
-| **BitReader.h** | 8 | 3 | 0 | 5 | 37.5% |
-| **BitWriter.h** | 4 | 0 | 0 | 4 | 0.0% |
-| **IRReader.h** | 1 | 1 | 0 | 0 | 100.0% |
-| **PassBuilder.h** | 5 | 0 | 0 | 5 | 0.0% |
-| **Disassembler.h** | 6 | 3 | 0 | 3 | 50.0% |
-| **Linker.h** | 1 | 0 | 0 | 1 | 0.0% |
-| **Error.h** | 7 | 0 | 0 | 7 | 0.0% |
-| **ErrorHandling.h** | 3 | 0 | 0 | 3 | 0.0% |
-| **Support.h** | 4 | 0 | 0 | 4 | 0.0% |
-| **Comdat.h** | 5 | 0 | 0 | 5 | 0.0% |
-| **Total** | **~869** | **~501** | **~44** | **~324** | **~58%** |
+| **Target.h** | 22 | 0 | 0 | 22 | 0% |
+| **TargetMachine.h** | 29 | 7 | 0 | 22 | 24% |
+| **Object.h** | 31 | 23 | 0 | 8 | 74% |
+| **Analysis.h** | 4 | 1 | 0 | 3 | 25% |
+| **BitReader.h** | 8 | 3 | 4 | 1 | 37.5% |
+| **BitWriter.h** | 4 | 0 | 0 | 4 | 0% |
+| **IRReader.h** | 1 | 1 | 0 | 0 | 100% |
+| **PassBuilder.h** | 15 | 0 | 0 | 15 | 0% |
+| **Disassembler.h** | 6 | 3 | 0 | 3 | 50% |
+| **Linker.h** | 1 | 0 | 0 | 1 | 0% |
+| **Error.h** | 7 | 0 | 7 | 0 | 0%* |
+| **Other** | 12 | 0 | 0 | 12 | 0% |
+| **Total** | **~880** | **~501** | **~55** | **~324** | **~57%** |
 
-*Note: DebugInfo.h count is approximate*
+*Error.h uses Python exceptions instead of C-style error handling.
 
-## Not Yet Tracked
+---
 
-These headers are not included in the bindings and not fully tracked:
+## Implementation Status by Category
 
-| Header | Functions | Priority | Notes |
-|--------|-----------|----------|-------|
-| ExecutionEngine.h | ~38 | Low | Prefer ORC JIT |
-| Orc.h | ~68 | Medium | Modern JIT API |
-| LLJIT.h | ~20 | Medium | High-level ORC |
-| OrcEE.h | ~3 | Low | ORC EE bridge |
-| LLJITUtils.h | ~1 | Low | LLJIT utils |
-| Remarks.h | ~24 | Low | Optimization remarks |
-| blake3.h | ~9 | Skip | Not LLVM IR related |
-| lto.h | ~many | Skip | LTO - separate use case |
+### ✅ Well Covered (>70%)
 
-## Intentionally Skipped Categories (🚫)
+| Feature | Coverage | Notes |
+|---------|----------|-------|
+| Module creation/properties | 95% | Full CRUD support |
+| Type system | 90% | All common types |
+| Basic block operations | 85% | Iteration, manipulation |
+| Builder - common instructions | 80% | Arithmetic, memory, control flow |
+| Object file reading | 74% | Sections, symbols, relocations |
+| Global variables | 80% | Properties, initializers |
+| Functions | 75% | Parameters, attributes |
 
-### Global Context APIs
-Functions using `LLVMGetGlobalContext()` are **not exposed**. Python bindings require explicit context management.
+### ⚠️ Partial Coverage (30-70%)
 
-Examples: `LLVMModuleCreateWithName`, `LLVMGetMDKindID`, `LLVMAppendBasicBlock`, `LLVMInt32Type`, etc.
+| Feature | Coverage | Notes |
+|---------|----------|-------|
+| Debug info | ~50% | Core DIBuilder, needs more types |
+| Disassembler | 50% | Basic disassembly works |
+| Bitcode reading | 37.5% | Context versions only |
+| Metadata | 40% | Basic creation and attachment |
+| Attributes | 40% | Enum attributes, needs string/type |
 
-### Legacy Pass Manager
-All legacy PM functions are skipped. Use the new PassBuilder API:
-- `LLVMCreatePassManager`, `LLVMRunPassManager`, etc.
+### ❌ Not Implemented (<30%)
 
-### Deprecated Functions
-- `LLVMGetDataLayout` → Use `LLVMGetDataLayoutStr`
-- `LLVMBuildLoad` → Use `LLVMBuildLoad2`
-- `LLVMBuildGEP` → Use `LLVMBuildGEP2`
-- `LLVMBuildCall` → Use `LLVMBuildCall2`
-- `LLVMBuildInvoke` → Use `LLVMBuildInvoke2`
-- etc.
+| Feature | Coverage | Priority | Notes |
+|---------|----------|----------|-------|
+| BitWriter | 0% | **High** | Can't save bitcode |
+| PassBuilder | 0% | **High** | Can't optimize |
+| TargetMachine | 24% | **High** | Can't generate object code |
+| Target Data | 0% | Medium | Type layout queries |
+| Linker | 0% | Medium | Module linking |
+| Comdat | 0% | Low | Windows/COFF support |
 
-### Unsafe for Embedding
-- `LLVMShutdown` - Would corrupt Python process
-
-### Internal Memory Management
-- `LLVMCreateMessage` / `LLVMDisposeMessage` - Used internally
-
-## API Design Philosophy
-
-### 1. Object-Oriented Wrappers
-```python
-# C API                                    # Python API
-LLVMModuleCreateWithNameInContext(n, c)    ctx.create_module(n)
-LLVMGetModuleIdentifier(mod)               mod.name
-LLVMSetModuleIdentifier(mod, n)            mod.name = n
-LLVMDisposeModule(mod)                     # automatic
-```
-
-### 2. Properties Instead of Get/Set
-- `LLVMGetModuleIdentifier`/`LLVMSetModuleIdentifier` → `Module.name`
-- `LLVMGetDataLayoutStr`/`LLVMSetDataLayout` → `Module.data_layout`
-- `LLVMGetAlignment`/`LLVMSetAlignment` → `GlobalValue.alignment`
-
-### 3. Safety Checks
-Python bindings add validity checks that raise exceptions instead of crashing:
-- Context lifetime tracking
-- Module ownership tracking  
-- Builder position validation
-- Use-after-dispose detection
-
-### 4. Pythonic Iterations
-```python
-# C API
-fn = LLVMGetFirstFunction(mod)
-while fn:
-    # use fn
-    fn = LLVMGetNextFunction(fn)
-
-# Python API
-for fn in mod.functions:
-    # use fn
-```
-
-## Detailed Matrix Files
-
-| File | Contents |
-|------|----------|
-| [core.md](core.md) | Core.h - 640 functions by category |
-| [debuginfo.md](debuginfo.md) | DebugInfo.h - 99 functions |
-| [target.md](target.md) | Target.h + TargetMachine.h - 51 functions |
-| [misc.md](misc.md) | All other headers - 79 functions |
+---
 
 ## Priority Implementation Gaps
 
-### High Priority (blocking common use cases)
+### 🔴 High Priority - Blocking Core Workflows
 
-1. **BitWriter.h** (0%) - Can't write bitcode files
-   - `LLVMWriteBitcodeToFile`
-   - `LLVMWriteBitcodeToMemoryBuffer`
+1. **Bitcode Writing** (`BitWriter.h`)
+   ```python
+   # Needed:
+   mod.write_bitcode_to_file("output.bc")
+   bc_bytes = mod.write_bitcode_to_bytes()
+   ```
 
-2. **PassBuilder.h** (0%) - Can't run optimization passes
-   - `LLVMCreatePassBuilderOptions`
-   - `LLVMRunPasses`
+2. **Optimization Passes** (`PassBuilder.h`)
+   ```python
+   # Needed:
+   llvm.run_passes(mod, "default<O2>", target_machine)
+   ```
 
-3. **Target.h** (0%) - Can't query data layout info
-   - `LLVMSizeOfTypeInBits`
-   - `LLVMABISizeOfType`
+3. **Code Generation** (`TargetMachine.h`)
+   ```python
+   # Needed:
+   tm = target.create_target_machine(cpu="generic")
+   obj_bytes = tm.emit_to_memory_buffer(mod, llvm.ObjectFile)
+   ```
 
-### Medium Priority
+4. **Host Queries** (`Target.h`)
+   ```python
+   # Needed:
+   triple = llvm.get_default_target_triple()
+   cpu = llvm.get_host_cpu_name()
+   ```
 
-4. **TargetMachine.h** (24%) - Limited code generation
-   - `LLVMCreateTargetMachine`
-   - `LLVMTargetMachineEmitToFile`
+### 🟡 Medium Priority - Enhanced Functionality
 
-5. **Linker.h** (0%) - Can't link modules
-   - `LLVMLinkModules2`
+5. **Module Linking** (`Linker.h`)
+   ```python
+   # Needed:
+   mod.link(other_mod)
+   ```
 
-6. **Analysis.h** (25%) - Limited verification
-   - `LLVMVerifyFunction`
+6. **Function Verification** (`Analysis.h`)
+   ```python
+   # Needed:
+   if not fn.verify():
+       print(fn.get_verification_error())
+   ```
+
+7. **Target Data Queries** (`Target.h`)
+   ```python
+   # Needed:
+   size = target_data.abi_size_of_type(struct_ty)
+   ```
+
+---
+
+## Intentionally Skipped (🚫)
+
+### Global Context APIs
+All functions using `LLVMGetGlobalContext()` - safety risk.
+
+### Legacy Pass Manager  
+`LLVMCreatePassManager`, `LLVMRunPassManager`, etc. - use PassBuilder.
+
+### Deprecated Functions
+`LLVMBuildLoad`, `LLVMBuildGEP`, `LLVMBuildCall`, etc. - use `*2` versions.
+
+### Unsafe for Embedding
+`LLVMShutdown` - would corrupt Python process.
+
+### Internal APIs
+`LLVMCreateMessage`, `LLVMDisposeMessage` - internal memory management.
+
+---
+
+## Detailed Matrix Files
+
+| File | Contents | Size |
+|------|----------|------|
+| [core.md](core.md) | Core.h - All 640 functions with Python API | 49KB |
+| [debuginfo.md](debuginfo.md) | DebugInfo.h - 99 functions with examples | 13KB |
+| [target.md](target.md) | Target/TargetMachine - 51 functions | 8KB |
+| [misc.md](misc.md) | All other headers - 89 functions | 11KB |
+
+---
+
+## API Design Patterns
+
+### Context Managers
+```python
+with llvm.create_context() as ctx:
+    with ctx.create_module("mod") as mod:
+        with ctx.create_builder(bb) as b:
+            # Resources automatically cleaned up
+```
+
+### Properties for Get/Set
+```python
+mod.name = "my_module"        # LLVMSetModuleIdentifier
+print(mod.name)               # LLVMGetModuleIdentifier
+```
+
+### Pythonic Iteration
+```python
+for fn in mod.functions:       # LLVMGetFirst/NextFunction
+    for bb in fn.basic_blocks: # LLVMGetFirst/NextBasicBlock
+        for inst in bb.instructions:
+            print(inst)
+```
+
+### Safety Checks
+```python
+# Raises LLVMMemoryError instead of crashing
+try:
+    dead_module.functions  # Module was disposed
+except llvm.LLVMMemoryError:
+    print("Module no longer valid")
+```
+
+### Rich Exceptions
+```python
+try:
+    mod = ctx.parse_ir("invalid")
+except llvm.LLVMParseError as e:
+    for diag in ctx.get_diagnostics():
+        print(f"{diag.line}:{diag.column}: {diag.message}")
+```

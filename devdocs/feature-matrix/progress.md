@@ -2,7 +2,7 @@
 
 ## Current Status
 
-**Phase:** Phase 1-2 Complete - All Headers Enumerated
+**Phase:** Complete - All Headers Documented with Python API Mappings
 
 ## Summary Statistics
 
@@ -10,90 +10,134 @@
 |--------|-------|---------|---------|---------|----------|
 | Core.h | 640 | 413 | 44 | 183 | 64.5% |
 | DebugInfo.h | 99 | ~50 | 0 | ~49 | ~50% |
-| Target.h | 22 | 0 | 0 | 22 | 0.0% |
-| TargetMachine.h | 29 | 7 | 0 | 22 | 24.1% |
-| Object.h | 31 | 23 | 0 | 8 | 74.2% |
-| Misc headers | 79 | 31 | 0 | 48 | 39.2% |
-| **Tracked Total** | **~900** | **~524** | **~44** | **~332** | **~58%** |
+| Target.h | 22 | 0 | 0 | 22 | 0% |
+| TargetMachine.h | 29 | 7 | 0 | 22 | 24% |
+| Object.h | 31 | 23 | 0 | 8 | 74% |
+| Analysis.h | 4 | 1 | 0 | 3 | 25% |
+| BitReader.h | 8 | 3 | 4 | 1 | 37.5% |
+| BitWriter.h | 4 | 0 | 0 | 4 | 0% |
+| IRReader.h | 1 | 1 | 0 | 0 | 100% |
+| PassBuilder.h | 15 | 0 | 0 | 15 | 0% |
+| Disassembler.h | 6 | 3 | 0 | 3 | 50% |
+| Misc | 20 | 0 | 7 | 13 | 0% |
+| **Total** | **~880** | **~501** | **~55** | **~324** | **~57%** |
 
-**Not tracked:** Orc.h (~68), LLJIT.h (~20), ExecutionEngine.h (~38), Remarks.h (~24)
+---
 
 ## Task Checklist
 
-### Phase 1: Core.h Inventory ✅
-- [x] Extract section structure from Core.h (39 @defgroup sections identified)
-- [x] Group functions by category (Context, Module, Type, Value, Builder, etc.)
-- [x] Create `core.md` with category structure
-- [x] Enumerate all 640 functions with implementation status
-- [x] Cross-reference each function with bindings to verify status
-- [x] Document deviations and remarks for each function
+### Phase 1: Core.h ✅ COMPLETE
+- [x] Extract all 640 functions from Core.h
+- [x] Group by 39 @defgroup categories
+- [x] Document Python API mapping for each function
+- [x] Add code examples for each category
+- [x] Mark deprecated functions as skipped
 
-### Phase 2: Other High-Priority Headers ✅
-- [x] Analysis.h - Create section in `misc.md`
-- [x] BitReader.h - Create section in `misc.md`
-- [x] BitWriter.h - Create section in `misc.md`
-- [x] IRReader.h - Create section in `misc.md`
-- [x] DebugInfo.h - Create `debuginfo.md`
-- [x] Target.h - Create `target.md`
-- [x] TargetMachine.h - Add to `target.md`
-- [x] PassBuilder.h - Create section in `misc.md`
+### Phase 2: DebugInfo.h ✅ COMPLETE
+- [x] Document all 99 functions
+- [x] Add Python API mappings
+- [x] Add comprehensive debug info examples
 
-### Phase 3: Medium-Priority Headers ✅
-- [x] Object.h - Create section in `misc.md`
-- [x] Disassembler.h - Create section in `misc.md`
-- [ ] Orc.h - Create `jit.md` (not yet included in bindings)
-- [ ] LLJIT.h - Add to `jit.md` (not yet included in bindings)
-- [x] Error.h - Create section in `misc.md`
-- [x] Linker.h - Create section in `misc.md`
+### Phase 3: Target Headers ✅ COMPLETE
+- [x] Target.h - All functions documented
+- [x] TargetMachine.h - All functions documented
+- [x] Add proposed API for unimplemented functions
 
-### Phase 4: Summary ✅
-- [x] Update `summary.md` with overall statistics
-- [x] Add coverage percentage calculations
-- [x] Document priority implementation gaps
+### Phase 4: Misc Headers ✅ COMPLETE
+- [x] Analysis.h with examples
+- [x] BitReader.h with examples
+- [x] BitWriter.h with proposed API
+- [x] IRReader.h with examples
+- [x] Disassembler.h with examples
+- [x] Object.h with examples
+- [x] PassBuilder.h with proposed API
+- [x] Linker.h with proposed API
+- [x] Error.h (note: uses exceptions)
+- [x] Comdat.h with proposed API
+
+### Phase 5: Summary ✅ COMPLETE
+- [x] Overall coverage statistics
+- [x] Priority implementation gaps
+- [x] API design patterns documentation
+- [x] Quick reference example
+
+---
 
 ## Completed Items
 
-- [x] Created feature-matrix devdocs directory structure
-- [x] Created `plan.md` with goals, scope, and phases
-- [x] Created `progress.md` for tracking
-- [x] Created `summary.md` with overview and design philosophy
-- [x] Documented intentionally skipped categories (global context, legacy PM, deprecated)
-- [x] Documented API design differences (OOP wrappers, properties, safety checks)
+### Documentation Created
+- [x] `core.md` - 49KB comprehensive Core.h documentation
+  - All 640 functions organized by category
+  - Python API mapping for each implemented function
+  - Code examples for every major category
+  - Quick start example
+  
+- [x] `debuginfo.md` - 13KB DebugInfo.h documentation
+  - All DIBuilder functions
+  - Complete debug info workflow example
+  - Type creation examples
+  
+- [x] `target.md` - 8KB Target headers documentation
+  - Target initialization functions
+  - Target queries
+  - Proposed TargetMachine API
+  
+- [x] `misc.md` - 11KB miscellaneous headers
+  - Analysis, BitReader, BitWriter, IRReader
+  - Disassembler, Object, PassBuilder, Linker
+  - Error handling, Support, Comdat
+  
+- [x] `summary.md` - 6KB overview
+  - Coverage statistics
+  - Priority gaps
+  - API design patterns
 
-### Phase 1: Core.h - COMPLETE
-- [x] Extracted all 640 functions from Core.h
-- [x] Grouped by 39 @defgroup categories
-- [x] Cross-referenced with bindings (415 implemented, 44 skipped, 181 not implemented)
-- [x] Added notes for deprecated, global context, legacy PM functions
-- [x] Created `core.md` with full function matrix
+### Key Findings
+- **~57% overall coverage** of tracked LLVM-C APIs
+- **High coverage areas:** Core IR building, Object file reading
+- **Major gaps:** BitWriter, PassBuilder, TargetMachine, Linker
+- **~55 functions intentionally skipped** (global context, deprecated, unsafe)
 
-### Phase 2: Other Headers - COMPLETE
-- [x] DebugInfo.h - 99 functions enumerated → `debuginfo.md`
-- [x] Target.h + TargetMachine.h - 51 functions enumerated → `target.md`
-- [x] Analysis.h - 4 functions
-- [x] BitReader.h - 8 functions
-- [x] BitWriter.h - 4 functions
-- [x] IRReader.h - 1 function
-- [x] Disassembler.h - 6 functions
-- [x] Object.h - 31 functions
-- [x] PassBuilder.h - 5 functions
-- [x] Linker.h - 1 function
-- [x] Error.h - 7 functions
-- [x] ErrorHandling.h - 3 functions
-- [x] Support.h - 4 functions
-- [x] Comdat.h - 5 functions
-- [x] All misc headers → `misc.md`
+---
 
-## Notes
+## Not Tracked (Out of Scope)
 
-- The C++ bindings use wrapper classes (LLVMModuleWrapper, LLVMBuilderWrapper, etc.) which reorganize the C API into more Pythonic interfaces
-- Some C API functions are exposed as properties instead of methods
-- Some C API functions are combined into single Python methods (e.g., type+value getters)
-- Safety checks are added before calling C API to prevent crashes
-- Global context functions are generally not exposed (prefer explicit contexts)
+| Header | Functions | Reason |
+|--------|-----------|--------|
+| ExecutionEngine.h | ~38 | Prefer ORC JIT |
+| Orc.h | ~68 | Future work |
+| LLJIT.h | ~20 | Future work |
+| OrcEE.h | ~3 | Future work |
+| LLJITUtils.h | ~1 | Future work |
+| Remarks.h | ~24 | Low priority |
+| blake3.h | ~9 | Not LLVM IR related |
+| lto.h | ~many | Separate use case |
 
-## Open Questions
+---
 
-1. Should deprecated LLVM-C functions be tracked? (Probably mark as 🚫 skipped)
-2. Should we track which Python wrapper class exposes each function?
-3. Should we track test coverage alongside implementation status?
+## Open Questions (Resolved)
+
+1. ~~Should deprecated LLVM-C functions be tracked?~~
+   → Yes, marked as 🚫 skipped with note
+
+2. ~~Should we track which Python wrapper class exposes each function?~~
+   → Yes, Python API column shows exact mapping
+
+3. ~~Should we track test coverage alongside implementation status?~~
+   → Deferred to separate task
+
+---
+
+## Next Steps (Future Work)
+
+1. **Implement priority gaps:**
+   - BitWriter.h - `write_bitcode_to_file()`, `write_bitcode_to_bytes()`
+   - PassBuilder.h - `run_passes()`
+   - TargetMachine.h - `create_target_machine()`, `emit_to_file()`
+
+2. **Add JIT support:**
+   - Consider ORC/LLJIT bindings
+
+3. **Keep matrix updated:**
+   - Update when new bindings are added
+   - Track LLVM version compatibility
