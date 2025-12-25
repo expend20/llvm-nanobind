@@ -10,6 +10,7 @@ Each test outputs valid LLVM IR with diagnostic comments to stdout.
 The outputs must be deterministic (no timestamps, etc.) for comparison.
 """
 
+import argparse
 import os
 import subprocess
 import sys
@@ -17,6 +18,7 @@ from pathlib import Path
 
 BUILD_DIR = Path("build")
 OUTPUT_DIR = Path("tests/output")
+REGRESSIONS_DIR = Path("tests/regressions")
 
 
 def coverage_wrap(name: str, args: list[str]) -> list[str]:
@@ -125,7 +127,88 @@ def save_output(name: str, stdout: str):
         f.write(stdout)
 
 
+def run_regression_tests():
+    """Run all Python regression tests from tests/regressions/."""
+    if not REGRESSIONS_DIR.exists():
+        print(f"Regression tests directory '{REGRESSIONS_DIR}' not found.")
+        sys.exit(1)
+
+    # Find all Python regression tests
+    regression_tests = sorted(REGRESSIONS_DIR.glob("test_*.py"))
+
+    if not regression_tests:
+        print(f"No regression tests found in {REGRESSIONS_DIR}")
+        sys.exit(1)
+
+    print("=" * 60)
+    print(f"Running {len(regression_tests)} regression tests")
+    print("=" * 60)
+    print()
+
+    passed = 0
+    failed = 0
+    results = []
+
+    for test_script in regression_tests:
+        test_name = test_script.stem
+
+        stdout, stderr, code = run_python_test(test_script)
+
+        if code == 0:
+            status = "PASS"
+            passed += 1
+        else:
+            status = "FAIL"
+            failed += 1
+
+        results.append((test_name, status, code, stderr))
+
+        # Print progress
+        print(f"[{status}] {test_name}")
+
+        # Show error output if failed
+        if status == "FAIL" and stderr:
+            for line in stderr.splitlines()[:10]:  # First 10 lines of error
+                print(f"       {line}")
+
+    # Summary
+    print()
+    print("=" * 60)
+    print("Regression Test Summary")
+    print("=" * 60)
+    print(f"Passed: {passed}/{len(regression_tests)}")
+    print(f"Failed: {failed}/{len(regression_tests)}")
+    print()
+
+    # Results table
+    print("Results:")
+    print("-" * 60)
+    print(f"{'Test':<40} {'Status':<6} {'Exit Code'}")
+    print("-" * 60)
+    for test_name, status, code, _ in results:
+        print(f"{test_name:<40} {status:<6} {code}")
+
+    # Exit with failure if any test failed
+    if failed > 0:
+        sys.exit(1)
+    sys.exit(0)
+
+
 def main():
+    parser = argparse.ArgumentParser(
+        description="Run tests for llvm-nanobind bindings"
+    )
+    parser.add_argument(
+        "--regressions",
+        action="store_true",
+        help="Run regression tests from tests/regressions/",
+    )
+    args = parser.parse_args()
+
+    if args.regressions:
+        run_regression_tests()
+        return
+
     if not BUILD_DIR.exists():
         print(f"Build directory '{BUILD_DIR}' not found.")
         print("Run: cmake -B build -G Ninja && cmake --build build")
