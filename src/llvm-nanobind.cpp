@@ -10,6 +10,7 @@
 #include <mutex>
 #include <stdexcept>
 #include <unordered_map>
+#include <unordered_set>
 
 #include <llvm-c/Analysis.h>
 #include <llvm-c/BitReader.h>
@@ -1014,10 +1015,15 @@ struct LLVMValueWrapper {
   // Forward declared - implemented after LLVMValueWrapper is complete
   std::vector<LLVMValueWrapper> users() const {
     check_valid();
+    std::unordered_set<LLVMValueRef> visited;
     std::vector<LLVMValueWrapper> result;
     for (LLVMUseRef use = LLVMGetFirstUse(m_ref); use != nullptr;
          use = LLVMGetNextUse(use)) {
-      result.emplace_back(LLVMGetUser(use), m_context_token);
+      auto user = LLVMGetUser(use);
+      if (visited.find(user) == visited.end()) {
+        visited.insert(user);
+        result.emplace_back(user, m_context_token);
+      }
     }
     return result;
   }
