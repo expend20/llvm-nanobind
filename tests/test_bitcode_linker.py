@@ -51,8 +51,10 @@ def main():
 
             # Check bitcode magic (0x42, 0x43, 0xC0, 0xDE for "BC"...)
             if bc_size >= 4:
-                print(f";   Magic bytes: 0x{bc_bytes[0]:02X} 0x{bc_bytes[1]:02X} "
-                      f"0x{bc_bytes[2]:02X} 0x{bc_bytes[3]:02X}")
+                print(
+                    f";   Magic bytes: 0x{bc_bytes[0]:02X} 0x{bc_bytes[1]:02X} "
+                    f"0x{bc_bytes[2]:02X} 0x{bc_bytes[3]:02X}"
+                )
 
         # Read back from memory buffer (outside mod1 context since it's disposed)
         with ctx.parse_bitcode_from_bytes(bc_bytes) as mod1_copy:
@@ -62,8 +64,10 @@ def main():
 
             # Verify
             if not mod1_copy.verify():
-                print(f"; ERROR: Verification failed: {mod1_copy.get_verification_error()}",
-                      file=sys.stderr)
+                print(
+                    f"; ERROR: Verification failed: {mod1_copy.get_verification_error()}",
+                    file=sys.stderr,
+                )
 
             print(";   Round-trip module verified: yes")
 
@@ -76,7 +80,7 @@ def main():
         with ctx.create_module("module2") as mod2:
             mod2.target_triple = "x86_64-unknown-linux-gnu"
             build_simple_function(mod2, ctx, "get_two", 2)
-            
+
             with mod2.clone() as mod2_clone:
                 # Change the original
                 mod2.name = "module2_modified"
@@ -99,7 +103,7 @@ def main():
         with ctx.create_module("dest") as dest:
             dest.target_triple = "x86_64-unknown-linux-gnu"
             build_simple_function(dest, ctx, "get_dest", 100)
-            
+
             # Create source module (will be consumed by linking)
             # Note: we create without 'with' because link_module destroys it
             with ctx.create_module("src") as src:
@@ -125,8 +129,10 @@ def main():
 
             # Verify linked module
             if not dest.verify():
-                print(f"; ERROR: Linked module verification failed: {dest.get_verification_error()}",
-                      file=sys.stderr)
+                print(
+                    f"; ERROR: Linked module verification failed: {dest.get_verification_error()}",
+                    file=sys.stderr,
+                )
 
             print(";   Linked module verified: yes")
 

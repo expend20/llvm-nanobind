@@ -195,9 +195,7 @@ def run_regression_tests():
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Run tests for llvm-nanobind bindings"
-    )
+    parser = argparse.ArgumentParser(description="Run tests for llvm-nanobind bindings")
     parser.add_argument(
         "--regressions",
         action="store_true",

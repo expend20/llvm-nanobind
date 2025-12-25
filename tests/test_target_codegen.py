@@ -79,10 +79,13 @@ def main():
     print("; TargetMachine:")
 
     tm = llvm.create_target_machine(
-        target, default_triple, "generic", "",
+        target,
+        default_triple,
+        "generic",
+        "",
         llvm.CodeGenOptLevel.Default,
         llvm.RelocMode.Default,
-        llvm.CodeModel.Default
+        llvm.CodeModel.Default,
     )
 
     print(f";   TM Triple: {tm.triple}")
@@ -110,34 +113,50 @@ def main():
 
         print(";")
         print("; Type sizes and alignments:")
-        print(f";   i8:  size={td.size_of_type_in_bits(i8)} bits, "
-              f"abi_size={td.abi_size_of_type(i8)} bytes, "
-              f"alignment={td.abi_alignment_of_type(i8)}")
-        print(f";   i32: size={td.size_of_type_in_bits(i32)} bits, "
-              f"abi_size={td.abi_size_of_type(i32)} bytes, "
-              f"alignment={td.abi_alignment_of_type(i32)}")
-        print(f";   i64: size={td.size_of_type_in_bits(i64)} bits, "
-              f"abi_size={td.abi_size_of_type(i64)} bytes, "
-              f"alignment={td.abi_alignment_of_type(i64)}")
-        print(f";   f32: size={td.size_of_type_in_bits(f32)} bits, "
-              f"abi_size={td.abi_size_of_type(f32)} bytes, "
-              f"alignment={td.abi_alignment_of_type(f32)}")
-        print(f";   f64: size={td.size_of_type_in_bits(f64)} bits, "
-              f"abi_size={td.abi_size_of_type(f64)} bytes, "
-              f"alignment={td.abi_alignment_of_type(f64)}")
-        print(f";   ptr: size={td.size_of_type_in_bits(ptr)} bits, "
-              f"abi_size={td.abi_size_of_type(ptr)} bytes, "
-              f"alignment={td.abi_alignment_of_type(ptr)}")
+        print(
+            f";   i8:  size={td.size_of_type_in_bits(i8)} bits, "
+            f"abi_size={td.abi_size_of_type(i8)} bytes, "
+            f"alignment={td.abi_alignment_of_type(i8)}"
+        )
+        print(
+            f";   i32: size={td.size_of_type_in_bits(i32)} bits, "
+            f"abi_size={td.abi_size_of_type(i32)} bytes, "
+            f"alignment={td.abi_alignment_of_type(i32)}"
+        )
+        print(
+            f";   i64: size={td.size_of_type_in_bits(i64)} bits, "
+            f"abi_size={td.abi_size_of_type(i64)} bytes, "
+            f"alignment={td.abi_alignment_of_type(i64)}"
+        )
+        print(
+            f";   f32: size={td.size_of_type_in_bits(f32)} bits, "
+            f"abi_size={td.abi_size_of_type(f32)} bytes, "
+            f"alignment={td.abi_alignment_of_type(f32)}"
+        )
+        print(
+            f";   f64: size={td.size_of_type_in_bits(f64)} bits, "
+            f"abi_size={td.abi_size_of_type(f64)} bytes, "
+            f"alignment={td.abi_alignment_of_type(f64)}"
+        )
+        print(
+            f";   ptr: size={td.size_of_type_in_bits(ptr)} bits, "
+            f"abi_size={td.abi_size_of_type(ptr)} bytes, "
+            f"alignment={td.abi_alignment_of_type(ptr)}"
+        )
 
         # Struct type
         struct_ty = ctx.types.struct([i8, i32, f64])
-        print(f";   struct {{i8, i32, f64}}: size={td.size_of_type_in_bits(struct_ty)} bits, "
-              f"abi_size={td.abi_size_of_type(struct_ty)} bytes")
+        print(
+            f";   struct {{i8, i32, f64}}: size={td.size_of_type_in_bits(struct_ty)} bits, "
+            f"abi_size={td.abi_size_of_type(struct_ty)} bytes"
+        )
 
         # Packed struct
         packed_struct = ctx.types.struct([i8, i32, f64], packed=True)
-        print(f";   packed struct {{i8, i32, f64}}: size={td.size_of_type_in_bits(packed_struct)} bits, "
-              f"abi_size={td.abi_size_of_type(packed_struct)} bytes")
+        print(
+            f";   packed struct {{i8, i32, f64}}: size={td.size_of_type_in_bits(packed_struct)} bits, "
+            f"abi_size={td.abi_size_of_type(packed_struct)} bytes"
+        )
 
         # ==========================================================================
         # Code generation test
@@ -162,8 +181,10 @@ def main():
 
             # Verify module
             if not mod.verify():
-                print(f"; ERROR: Module verification failed: {mod.get_verification_error()}",
-                      file=sys.stderr)
+                print(
+                    f"; ERROR: Module verification failed: {mod.get_verification_error()}",
+                    file=sys.stderr,
+                )
                 return 1
 
             # Emit to memory buffer (object file)
@@ -179,10 +200,10 @@ def main():
             print(f";   Assembly generated: {'yes' if asm_size > 0 else 'no'}")
 
             # Print first few lines of assembly (portable check)
-            asm_text = asm_bytes.decode('utf-8', errors='replace')
+            asm_text = asm_bytes.decode("utf-8", errors="replace")
             print(";")
             print("; Assembly output (first 200 chars or first 5 lines):")
-            lines = asm_text.split('\n')
+            lines = asm_text.split("\n")
             printed = 0
             for i, line in enumerate(lines[:5]):
                 if printed + len(line) + 1 > 200:

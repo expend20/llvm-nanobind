@@ -112,10 +112,13 @@ def main():
         print("; ERROR: Failed to get target", file=sys.stderr)
         return 1
     tm = llvm.create_target_machine(
-        target, triple, "generic", "",
+        target,
+        triple,
+        "generic",
+        "",
         llvm.CodeGenOptLevel.Default,
         llvm.RelocMode.Default,
-        llvm.CodeModel.Default
+        llvm.CodeModel.Default,
     )
 
     print("; Test: test_passbuilder")
@@ -129,7 +132,7 @@ def main():
         print("; Test 1: PassBuilderOptions configuration")
 
         opts = llvm.PassBuilderOptions()
-        
+
         # Configure options
         opts.set_verify_each(False)
         opts.set_debug_logging(False)
@@ -159,7 +162,9 @@ def main():
             instr_after_o0 = count_instructions(mod_o0)
             funcs_after_o0 = count_functions(mod_o0)
 
-            print(f";   Instructions before: {instr_before_o0}, after: {instr_after_o0}")
+            print(
+                f";   Instructions before: {instr_before_o0}, after: {instr_after_o0}"
+            )
             print(f";   Functions before: {funcs_before_o0}, after: {funcs_after_o0}")
             print(";   O0 passes ran successfully: yes")
 
@@ -179,7 +184,9 @@ def main():
             instr_after_o2 = count_instructions(mod_o2)
             funcs_after_o2 = count_functions(mod_o2)
 
-            print(f";   Instructions before: {instr_before_o2}, after: {instr_after_o2}")
+            print(
+                f";   Instructions before: {instr_before_o2}, after: {instr_after_o2}"
+            )
             print(f";   Functions before: {funcs_before_o2}, after: {funcs_after_o2}")
             print(";   O2 passes ran successfully: yes")
 
@@ -189,8 +196,10 @@ def main():
 
             # Verify the optimized module is still valid
             if not mod_o2.verify():
-                print(f"; ERROR: Optimized module verification failed: {mod_o2.get_verification_error()}",
-                      file=sys.stderr)
+                print(
+                    f"; ERROR: Optimized module verification failed: {mod_o2.get_verification_error()}",
+                    file=sys.stderr,
+                )
             else:
                 print(";   Optimized module verified: yes")
 
@@ -205,10 +214,14 @@ def main():
             instr_before_custom = count_instructions(mod_custom)
 
             # Run just instcombine and simplifycfg
-            llvm.run_passes(mod_custom, "instcombine,simplifycfg", target_machine=tm, options=opts)
+            llvm.run_passes(
+                mod_custom, "instcombine,simplifycfg", target_machine=tm, options=opts
+            )
 
             instr_after_custom = count_instructions(mod_custom)
-            print(f";   Instructions before: {instr_before_custom}, after: {instr_after_custom}")
+            print(
+                f";   Instructions before: {instr_before_custom}, after: {instr_after_custom}"
+            )
             print(";   Custom passes ran successfully: yes")
 
             # Print the optimized module

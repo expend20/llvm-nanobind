@@ -45,7 +45,9 @@ def main():
                 builder.ret(i32.constant(42))
 
             valid_passed = valid_fn.verify()
-            print(f";   valid_function verification passed: {'yes' if valid_passed else 'no'}")
+            print(
+                f";   valid_function verification passed: {'yes' if valid_passed else 'no'}"
+            )
 
             # ==========================================================================
             # Test 2: Function verification - invalid function (no terminator)
@@ -63,12 +65,16 @@ def main():
                 builder.alloca(i32, "x")
 
                 invalid_passed = invalid_fn.verify()
-                print(f";   invalid_function verification failed (expected): {'yes' if not invalid_passed else 'no'}")
+                print(
+                    f";   invalid_function verification failed (expected): {'yes' if not invalid_passed else 'no'}"
+                )
 
                 # Now fix it by adding a return
                 builder.ret(i32.constant(0))
                 invalid_passed = invalid_fn.verify()
-                print(f";   After adding return, verification passed: {'yes' if invalid_passed else 'no'}")
+                print(
+                    f";   After adding return, verification passed: {'yes' if invalid_passed else 'no'}"
+                )
 
             # ==========================================================================
             # Test 3: Intrinsic IDs
@@ -79,7 +85,9 @@ def main():
             # User functions have intrinsic ID 0
             valid_id = valid_fn.intrinsic_id
             print(f";   valid_function intrinsic ID: {valid_id} (0 = not intrinsic)")
-            print(f";   valid_function is_intrinsic: {'yes' if valid_fn.is_intrinsic else 'no'}")
+            print(
+                f";   valid_function is_intrinsic: {'yes' if valid_fn.is_intrinsic else 'no'}"
+            )
 
             # Look up an intrinsic ID by name
             memcpy_id = llvm.lookup_intrinsic_id("llvm.memcpy")
@@ -90,7 +98,9 @@ def main():
                 ptr = ctx.types.ptr()
                 memcpy_decl = mod.get_intrinsic_declaration(memcpy_id, [ptr, ptr, i64])
                 memcpy_decl_id = memcpy_decl.intrinsic_id
-                print(f";   memcpy declaration is_intrinsic: {'yes' if memcpy_decl_id != 0 else 'no'}")
+                print(
+                    f";   memcpy declaration is_intrinsic: {'yes' if memcpy_decl_id != 0 else 'no'}"
+                )
                 print(f";   memcpy declaration name: {memcpy_decl.name}")
 
             # ==========================================================================
@@ -105,15 +115,21 @@ def main():
 
             # Create a function that uses the personality
             with_personality_ty = ctx.types.function(void_ty, [])
-            with_personality_fn = mod.add_function("with_personality", with_personality_ty)
+            with_personality_fn = mod.add_function(
+                "with_personality", with_personality_ty
+            )
 
             print(";   Before setting personality:")
-            print(f";     has_personality_fn: {'yes' if with_personality_fn.has_personality_fn else 'no'}")
+            print(
+                f";     has_personality_fn: {'yes' if with_personality_fn.has_personality_fn else 'no'}"
+            )
 
             with_personality_fn.set_personality_fn(personality_fn)
 
             print(";   After setting personality:")
-            print(f";     has_personality_fn: {'yes' if with_personality_fn.has_personality_fn else 'no'}")
+            print(
+                f";     has_personality_fn: {'yes' if with_personality_fn.has_personality_fn else 'no'}"
+            )
 
             got_personality = with_personality_fn.get_personality_fn()
             if got_personality:
