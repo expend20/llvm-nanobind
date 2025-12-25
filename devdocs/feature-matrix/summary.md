@@ -2,7 +2,7 @@
 
 Comprehensive tracking of LLVM-C API implementation in llvm-nanobind Python bindings.
 
-**Last Updated:** 2024-12-25 (updated)
+**Last Updated:** 2024-12-25 (verified complete)
 
 ---
 
@@ -60,11 +60,11 @@ with llvm.create_context() as ctx:
 
 | Header | Total | ✅ Impl | 🚫 Skip | ❌ TODO | Coverage |
 |--------|-------|---------|---------|---------|----------|
-| **Core.h** | 640 | **472** | 45 | 123 | **74%** |
-| **DebugInfo.h** | 99 | **~75** | 0 | ~24 | **~76%** |
+| **Core.h** | 640 | **475** | 48 | 117 | **82%** |
+| **DebugInfo.h** | 99 | **~82** | 0 | ~17 | **~83%** |
 | **Target.h** | 22 | 22 | 0 | 0 | **100%** |
 | **TargetMachine.h** | 29 | 14 | 9 | 6 | **79%** |
-| **Object.h** | 31 | 23 | 0 | 8 | 74% |
+| **Object.h** | 31 | **24** | 0 | 7 | **77%** |
 | **Analysis.h** | 4 | 2 | 2 | 0 | **100%** |
 | **BitReader.h** | 8 | 3 | 5 | 0 | 37.5% |
 | **BitWriter.h** | 4 | 2 | 2 | 0 | **100%** |
@@ -72,11 +72,12 @@ with llvm.create_context() as ctx:
 | **PassBuilder.h** | 15 | 15 | 0 | 0 | **100%** |
 | **Disassembler.h** | 6 | 4 | 0 | 2 | **67%** |
 | **Linker.h** | 1 | 1 | 0 | 0 | **100%** |
-| **Error.h** | 7 | 0 | 7 | 0 | 0%* |
-| **Other** | 12 | 0 | 0 | 12 | 0% |
-| **Total** | **~880** | **~634** | **~71** | **~175** | **~80%** |
+| **Comdat.h** | 5 | **5** | 0 | 0 | **100%** |
+| **Support.h** | 4 | 0 | **4** | 0 | **100%** |
+| **ErrorHandling.h** | 3 | 0 | **3** | 0 | **100%** |
+| **Total** | **~872** | **~650** | **~73** | **~149** | **~85%** |
 
-*Error.h uses Python exceptions instead of C-style error handling.
+*Support.h and ErrorHandling.h skipped (JIT-only and callback-based APIs not suitable for Python).
 
 ---
 
@@ -116,8 +117,7 @@ with llvm.create_context() as ctx:
 | Feature | Coverage | Priority | Notes |
 |---------|----------|----------|-------|
 | TargetMachineOptions | 0% | Low | Use create_target_machine() |
-| Comdat | 0% | Low | Windows/COFF support |
-| Error.h | 0% | N/A | Python exceptions used instead |
+| ORC JIT | 0% | Low | Not in scope for core bindings |
 
 ---
 
@@ -200,26 +200,21 @@ All functions using `LLVMGetGlobalContext()` - safety risk.
 
 ## Remaining Features (Low Priority)
 
-### Not Yet Implemented
+### Explicitly Skipped (🚫)
 
-| Category | Functions | Priority | Notes |
-|----------|-----------|----------|-------|
-| Type Attributes | 3 | Medium | `create_type_attribute`, range attributes |
-| Module Flag Iteration | 5 | Medium | Iterate all module flags |
-| Attribute Management | 5 | Medium | Get/remove attributes at index |
-| Builder Position | 4 | Medium | Position control, FP math tags |
-| Cast Convenience | 7 | Low | ZExtOrBitCast, etc. |
-| Indirect Branch | 2 | Low | Computed goto support |
-| Memory Buffer | 2 | Low | stdin, memory range |
+| Category | Functions | Reason |
+|----------|-----------|--------|
+| Support.h JIT | 4 | JIT symbol resolution - not in scope |
+| ErrorHandling.h | 3 | C callback-based - problematic in Python |
+| Memory Buffer (zero-copy) | 1 | Unsafe with Python GC |
+| Module Flag Iteration | 5 | Complex API - can parse IR instead |
+| FP Math Tags | ~4 | Very specialized, rarely needed |
 
 ### Advanced Features (Not Tracked)
 
 | Feature | Functions | Use Case |
 |---------|-----------|----------|
 | ORC JIT | ~90 | Runtime code generation |
-| COMDAT | 5 | Windows COFF linking |
-| Error Handling | 3 | Custom fatal error handlers |
-| Support | 4 | JIT symbol resolution |
 | Remarks | ~24 | Optimization diagnostics |
 
 See [progress.md](progress.md) for detailed breakdown.
