@@ -62,7 +62,7 @@ Implement remaining LLVM-C API bindings to reach ~85% coverage of the C API, wit
 
 2. **DIBuilder via context manager** - `with mod.create_dibuilder() as dib:` ensures finalization
 
-3. **`@api LLVMXyz` documentation** - Added to docstrings to reference underlying C API (40% coverage, ongoing)
+3. **`@api LLVMXyz` documentation** - Added to docstrings to reference underlying C API (97% coverage - 723/745 bindings)
 
 4. **Global functions for metadata accessors** - `llvm.di_location_get_line(loc)` style for standalone helpers
 

@@ -260,28 +260,24 @@ struct LLVMAttributeWrapper {
   }
 
   /// Check if this is an enum attribute.
-  /// Wraps LLVMIsEnumAttribute.
   bool is_enum_attribute() const {
     check_valid();
     return LLVMIsEnumAttribute(m_ref);
   }
 
   /// Check if this is a string attribute.
-  /// Wraps LLVMIsStringAttribute.
   bool is_string_attribute() const {
     check_valid();
     return LLVMIsStringAttribute(m_ref);
   }
 
   /// Check if this is a type attribute.
-  /// Wraps LLVMIsTypeAttribute.
   bool is_type_attribute() const {
     check_valid();
     return LLVMIsTypeAttribute(m_ref);
   }
 
   /// Get the string attribute kind (key).
-  /// Wraps LLVMGetStringAttributeKind.
   std::string get_string_kind() const {
     check_valid();
     if (!LLVMIsStringAttribute(m_ref))
@@ -292,7 +288,6 @@ struct LLVMAttributeWrapper {
   }
 
   /// Get the string attribute value.
-  /// Wraps LLVMGetStringAttributeValue.
   std::string get_string_value() const {
     check_valid();
     if (!LLVMIsStringAttribute(m_ref))
@@ -303,7 +298,6 @@ struct LLVMAttributeWrapper {
   }
 
   /// Get the type attribute value.
-  /// Wraps LLVMGetTypeAttributeValue.
   /// Returns the type wrapped in this type attribute.
   LLVMTypeWrapper get_type_value() const;
 };
@@ -504,7 +498,6 @@ struct LLVMTypeWrapper {
   }
 
   /// Check if this is a literal (unnamed) struct type.
-  /// Wraps LLVMIsLiteralStruct.
   bool is_literal_struct() const {
     check_valid();
     if (!is_struct())
@@ -1388,7 +1381,6 @@ struct LLVMValueWrapper {
   }
 
   /// Set the operand at the given index.
-  /// Wraps LLVMSetOperand.
   void set_operand(unsigned index, const LLVMValueWrapper &val) {
     check_valid();
     val.check_valid();
@@ -1398,7 +1390,6 @@ struct LLVMValueWrapper {
   }
 
   /// Get the use object for an operand at the given index.
-  /// Wraps LLVMGetOperandUse.
   LLVMUseWrapper
   get_operand_use(unsigned index) const; // defined after LLVMUseWrapper
 
@@ -2507,7 +2498,6 @@ struct LLVMFunctionWrapper : LLVMValueWrapper {
 
   /// Get the intrinsic ID for this function.
   /// Returns 0 if the function is not an intrinsic.
-  /// Wraps LLVMGetIntrinsicID.
   unsigned intrinsic_id() const {
     check_valid();
     return LLVMGetIntrinsicID(m_ref);
@@ -2521,14 +2511,12 @@ struct LLVMFunctionWrapper : LLVMValueWrapper {
   // =========================================================================
 
   /// Check if this function has a personality function.
-  /// Wraps LLVMHasPersonalityFn.
   bool has_personality_fn() const {
     check_valid();
     return LLVMHasPersonalityFn(m_ref);
   }
 
   /// Get the personality function.
-  /// Wraps LLVMGetPersonalityFn.
   std::optional<LLVMValueWrapper> get_personality_fn() const {
     check_valid();
     if (!has_personality_fn())
@@ -2537,7 +2525,6 @@ struct LLVMFunctionWrapper : LLVMValueWrapper {
   }
 
   /// Set the personality function.
-  /// Wraps LLVMSetPersonalityFn.
   void set_personality_fn(const LLVMValueWrapper &fn) {
     check_valid();
     fn.check_valid();
@@ -2549,7 +2536,6 @@ struct LLVMFunctionWrapper : LLVMValueWrapper {
   // =========================================================================
 
   /// Get the GC name for this function.
-  /// Wraps LLVMGetGC.
   std::optional<std::string> get_gc() const {
     check_valid();
     const char *gc = LLVMGetGC(m_ref);
@@ -2559,7 +2545,6 @@ struct LLVMFunctionWrapper : LLVMValueWrapper {
   }
 
   /// Set the GC name for this function.
-  /// Wraps LLVMSetGC.
   void set_gc(const std::string &gc) {
     check_valid();
     LLVMSetGC(m_ref, gc.c_str());
@@ -3495,7 +3480,6 @@ struct LLVMBuilderWrapper : NoMoveCopy {
   }
 
   /// Cast a pointer to a different address space.
-  /// Wraps LLVMBuildAddrSpaceCast.
   LLVMValueWrapper addr_space_cast(const LLVMValueWrapper &val,
                                    const LLVMTypeWrapper &ty,
                                    const std::string &name = "") {
@@ -4010,7 +3994,6 @@ struct LLVMBuilderWrapper : NoMoveCopy {
   }
 
   /// Build a memory fence instruction.
-  /// Wraps LLVMBuildFence.
   LLVMValueWrapper fence(LLVMAtomicOrdering ordering,
                          bool single_thread = false,
                          const std::string &name = "") {
@@ -4305,7 +4288,6 @@ struct LLVMModuleWrapper : NoMoveCopy {
   // ==========================================================================
 
   /// Write bitcode to file.
-  /// Wraps LLVMWriteBitcodeToFile.
   void write_bitcode_to_file(const std::string &path) {
     check_valid();
     if (LLVMWriteBitcodeToFile(m_ref, path.c_str())) {
@@ -4314,7 +4296,6 @@ struct LLVMModuleWrapper : NoMoveCopy {
   }
 
   /// Write bitcode to memory and return as bytes.
-  /// Wraps LLVMWriteBitcodeToMemoryBuffer.
   nb::bytes write_bitcode_to_memory_buffer() {
     check_valid();
     LLVMMemoryBufferRef buf = LLVMWriteBitcodeToMemoryBuffer(m_ref);
@@ -4334,7 +4315,6 @@ struct LLVMModuleWrapper : NoMoveCopy {
 
   /// Link another module into this module.
   /// The source module is destroyed after linking.
-  /// Wraps LLVMLinkModules2.
   void link_module(LLVMModuleWrapper &src) {
     check_valid();
     src.check_valid();
@@ -4353,7 +4333,6 @@ struct LLVMModuleWrapper : NoMoveCopy {
   // ==========================================================================
 
   /// Get or insert a COMDAT section with the given name.
-  /// Wraps LLVMGetOrInsertComdat.
   LLVMComdatWrapper get_or_insert_comdat(const std::string &name) {
     check_valid();
     LLVMComdatRef comdat = LLVMGetOrInsertComdat(m_ref, name.c_str());
@@ -4365,7 +4344,6 @@ struct LLVMModuleWrapper : NoMoveCopy {
   // ==========================================================================
 
   /// Print the module IR to a file.
-  /// Wraps LLVMPrintModuleToFile.
   void print_to_file(const std::string &filename) {
     check_valid();
     char *error = nullptr;
@@ -4538,12 +4516,10 @@ struct LLVMModuleWrapper : NoMoveCopy {
   // =========================================================================
 
   /// Add a module-level flag.
-  /// Wraps LLVMAddModuleFlag.
   void add_module_flag(LLVMModuleFlagBehavior behavior, const std::string &key,
                        const LLVMMetadataWrapper &val);
 
   /// Get a module-level flag by key.
-  /// Wraps LLVMGetModuleFlag.
   std::optional<LLVMMetadataWrapper> get_module_flag(const std::string &key);
 
   // =========================================================================
@@ -4586,7 +4562,6 @@ struct LLVMModuleWrapper : NoMoveCopy {
   LLVMDIBuilderManager *create_dibuilder();
 
   // Clone - returns a ModuleManager that must be used with 'with' or .dispose()
-  // Wraps LLVMCloneModule.
   LLVMModuleManager *clone() const;
 
 private:
@@ -4923,7 +4898,6 @@ struct LLVMContextWrapper : NoMoveCopy {
   }
 
   /// Create a string attribute.
-  /// Wraps LLVMCreateStringAttribute.
   LLVMAttributeWrapper create_string_attribute(const std::string &key,
                                                const std::string &value) {
     check_valid();
@@ -4933,7 +4907,6 @@ struct LLVMContextWrapper : NoMoveCopy {
   }
 
   /// Create a type attribute.
-  /// Wraps LLVMCreateTypeAttribute.
   LLVMAttributeWrapper create_type_attribute(unsigned kind_id,
                                              const LLVMTypeWrapper &type_ref);
 
@@ -6330,7 +6303,6 @@ struct LLVMDisasmContextWrapper : NoMoveCopy {
 
   /// Set disassembler options.
   /// Returns true on success (1 on success, 0 on failure in C API).
-  /// Wraps LLVMSetDisasmOptions.
   bool set_options(uint64_t options) {
     check_valid();
     return LLVMSetDisasmOptions(m_ref, options) != 0;
@@ -6398,7 +6370,6 @@ struct LLVMBinaryWrapper : NoMoveCopy {
 
   /// Copy the binary's memory buffer content.
   /// Returns a copy of the binary's backing memory buffer as bytes.
-  /// Wraps LLVMBinaryCopyMemoryBuffer.
   nb::bytes copy_to_memory_buffer() const {
     check_valid();
     LLVMMemoryBufferRef buf = LLVMBinaryCopyMemoryBuffer(m_ref);
@@ -8837,52 +8808,151 @@ NB_MODULE(llvm, m) {
            [](const LLVMTypeWrapper &v) {
              return std::hash<LLVMTypeRef>{}(v.m_ref);
            })
-      .def_prop_ro("kind", &LLVMTypeWrapper::kind)
+      .def_prop_ro("kind", &LLVMTypeWrapper::kind,
+                   R"(Get the kind of this type.
+
+<sub>C API: LLVMGetTypeKind</sub>)")
       .def("__str__", &LLVMTypeWrapper::to_string)
       .def("__repr__", &LLVMTypeWrapper::to_string)
-      .def_prop_ro("is_void", &LLVMTypeWrapper::is_void)
-      .def_prop_ro("is_integer", &LLVMTypeWrapper::is_integer)
-      .def_prop_ro("is_float", &LLVMTypeWrapper::is_float)
-      .def_prop_ro("is_pointer", &LLVMTypeWrapper::is_pointer)
-      .def_prop_ro("is_function", &LLVMTypeWrapper::is_function)
-      .def_prop_ro("is_struct", &LLVMTypeWrapper::is_struct)
-      .def_prop_ro("is_array", &LLVMTypeWrapper::is_array)
-      .def_prop_ro("is_vector", &LLVMTypeWrapper::is_vector)
-      .def_prop_ro("int_width", &LLVMTypeWrapper::get_int_width)
-      .def_prop_ro("is_sized", &LLVMTypeWrapper::is_sized)
-      .def_prop_ro("is_packed_struct", &LLVMTypeWrapper::is_packed_struct)
-      .def_prop_ro("is_opaque_struct", &LLVMTypeWrapper::is_opaque_struct)
+      .def_prop_ro("is_void", &LLVMTypeWrapper::is_void,
+                   R"(Check if this is a void type.
+
+<sub>C API: LLVMGetTypeKind</sub>)")
+      .def_prop_ro("is_integer", &LLVMTypeWrapper::is_integer,
+                   R"(Check if this is an integer type.
+
+<sub>C API: LLVMGetTypeKind</sub>)")
+      .def_prop_ro("is_float", &LLVMTypeWrapper::is_float,
+                   R"(Check if this is a floating-point type.
+
+<sub>C API: LLVMGetTypeKind</sub>)")
+      .def_prop_ro("is_pointer", &LLVMTypeWrapper::is_pointer,
+                   R"(Check if this is a pointer type.
+
+<sub>C API: LLVMGetTypeKind</sub>)")
+      .def_prop_ro("is_function", &LLVMTypeWrapper::is_function,
+                   R"(Check if this is a function type.
+
+<sub>C API: LLVMGetTypeKind</sub>)")
+      .def_prop_ro("is_struct", &LLVMTypeWrapper::is_struct,
+                   R"(Check if this is a struct type.
+
+<sub>C API: LLVMGetTypeKind</sub>)")
+      .def_prop_ro("is_array", &LLVMTypeWrapper::is_array,
+                   R"(Check if this is an array type.
+
+<sub>C API: LLVMGetTypeKind</sub>)")
+      .def_prop_ro("is_vector", &LLVMTypeWrapper::is_vector,
+                   R"(Check if this is a vector type.
+
+<sub>C API: LLVMGetTypeKind</sub>)")
+      .def_prop_ro("int_width", &LLVMTypeWrapper::get_int_width,
+                   R"(Get the bit width of an integer type.
+
+<sub>C API: LLVMGetIntTypeWidth</sub>)")
+      .def_prop_ro("is_sized", &LLVMTypeWrapper::is_sized,
+                   R"(Check if this type has a known size.
+
+<sub>C API: LLVMTypeIsSized</sub>)")
+      .def_prop_ro("is_packed_struct", &LLVMTypeWrapper::is_packed_struct,
+                   R"(Check if this struct is packed.
+
+<sub>C API: LLVMIsPackedStruct</sub>)")
+      .def_prop_ro("is_opaque_struct", &LLVMTypeWrapper::is_opaque_struct,
+                   R"(Check if this struct is opaque.
+
+<sub>C API: LLVMIsOpaqueStruct</sub>)")
       .def_prop_ro("is_literal_struct", &LLVMTypeWrapper::is_literal_struct,
-                   "Check if this is a literal (unnamed) struct type.")
-      .def_prop_ro("struct_name", &LLVMTypeWrapper::get_struct_name)
-      .def_prop_ro("is_vararg", &LLVMTypeWrapper::is_vararg_function)
+                   R"(Check if this is a literal (unnamed) struct type.
+
+<sub>C API: LLVMIsLiteralStruct</sub>)")
+      .def_prop_ro("struct_name", &LLVMTypeWrapper::get_struct_name,
+                   R"(Get the name of a struct type.
+
+<sub>C API: LLVMGetStructName</sub>)")
+      .def_prop_ro("is_vararg", &LLVMTypeWrapper::is_vararg_function,
+                   R"(Check if this function type is variadic.
+
+<sub>C API: LLVMIsFunctionVarArg</sub>)")
       .def("get_struct_element_type", &LLVMTypeWrapper::get_struct_element_type,
-           "index"_a)
-      .def_prop_ro("is_opaque_pointer", &LLVMTypeWrapper::is_opaque_pointer)
-      .def_prop_ro("element_type", &LLVMTypeWrapper::get_element_type)
-      .def_prop_ro("array_length", &LLVMTypeWrapper::get_array_length)
-      .def_prop_ro("vector_size", &LLVMTypeWrapper::get_vector_size)
+           "index"_a,
+           R"(Get the element type at the given index.
+
+<sub>C API: LLVMStructGetTypeAtIndex</sub>)")
+      .def_prop_ro("is_opaque_pointer", &LLVMTypeWrapper::is_opaque_pointer,
+                   R"(Check if this is an opaque pointer.
+
+<sub>C API: LLVMPointerTypeIsOpaque</sub>)")
+      .def_prop_ro("element_type", &LLVMTypeWrapper::get_element_type,
+                   R"(Get the element type (for arrays, vectors).
+
+<sub>C API: LLVMGetElementType</sub>)")
+      .def_prop_ro("array_length", &LLVMTypeWrapper::get_array_length,
+                   R"(Get the length of an array type.
+
+<sub>C API: LLVMGetArrayLength2</sub>)")
+      .def_prop_ro("vector_size", &LLVMTypeWrapper::get_vector_size,
+                   R"(Get the number of elements in a vector type.
+
+<sub>C API: LLVMGetVectorSize</sub>)")
       .def_prop_ro("pointer_address_space",
-                   &LLVMTypeWrapper::get_pointer_address_space)
-      .def_prop_ro("return_type", &LLVMTypeWrapper::get_return_type)
-      .def_prop_ro("param_count", &LLVMTypeWrapper::count_param_types)
-      .def_prop_ro("param_types", &LLVMTypeWrapper::get_param_types)
+                   &LLVMTypeWrapper::get_pointer_address_space,
+                   R"(Get the address space of a pointer type.
+
+<sub>C API: LLVMGetPointerAddressSpace</sub>)")
+      .def_prop_ro("return_type", &LLVMTypeWrapper::get_return_type,
+                   R"(Get the return type of a function type.
+
+<sub>C API: LLVMGetReturnType</sub>)")
+      .def_prop_ro("param_count", &LLVMTypeWrapper::count_param_types,
+                   R"(Get the number of parameters in a function type.
+
+<sub>C API: LLVMCountParamTypes</sub>)")
+      .def_prop_ro("param_types", &LLVMTypeWrapper::get_param_types,
+                   R"(Get the parameter types of a function type.
+
+<sub>C API: LLVMGetParamTypes</sub>)")
       .def_prop_ro("target_ext_type_name",
-                   &LLVMTypeWrapper::get_target_ext_type_name)
-      .def_prop_ro("target_ext_type_num_type_params",
-                   &LLVMTypeWrapper::get_target_ext_type_num_type_params)
-      .def_prop_ro("target_ext_type_num_int_params",
-                   &LLVMTypeWrapper::get_target_ext_type_num_int_params)
+                   &LLVMTypeWrapper::get_target_ext_type_name,
+                   R"(Get the name of a target extension type.
+
+<sub>C API: LLVMGetTargetExtTypeName</sub>)")
+      .def_prop_ro(
+          "target_ext_type_num_type_params",
+          &LLVMTypeWrapper::get_target_ext_type_num_type_params,
+          R"(Get number of type parameters for this target extension type.
+
+<sub>C API: LLVMGetTargetExtTypeNumTypeParams</sub>)")
+      .def_prop_ro(
+          "target_ext_type_num_int_params",
+          &LLVMTypeWrapper::get_target_ext_type_num_int_params,
+          R"(Get number of integer parameters for this target extension type.
+
+<sub>C API: LLVMGetTargetExtTypeNumIntParams</sub>)")
       .def("get_target_ext_type_type_param",
-           &LLVMTypeWrapper::get_target_ext_type_type_param, "index"_a)
+           &LLVMTypeWrapper::get_target_ext_type_type_param, "index"_a,
+           R"(Get a type parameter of this target extension type by index.
+
+<sub>C API: LLVMGetTargetExtTypeTypeParam</sub>)")
       .def("get_target_ext_type_int_param",
-           &LLVMTypeWrapper::get_target_ext_type_int_param, "index"_a)
-      .def("set_body", &struct_set_body, "elem_types"_a, "packed"_a = false)
-      .def_prop_ro("struct_element_count", &type_count_struct_element_types)
+           &LLVMTypeWrapper::get_target_ext_type_int_param, "index"_a,
+           R"(Get an integer parameter of this target extension type by index.
+
+<sub>C API: LLVMGetTargetExtTypeIntParam</sub>)")
+      .def("set_body", &struct_set_body, "elem_types"_a, "packed"_a = false,
+           R"(Set the body of an opaque struct.
+
+<sub>C API: LLVMStructSetBody</sub>)")
+      .def_prop_ro("struct_element_count", &type_count_struct_element_types,
+                   R"(Get number of struct elements.
+
+<sub>C API: LLVMCountStructElementTypes</sub>)")
       // Phase 2: Type-based constant creation
       .def("constant", &LLVMTypeWrapper::constant, "val"_a,
            "sign_extend"_a = false,
-           R"(Create an integer constant of this type.)")
+           R"(Create an integer constant of this type.
+
+<sub>C API: LLVMConstInt</sub>)")
       .def("constant_from_string", &LLVMTypeWrapper::constant_from_string,
            "text"_a, "radix"_a = 10,
            R"(Create an integer constant from a string.
@@ -8893,9 +8963,11 @@ Args:
     text: The number as a string (e.g., "12345678901234567890")
     radix: The radix (base), 2-36. Default is 10.
 
-Wraps LLVMConstIntOfStringAndSize.)")
+<sub>C API: LLVMConstIntOfStringAndSize</sub>)")
       .def("real_constant", &LLVMTypeWrapper::real_constant, "val"_a,
-           R"(Create a floating-point constant of this type.)")
+           R"(Create a floating-point constant of this type.
+
+<sub>C API: LLVMConstReal</sub>)")
       .def("real_constant_from_string",
            &LLVMTypeWrapper::real_constant_from_string, "text"_a,
            R"(Create a floating-point constant from a string.
@@ -8905,25 +8977,41 @@ Useful for precise floating-point values.
 Args:
     text: The number as a string (e.g., "3.14159265358979323846")
 
-Wraps LLVMConstRealOfStringAndSize.)")
+<sub>C API: LLVMConstRealOfStringAndSize</sub>)")
       .def("null", &LLVMTypeWrapper::null,
-           R"(Create a null value of this type.)")
+           R"(Create a null value of this type.
+
+<sub>C API: LLVMConstNull</sub>)")
       .def("all_ones", &LLVMTypeWrapper::all_ones,
-           R"(Create an all-ones constant of this type.)")
+           R"(Create an all-ones constant of this type.
+
+<sub>C API: LLVMConstAllOnes</sub>)")
       .def("undef", &LLVMTypeWrapper::undef,
-           R"(Create an undef value of this type.)")
+           R"(Create an undef value of this type.
+
+<sub>C API: LLVMGetUndef</sub>)")
       .def("poison", &LLVMTypeWrapper::poison,
-           R"(Create a poison value of this type.)")
+           R"(Create a poison value of this type.
+
+<sub>C API: LLVMGetPoison</sub>)")
       // Phase 2: Composite type factory methods
       .def("array", &LLVMTypeWrapper::array, "count"_a,
-           R"(Create an array type with this element type.)")
+           R"(Create an array type with this element type.
+
+<sub>C API: LLVMArrayType2</sub>)")
       .def("vector", &LLVMTypeWrapper::vector, "count"_a,
-           R"(Create a vector type with this element type.)")
+           R"(Create a vector type with this element type.
+
+<sub>C API: LLVMVectorType</sub>)")
       .def("pointer", &LLVMTypeWrapper::pointer, "address_space"_a = 0,
-           R"(Create a pointer type in this type's context.)")
+           R"(Create a pointer type in this type's context.
+
+<sub>C API: LLVMPointerType</sub>)")
       // Parent navigation
       .def_prop_ro("context", &LLVMTypeWrapper::context,
-                   R"(Get the context this type belongs to.)",
+                   R"(Get the context this type belongs to.
+
+<sub>C API: LLVMGetTypeContext</sub>)",
                    nb::rv_policy::take_ownership);
 
   // Use wrapper (represents a use edge in the use-def chain)
@@ -8947,156 +9035,425 @@ Wraps LLVMConstRealOfStringAndSize.)")
            [](const LLVMValueWrapper &v) {
              return std::hash<LLVMValueRef>{}(v.m_ref);
            })
-      .def_prop_ro("type", &LLVMValueWrapper::type)
+      .def_prop_ro("type", &LLVMValueWrapper::type,
+                   R"(Get the type of this value.
+
+<sub>C API: LLVMTypeOf</sub>)")
       .def_prop_rw("name", &LLVMValueWrapper::get_name,
-                   &LLVMValueWrapper::set_name)
+                   &LLVMValueWrapper::set_name,
+                   R"(Get or set the name.
+
+<sub>C API: LLVMGetValueName2, LLVMSetValueName2</sub>)")
       .def("__str__", &LLVMValueWrapper::to_string)
       .def("__repr__", &LLVMValueWrapper::to_string)
-      .def_prop_ro("is_constant", &LLVMValueWrapper::is_constant)
-      .def_prop_ro("is_undef", &LLVMValueWrapper::is_undef)
-      .def_prop_ro("is_poison", &LLVMValueWrapper::is_poison)
-      .def_prop_ro("uses", &LLVMValueWrapper::uses)
-      .def_prop_ro("users", &LLVMValueWrapper::users)
-      .def_prop_ro("next_global", &LLVMValueWrapper::next_global)
-      .def_prop_ro("prev_global", &LLVMValueWrapper::prev_global)
-      .def("add_incoming", &phi_add_incoming, "val"_a, "bb"_a)
-      .def("add_case", &switch_add_case, "val"_a, "bb"_a)
+      .def_prop_ro("is_constant", &LLVMValueWrapper::is_constant,
+                   R"(Check if this is a constant.
+
+<sub>C API: LLVMIsConstant</sub>)")
+      .def_prop_ro("is_undef", &LLVMValueWrapper::is_undef,
+                   R"(Check if this is undef.
+
+<sub>C API: LLVMIsUndef</sub>)")
+      .def_prop_ro("is_poison", &LLVMValueWrapper::is_poison,
+                   R"(Check if this is poison.
+
+<sub>C API: LLVMIsPoison</sub>)")
+      .def_prop_ro("uses", &LLVMValueWrapper::uses,
+                   R"(Get all uses of this value.
+
+<sub>C API: LLVMGetFirstUse, LLVMGetNextUse</sub>)")
+      .def_prop_ro("users", &LLVMValueWrapper::users,
+                   R"(Get all users of this value.
+
+<sub>C API: LLVMGetFirstUse, LLVMGetUser</sub>)")
+      .def_prop_ro("next_global", &LLVMValueWrapper::next_global,
+                   R"(Get the next global.
+
+<sub>C API: LLVMGetNextGlobal</sub>)")
+      .def_prop_ro("prev_global", &LLVMValueWrapper::prev_global,
+                   R"(Get the previous global.
+
+<sub>C API: LLVMGetPreviousGlobal</sub>)")
+      .def("add_incoming", &phi_add_incoming, "val"_a, "bb"_a,
+           R"(Add an incoming value to a PHI node.
+
+<sub>C API: LLVMAddIncoming</sub>)")
+      .def("add_case", &switch_add_case, "val"_a, "bb"_a,
+           R"(Add a case to a switch instruction.
+
+<sub>C API: LLVMAddCase</sub>)")
       .def("add_destination", &indirect_br_add_destination, "dest"_a,
-           R"(Add a destination to an indirect branch instruction.)")
+           R"(Add a destination to an indirect branch.
+
+<sub>C API: LLVMAddDestination</sub>)")
       .def_prop_rw("initializer", &global_get_initializer,
-                   &global_set_initializer)
-      .def("set_constant", &global_set_constant, "is_const"_a)
-      .def_prop_ro("is_global_constant", &global_is_constant)
-      .def_prop_rw("linkage", &global_get_linkage, &global_set_linkage)
-      .def_prop_rw("visibility", &global_get_visibility, &global_set_visibility)
+                   &global_set_initializer,
+                   R"(Get or set the initializer.
+
+<sub>C API: LLVMGetInitializer, LLVMSetInitializer</sub>)")
+      .def("set_constant", &global_set_constant, "is_const"_a,
+           R"(Set whether this global is constant.
+
+<sub>C API: LLVMSetGlobalConstant</sub>)")
+      .def_prop_ro("is_global_constant", &global_is_constant,
+                   R"(Check if this global is constant.
+
+<sub>C API: LLVMIsGlobalConstant</sub>)")
+      .def_prop_rw("linkage", &global_get_linkage, &global_set_linkage,
+                   R"(Get or set linkage.
+
+<sub>C API: LLVMGetLinkage, LLVMSetLinkage</sub>)")
+      .def_prop_rw("visibility", &global_get_visibility, &global_set_visibility,
+                   R"(Get or set visibility.
+
+<sub>C API: LLVMGetVisibility, LLVMSetVisibility</sub>)")
       .def_prop_rw("dll_storage_class", &global_get_dll_storage_class,
                    &global_set_dll_storage_class,
-                   "DLL storage class for Windows PE/COFF targets.")
+                   R"(DLL storage class for Windows PE/COFF targets.
+
+<sub>C API: LLVMGetDLLStorageClass, LLVMSetDLLStorageClass</sub>)")
       .def_prop_ro("comdat", &global_get_comdat,
-                   "Get the COMDAT section for this global (None if not set).")
+                   R"(Get the COMDAT section for this global (None if not set).
+
+<sub>C API: LLVMGetComdat</sub>)")
       .def("set_comdat", &global_set_comdat, "comdat"_a,
-           "Set the COMDAT section for this global.")
+           R"(Set the COMDAT section for this global.
+
+<sub>C API: LLVMSetComdat</sub>)")
       .def_prop_rw("alignment", &LLVMValueWrapper::get_alignment,
-                   &LLVMValueWrapper::set_alignment)
-      .def_prop_rw("section", &global_get_section, &global_set_section)
-      .def("set_thread_local", &global_set_thread_local, "is_tls"_a)
-      .def_prop_ro("is_thread_local", &global_is_thread_local)
+                   &LLVMValueWrapper::set_alignment,
+                   R"(Get or set alignment.
+
+<sub>C API: LLVMGetAlignment, LLVMSetAlignment</sub>)")
+      .def_prop_rw("section", &global_get_section, &global_set_section,
+                   R"(Get or set section.
+
+<sub>C API: LLVMGetSection, LLVMSetSection</sub>)")
+      .def("set_thread_local", &global_set_thread_local, "is_tls"_a,
+           R"(Set whether this global is thread-local.
+
+<sub>C API: LLVMSetThreadLocal</sub>)")
+      .def_prop_ro("is_thread_local", &global_is_thread_local,
+                   R"(Check if thread local.
+
+<sub>C API: LLVMIsThreadLocal</sub>)")
       .def("set_externally_initialized", &global_set_externally_initialized,
-           "is_ext"_a)
+           "is_ext"_a,
+           R"(Set whether this global is initialized externally.
+
+<sub>C API: LLVMSetExternallyInitialized</sub>)")
       .def_prop_ro("is_externally_initialized",
-                   &global_is_externally_initialized)
-      .def("delete_global", &global_delete)
-      .def("delete", &global_delete) // Alias for delete_global
+                   &global_is_externally_initialized,
+                   R"(Check if externally initialized.
+
+<sub>C API: LLVMIsExternallyInitialized</sub>)")
+      .def("delete_global", &global_delete,
+           R"(Delete this global.
+
+<sub>C API: LLVMDeleteGlobal</sub>)")
+      .def("delete", &global_delete,
+           R"(Delete this global.
+
+<sub>C API: LLVMDeleteGlobal</sub>)")
       // PHI helpers
-      .def_prop_ro("num_incoming", &LLVMValueWrapper::count_incoming)
+      .def_prop_ro("num_incoming", &LLVMValueWrapper::count_incoming,
+                   R"(Get number of incoming values.
+
+<sub>C API: LLVMCountIncoming</sub>)")
       .def("get_incoming_value", &LLVMValueWrapper::get_incoming_value,
-           "index"_a)
-      .def("get_incoming_block", &phi_get_incoming_block, "index"_a)
+           "index"_a,
+           R"(Get incoming value at index.
+
+<sub>C API: LLVMGetIncomingValue</sub>)")
+      .def("get_incoming_block", &phi_get_incoming_block, "index"_a,
+           R"(Get incoming block at index.
+
+<sub>C API: LLVMGetIncomingBlock</sub>)")
       // Branch instruction helpers
-      .def_prop_ro("is_conditional", &LLVMValueWrapper::is_conditional)
-      .def_prop_ro("condition", &LLVMValueWrapper::get_condition)
-      .def_prop_ro("num_successors", &LLVMValueWrapper::get_num_successors)
-      .def("get_successor", &LLVMValueWrapper::get_successor, "index"_a)
-      .def_prop_ro("successors", &LLVMValueWrapper::successors)
-      // Load/Store helpers - use LLVMValueWrapper methods
-      .def("set_volatile", &LLVMValueWrapper::set_volatile, "is_volatile"_a)
-      .def_prop_ro("is_volatile", &LLVMValueWrapper::get_volatile)
-      .def("set_inst_alignment", &LLVMValueWrapper::set_alignment, "align"_a)
-      .def_prop_ro("inst_alignment", &LLVMValueWrapper::get_alignment)
-      // Comparison helpers - use LLVMValueWrapper methods
-      .def_prop_ro("icmp_predicate", &LLVMValueWrapper::get_icmp_predicate)
-      .def_prop_ro("fcmp_predicate", &LLVMValueWrapper::get_fcmp_predicate)
+      .def_prop_ro("is_conditional", &LLVMValueWrapper::is_conditional,
+                   R"(Check if conditional branch.
+
+<sub>C API: LLVMIsConditional</sub>)")
+      .def_prop_ro("condition", &LLVMValueWrapper::get_condition,
+                   R"(Get branch condition.
+
+<sub>C API: LLVMGetCondition</sub>)")
+      .def_prop_ro("num_successors", &LLVMValueWrapper::get_num_successors,
+                   R"(Get number of successors.
+
+<sub>C API: LLVMGetNumSuccessors</sub>)")
+      .def("get_successor", &LLVMValueWrapper::get_successor, "index"_a,
+           R"(Get successor at index.
+
+<sub>C API: LLVMGetSuccessor</sub>)")
+      .def_prop_ro("successors", &LLVMValueWrapper::successors,
+                   R"(Get all successors.
+
+<sub>C API: LLVMGetNumSuccessors, LLVMGetSuccessor</sub>)")
+      // Load/Store helpers
+      .def("set_volatile", &LLVMValueWrapper::set_volatile, "is_volatile"_a,
+           R"(Set volatile flag.
+
+<sub>C API: LLVMSetVolatile</sub>)")
+      .def_prop_ro("is_volatile", &LLVMValueWrapper::get_volatile,
+                   R"(Check if volatile.
+
+<sub>C API: LLVMGetVolatile</sub>)")
+      .def("set_inst_alignment", &LLVMValueWrapper::set_alignment, "align"_a,
+           R"(Set instruction alignment.
+
+<sub>C API: LLVMSetAlignment</sub>)")
+      .def_prop_ro("inst_alignment", &LLVMValueWrapper::get_alignment,
+                   R"(Get instruction alignment.
+
+<sub>C API: LLVMGetAlignment</sub>)")
+      // Comparison helpers
+      .def_prop_ro("icmp_predicate", &LLVMValueWrapper::get_icmp_predicate,
+                   R"(Get integer comparison predicate.
+
+<sub>C API: LLVMGetICmpPredicate</sub>)")
+      .def_prop_ro("fcmp_predicate", &LLVMValueWrapper::get_fcmp_predicate,
+                   R"(Get float comparison predicate.
+
+<sub>C API: LLVMGetFCmpPredicate</sub>)")
       // Instruction iteration
-      .def_prop_ro("next_instruction", &LLVMValueWrapper::next_instruction)
-      .def_prop_ro("prev_instruction", &LLVMValueWrapper::prev_instruction)
+      .def_prop_ro("next_instruction", &LLVMValueWrapper::next_instruction,
+                   R"(Get next instruction.
+
+<sub>C API: LLVMGetNextInstruction</sub>)")
+      .def_prop_ro("prev_instruction", &LLVMValueWrapper::prev_instruction,
+                   R"(Get previous instruction.
+
+<sub>C API: LLVMGetPreviousInstruction</sub>)")
       // Instruction predicates
-      .def_prop_ro("is_call_inst", &LLVMValueWrapper::is_a_call_inst)
-      .def_prop_ro("is_declaration", &LLVMValueWrapper::is_declaration)
+      .def_prop_ro("is_call_inst", &LLVMValueWrapper::is_a_call_inst,
+                   R"(Check if this is a call.
+
+<sub>C API: LLVMIsACallInst</sub>)")
+      .def_prop_ro("is_declaration", &LLVMValueWrapper::is_declaration,
+                   R"(Check if this is a declaration.
+
+<sub>C API: LLVMIsDeclaration</sub>)")
       // Operand access
-      .def_prop_ro("num_operands", &LLVMValueWrapper::get_num_operands)
-      .def("get_operand", &LLVMValueWrapper::get_operand, "index"_a)
+      .def_prop_ro("num_operands", &LLVMValueWrapper::get_num_operands,
+                   R"(Get number of operands.
+
+<sub>C API: LLVMGetNumOperands</sub>)")
+      .def("get_operand", &LLVMValueWrapper::get_operand, "index"_a,
+           R"(Get operand at index.
+
+<sub>C API: LLVMGetOperand</sub>)")
       .def("set_operand", &LLVMValueWrapper::set_operand, "index"_a, "val"_a,
            R"(Set the operand at the given index.
 
-Wraps LLVMSetOperand.)")
+<sub>C API: LLVMSetOperand</sub>)")
       .def("get_operand_use", &LLVMValueWrapper::get_operand_use, "index"_a,
            R"(Get the Use object for an operand at the given index.
 
-Wraps LLVMGetOperandUse.)")
+<sub>C API: LLVMGetOperandUse</sub>)")
       // Constant type checking
-      .def_prop_ro("is_global_value", &LLVMValueWrapper::is_a_global_value)
-      .def_prop_ro("is_function", &LLVMValueWrapper::is_a_function)
+      .def_prop_ro("is_global_value", &LLVMValueWrapper::is_a_global_value,
+                   R"(Check if global value.
+
+<sub>C API: LLVMIsAGlobalValue</sub>)")
+      .def_prop_ro("is_function", &LLVMValueWrapper::is_a_function,
+                   R"(Check if function.
+
+<sub>C API: LLVMIsAFunction</sub>)")
       .def_prop_ro("is_global_variable",
-                   &LLVMValueWrapper::is_a_global_variable)
-      .def_prop_ro("is_global_alias", &LLVMValueWrapper::is_a_global_alias)
-      .def_prop_ro("is_constant_int", &LLVMValueWrapper::is_a_constant_int)
-      .def_prop_ro("is_constant_fp", &LLVMValueWrapper::is_a_constant_fp)
+                   &LLVMValueWrapper::is_a_global_variable,
+                   R"(Check if global variable.
+
+<sub>C API: LLVMIsAGlobalVariable</sub>)")
+      .def_prop_ro("is_global_alias", &LLVMValueWrapper::is_a_global_alias,
+                   R"(Check if global alias.
+
+<sub>C API: LLVMIsAGlobalAlias</sub>)")
+      .def_prop_ro("is_constant_int", &LLVMValueWrapper::is_a_constant_int,
+                   R"(Check if constant int.
+
+<sub>C API: LLVMIsAConstantInt</sub>)")
+      .def_prop_ro("is_constant_fp", &LLVMValueWrapper::is_a_constant_fp,
+                   R"(Check if constant FP.
+
+<sub>C API: LLVMIsAConstantFP</sub>)")
       .def_prop_ro("is_constant_aggregate_zero",
-                   &LLVMValueWrapper::is_a_constant_aggregate_zero)
+                   &LLVMValueWrapper::is_a_constant_aggregate_zero,
+                   R"(Check if constant aggregate zero.
+
+<sub>C API: LLVMIsAConstantAggregateZero</sub>)")
       .def_prop_ro("is_constant_data_array",
-                   &LLVMValueWrapper::is_a_constant_data_array)
-      .def_prop_ro("is_constant_array", &LLVMValueWrapper::is_a_constant_array)
+                   &LLVMValueWrapper::is_a_constant_data_array,
+                   R"(Check if constant data array.
+
+<sub>C API: LLVMIsAConstantDataArray</sub>)")
+      .def_prop_ro("is_constant_array", &LLVMValueWrapper::is_a_constant_array,
+                   R"(Check if constant array.
+
+<sub>C API: LLVMIsAConstantArray</sub>)")
       .def_prop_ro("is_constant_struct",
-                   &LLVMValueWrapper::is_a_constant_struct)
+                   &LLVMValueWrapper::is_a_constant_struct,
+                   R"(Check if constant struct.
+
+<sub>C API: LLVMIsAConstantStruct</sub>)")
       .def_prop_ro("is_constant_pointer_null",
-                   &LLVMValueWrapper::is_a_constant_pointer_null)
+                   &LLVMValueWrapper::is_a_constant_pointer_null,
+                   R"(Check if constant pointer null.
+
+<sub>C API: LLVMIsAConstantPointerNull</sub>)")
       .def_prop_ro("is_constant_vector",
-                   &LLVMValueWrapper::is_a_constant_vector)
+                   &LLVMValueWrapper::is_a_constant_vector,
+                   R"(Check if constant vector.
+
+<sub>C API: LLVMIsAConstantVector</sub>)")
       .def_prop_ro("is_constant_data_vector",
-                   &LLVMValueWrapper::is_a_constant_data_vector)
-      .def_prop_ro("is_constant_expr", &LLVMValueWrapper::is_a_constant_expr)
-      .def_prop_ro("is_constant_ptr_auth",
-                   &LLVMValueWrapper::is_a_constant_ptr_auth)
-      .def_prop_ro("is_null", &LLVMValueWrapper::is_null)
+                   &LLVMValueWrapper::is_a_constant_data_vector,
+                   R"(Check if constant data vector.
+
+<sub>C API: LLVMIsAConstantDataVector</sub>)")
+      .def_prop_ro("is_constant_expr", &LLVMValueWrapper::is_a_constant_expr,
+                   R"(Check if constant expr.
+
+<sub>C API: LLVMIsAConstantExpr</sub>)")
+      .def_prop_ro(
+          "is_constant_ptr_auth", &LLVMValueWrapper::is_a_constant_ptr_auth,
+          R"(Check if this is a constant pointer authentication expression.
+
+<sub>C API: LLVMIsAConstantPtrAuth</sub>)")
+      .def_prop_ro("is_null", &LLVMValueWrapper::is_null,
+                   R"(Check if null.
+
+<sub>C API: LLVMIsNull</sub>)")
       // Constant integer value access
-      .def_prop_ro("const_zext_value", &LLVMValueWrapper::const_zext_value)
-      .def_prop_ro("const_sext_value", &LLVMValueWrapper::const_sext_value)
+      .def_prop_ro("const_zext_value", &LLVMValueWrapper::const_zext_value,
+                   R"(Get zero-extended value.
+
+<sub>C API: LLVMConstIntGetZExtValue</sub>)")
+      .def_prop_ro("const_sext_value", &LLVMValueWrapper::const_sext_value,
+                   R"(Get sign-extended value.
+
+<sub>C API: LLVMConstIntGetSExtValue</sub>)")
       // Value as metadata check
       .def_prop_ro("is_value_as_metadata",
-                   &LLVMValueWrapper::is_value_as_metadata)
+                   &LLVMValueWrapper::is_value_as_metadata,
+                   R"(Check if this is a ValueAsMetadata wrapper.
+
+<sub>C API: LLVMIsAValueAsMetadata</sub>)")
       // Intrinsic support
-      .def_prop_ro("intrinsic_id", &LLVMValueWrapper::get_intrinsic_id)
+      .def_prop_ro(
+          "intrinsic_id", &LLVMValueWrapper::get_intrinsic_id,
+          R"(Get intrinsic ID if this is a call to an LLVM intrinsic (0 if not).
+
+<sub>C API: LLVMGetIntrinsicID</sub>)")
       // Constant data access
-      .def_prop_ro("raw_data_values", &LLVMValueWrapper::get_raw_data_values)
-      .def("get_aggregate_element", &LLVMValueWrapper::get_aggregate_element,
-           "index"_a)
+      .def_prop_ro(
+          "raw_data_values", &LLVMValueWrapper::get_raw_data_values,
+          R"(Get elements of a ConstantDataSequential as a list of floats.
+
+<sub>C API: LLVMGetConstantDataSequentialElementAsDouble</sub>)")
+      .def(
+          "get_aggregate_element", &LLVMValueWrapper::get_aggregate_element,
+          "index"_a,
+          R"(Get element of a constant aggregate (struct, array, vector) at index.
+
+<sub>C API: LLVMGetAggregateElement</sub>)")
       // Constant expression support
-      .def_prop_ro("const_opcode", &LLVMValueWrapper::get_const_opcode)
-      .def_prop_ro("gep_source_element_type",
-                   &LLVMValueWrapper::get_gep_source_element_type)
-      .def_prop_ro("num_indices", &LLVMValueWrapper::get_num_indices)
-      .def_prop_ro("gep_no_wrap_flags",
-                   &LLVMValueWrapper::get_gep_no_wrap_flags)
+      .def_prop_ro("const_opcode", &LLVMValueWrapper::get_const_opcode,
+                   R"(Get the opcode for a constant expression.
+
+<sub>C API: LLVMGetConstOpcode</sub>)")
+      .def_prop_ro(
+          "gep_source_element_type",
+          &LLVMValueWrapper::get_gep_source_element_type,
+          R"(Get the source element type of this GEP (GetElementPtr) instruction.
+
+<sub>C API: LLVMGetGEPSourceElementType</sub>)")
+      .def_prop_ro(
+          "num_indices", &LLVMValueWrapper::get_num_indices,
+          R"(Get the number of indices in this GEP or ExtractValue instruction.
+
+<sub>C API: LLVMGetNumIndices</sub>)")
+      .def_prop_ro(
+          "gep_no_wrap_flags", &LLVMValueWrapper::get_gep_no_wrap_flags,
+          R"(Get the no-wrap flags (nuw/nusw/inbounds) for this GEP instruction.
+
+<sub>C API: LLVMGEPGetNoWrapFlags</sub>)")
       // Pointer auth constant support
-      .def_prop_ro("constant_ptr_auth_pointer",
-                   &LLVMValueWrapper::get_constant_ptr_auth_pointer)
-      .def_prop_ro("constant_ptr_auth_key",
-                   &LLVMValueWrapper::get_constant_ptr_auth_key)
-      .def_prop_ro("constant_ptr_auth_discriminator",
-                   &LLVMValueWrapper::get_constant_ptr_auth_discriminator)
-      .def_prop_ro("constant_ptr_auth_addr_discriminator",
-                   &LLVMValueWrapper::get_constant_ptr_auth_addr_discriminator)
+      .def_prop_ro(
+          "constant_ptr_auth_pointer",
+          &LLVMValueWrapper::get_constant_ptr_auth_pointer,
+          R"(Get the pointer from a constant pointer authentication expression.
+
+<sub>C API: LLVMGetConstantPtrAuthPointer</sub>)")
+      .def_prop_ro(
+          "constant_ptr_auth_key", &LLVMValueWrapper::get_constant_ptr_auth_key,
+          R"(Get the key from a constant pointer authentication expression.
+
+<sub>C API: LLVMGetConstantPtrAuthKey</sub>)")
+      .def_prop_ro(
+          "constant_ptr_auth_discriminator",
+          &LLVMValueWrapper::get_constant_ptr_auth_discriminator,
+          R"(Get the integer discriminator from a constant pointer authentication expression.
+
+<sub>C API: LLVMGetConstantPtrAuthAddrDiscriminator</sub>)")
+      .def_prop_ro(
+          "constant_ptr_auth_addr_discriminator",
+          &LLVMValueWrapper::get_constant_ptr_auth_addr_discriminator,
+          R"(Get the address discriminator from a constant pointer authentication expression.
+
+<sub>C API: LLVMGetConstantPtrAuthAddrDiscriminator</sub>)")
       // Parameter iteration
-      .def_prop_ro("next_param", &LLVMValueWrapper::next_param)
-      .def_prop_ro("prev_param", &LLVMValueWrapper::prev_param)
+      .def_prop_ro("next_param", &LLVMValueWrapper::next_param,
+                   R"(Get next parameter.
+
+<sub>C API: LLVMGetNextParam</sub>)")
+      .def_prop_ro("prev_param", &LLVMValueWrapper::prev_param,
+                   R"(Get previous parameter.
+
+<sub>C API: LLVMGetPreviousParam</sub>)")
       // Global alias iteration
-      .def_prop_ro("next_global_alias", &LLVMValueWrapper::next_global_alias)
-      .def_prop_ro("prev_global_alias", &LLVMValueWrapper::prev_global_alias)
-      .def_prop_ro("aliasee", &LLVMValueWrapper::alias_get_aliasee)
+      .def_prop_ro("next_global_alias", &LLVMValueWrapper::next_global_alias,
+                   R"(Get next global alias.
+
+<sub>C API: LLVMGetNextGlobalAlias</sub>)")
+      .def_prop_ro("prev_global_alias", &LLVMValueWrapper::prev_global_alias,
+                   R"(Get previous global alias.
+
+<sub>C API: LLVMGetPreviousGlobalAlias</sub>)")
+      .def_prop_ro("aliasee", &LLVMValueWrapper::alias_get_aliasee,
+                   R"(Get the value this alias points to.
+
+<sub>C API: LLVMAliasGetAliasee</sub>)")
       .def("alias_set_aliasee", &LLVMValueWrapper::alias_set_aliasee,
-           "aliasee"_a)
+           "aliasee"_a, R"(Set the value this alias points to.
+
+<sub>C API: LLVMAliasSetAliasee</sub>)")
       // Global IFunc iteration
-      .def_prop_ro("next_global_ifunc", &LLVMValueWrapper::next_global_ifunc)
-      .def_prop_ro("prev_global_ifunc", &LLVMValueWrapper::prev_global_ifunc)
+      .def_prop_ro("next_global_ifunc", &LLVMValueWrapper::next_global_ifunc,
+                   R"(Get the next indirect function (IFunc) in the module.
+
+<sub>C API: LLVMGetNextGlobalIFunc</sub>)")
+      .def_prop_ro("prev_global_ifunc", &LLVMValueWrapper::prev_global_ifunc,
+                   R"(Get the previous indirect function (IFunc) in the module.
+
+<sub>C API: LLVMGetPreviousGlobalIFunc</sub>)")
       .def_prop_ro("global_ifunc_resolver",
-                   &LLVMValueWrapper::get_global_ifunc_resolver)
+                   &LLVMValueWrapper::get_global_ifunc_resolver,
+                   R"(Get the resolver function for this indirect function.
+
+<sub>C API: LLVMGetGlobalIFuncResolver</sub>)")
       .def("set_global_ifunc_resolver",
-           &LLVMValueWrapper::set_global_ifunc_resolver, "resolver"_a)
+           &LLVMValueWrapper::set_global_ifunc_resolver, "resolver"_a,
+           R"(Set the resolver function for this indirect function.
+
+<sub>C API: LLVMSetGlobalIFuncResolver</sub>)")
       .def("erase_from_parent_ifunc",
            &LLVMValueWrapper::erase_from_parent_ifunc,
            R"(Erase this global IFunc from its parent module and delete it.
 
-After calling this, the IFunc value is no longer valid and should not be used.)")
+After calling this, the IFunc value is no longer valid and should not be used.
+
+<sub>C API: LLVMEraseGlobalIFunc</sub>)")
       .def("remove_from_parent_ifunc",
            &LLVMValueWrapper::remove_from_parent_ifunc,
            R"(Remove this global IFunc from its parent module but keep it alive.
@@ -9104,184 +9461,447 @@ After calling this, the IFunc value is no longer valid and should not be used.)"
 WARNING: This is a low-level API for advanced use cases like moving an IFunc
 between modules. The removed IFunc will still hold references to values in the
 original module. If those values are deleted before the IFunc, LLVM will crash.
-Prefer using erase_from_parent_ifunc() for most use cases.)")
+Prefer using erase_from_parent_ifunc() for most use cases.
+
+<sub>C API: LLVMRemoveGlobalIFunc</sub>)")
       // Global properties
       .def_prop_ro("global_value_type",
-                   &LLVMValueWrapper::global_get_value_type)
-      .def_prop_rw("unnamed_address", &LLVMValueWrapper::get_unnamed_address,
-                   &LLVMValueWrapper::set_unnamed_address)
-      .def_prop_ro("has_personality_fn", &LLVMValueWrapper::has_personality_fn)
-      .def_prop_ro("personality_fn", &LLVMValueWrapper::get_personality_fn)
-      .def("set_personality_fn", &LLVMValueWrapper::set_personality_fn, "fn"_a)
-      .def_prop_ro("has_prefix_data", &LLVMValueWrapper::has_prefix_data)
-      .def_prop_ro("prefix_data", &LLVMValueWrapper::get_prefix_data)
-      .def("set_prefix_data", &LLVMValueWrapper::set_prefix_data, "data"_a)
-      .def_prop_ro("has_prologue_data", &LLVMValueWrapper::has_prologue_data)
-      .def_prop_ro("prologue_data", &LLVMValueWrapper::get_prologue_data)
-      .def("set_prologue_data", &LLVMValueWrapper::set_prologue_data, "data"_a)
+                   &LLVMValueWrapper::global_get_value_type,
+                   R"(Get the value type of this global variable or function.
+
+<sub>C API: LLVMGlobalGetValueType</sub>)")
+      .def_prop_rw(
+          "unnamed_address", &LLVMValueWrapper::get_unnamed_address,
+          &LLVMValueWrapper::set_unnamed_address,
+          R"(Unnamed address attribute (controls whether address is significant).
+
+<sub>C API: LLVMGetUnnamedAddress, LLVMSetUnnamedAddress</sub>)")
+      .def_prop_ro(
+          "has_personality_fn", &LLVMValueWrapper::has_personality_fn,
+          R"(Check if this function has an exception handling personality function.
+
+<sub>C API: LLVMHasPersonalityFn</sub>)")
+      .def_prop_ro("personality_fn", &LLVMValueWrapper::get_personality_fn,
+                   R"(Get the exception handling personality function.
+
+<sub>C API: LLVMGetPersonalityFn</sub>)")
+      .def("set_personality_fn", &LLVMValueWrapper::set_personality_fn, "fn"_a,
+           R"(Set the exception handling personality function.
+
+<sub>C API: LLVMSetPersonalityFn</sub>)")
+      .def_prop_ro(
+          "has_prefix_data", &LLVMValueWrapper::has_prefix_data,
+          R"(Check if this function has prefix data (data before function entry).
+
+<sub>C API: LLVMHasPrefixData</sub>)")
+      .def_prop_ro("prefix_data", &LLVMValueWrapper::get_prefix_data,
+                   R"(Get prefix data (data before function entry).
+
+<sub>C API: LLVMGetPrefixData</sub>)")
+      .def("set_prefix_data", &LLVMValueWrapper::set_prefix_data, "data"_a,
+           R"(Set prefix data (data before function entry).
+
+<sub>C API: LLVMSetPrefixData</sub>)")
+      .def_prop_ro(
+          "has_prologue_data", &LLVMValueWrapper::has_prologue_data,
+          R"(Check if this function has prologue data (data at function entry).
+
+<sub>C API: LLVMHasPrologueData</sub>)")
+      .def_prop_ro("prologue_data", &LLVMValueWrapper::get_prologue_data,
+                   R"(Get prologue data (data at function entry).
+
+<sub>C API: LLVMGetPrologueData</sub>)")
+      .def("set_prologue_data", &LLVMValueWrapper::set_prologue_data, "data"_a,
+           R"(Set prologue data (data at function entry).
+
+<sub>C API: LLVMSetPrologueData</sub>)")
       // Instruction properties
-      .def_prop_ro("opcode", &LLVMValueWrapper::get_instruction_opcode)
+      .def_prop_ro("opcode", &LLVMValueWrapper::get_instruction_opcode,
+                   R"(Get instruction opcode.
+
+<sub>C API: LLVMGetInstructionOpcode</sub>)")
       // Instruction flags
-      .def_prop_ro("nsw", &LLVMValueWrapper::get_nsw)
-      .def_prop_ro("nuw", &LLVMValueWrapper::get_nuw)
-      .def_prop_ro("exact", &LLVMValueWrapper::get_exact)
-      .def_prop_ro("nneg", &LLVMValueWrapper::get_nneg)
-      // Memory access properties (ordering not duplicated)
-      .def_prop_ro("ordering", &LLVMValueWrapper::get_ordering)
+      .def_prop_ro("nsw", &LLVMValueWrapper::get_nsw,
+                   R"(Get NSW flag.
+
+<sub>C API: LLVMGetNSW</sub>)")
+      .def_prop_ro("nuw", &LLVMValueWrapper::get_nuw,
+                   R"(Get NUW flag.
+
+<sub>C API: LLVMGetNUW</sub>)")
+      .def_prop_ro("exact", &LLVMValueWrapper::get_exact,
+                   R"(Get exact flag.
+
+<sub>C API: LLVMGetExact</sub>)")
+      .def_prop_ro("nneg", &LLVMValueWrapper::get_nneg,
+                   R"(Get nneg flag.
+
+<sub>C API: LLVMGetNNeg</sub>)")
+      // Memory access properties
+      .def_prop_ro("ordering", &LLVMValueWrapper::get_ordering,
+                   R"(Get atomic ordering.
+
+<sub>C API: LLVMGetOrdering</sub>)")
       // Call/invoke properties
-      .def_prop_ro("num_arg_operands", &LLVMValueWrapper::get_num_arg_operands)
+      .def_prop_ro("num_arg_operands", &LLVMValueWrapper::get_num_arg_operands,
+                   R"(Get number of arg operands.
+
+<sub>C API: LLVMGetNumArgOperands</sub>)")
       // Alloca properties
-      .def_prop_ro("allocated_type", &LLVMValueWrapper::get_allocated_type)
-      .def_prop_ro("value_kind", &LLVMValueWrapper::value_kind)
-      // Phase 5.7: Operand bundle support
+      .def_prop_ro("allocated_type", &LLVMValueWrapper::get_allocated_type,
+                   R"(Get allocated type.
+
+<sub>C API: LLVMGetAllocatedType</sub>)")
+      .def_prop_ro("value_kind", &LLVMValueWrapper::value_kind,
+                   R"(Get value kind.
+
+<sub>C API: LLVMGetValueKind</sub>)")
+      // Operand bundle support
       .def_prop_ro("num_operand_bundles",
-                   &LLVMValueWrapper::get_num_operand_bundles)
-      // Phase 5.8: Inline assembly support
-      .def_prop_ro("is_inline_asm", &LLVMValueWrapper::is_a_inline_asm)
+                   &LLVMValueWrapper::get_num_operand_bundles,
+                   R"(Get number of operand bundles.
+
+<sub>C API: LLVMGetNumOperandBundles</sub>)")
+      // Inline assembly support
+      .def_prop_ro("is_inline_asm", &LLVMValueWrapper::is_a_inline_asm,
+                   R"(Check if this is an inline assembly value.
+
+<sub>C API: LLVMIsAInlineAsm</sub>)")
       .def_prop_ro("inline_asm_asm_string",
-                   &LLVMValueWrapper::get_inline_asm_asm_string)
+                   &LLVMValueWrapper::get_inline_asm_asm_string,
+                   R"(Get the assembly string from an inline asm value.
+
+<sub>C API: LLVMGetInlineAsmAsmString</sub>)")
       .def_prop_ro("inline_asm_constraint_string",
-                   &LLVMValueWrapper::get_inline_asm_constraint_string)
+                   &LLVMValueWrapper::get_inline_asm_constraint_string,
+                   R"(Get the constraint string from an inline asm value.
+
+<sub>C API: LLVMGetInlineAsmConstraintString</sub>)")
       .def_prop_ro("inline_asm_dialect",
-                   &LLVMValueWrapper::get_inline_asm_dialect)
+                   &LLVMValueWrapper::get_inline_asm_dialect,
+                   R"(Get the dialect (AT&T or Intel) of an inline asm value.
+
+<sub>C API: LLVMGetInlineAsmDialect</sub>)")
       .def_prop_ro("inline_asm_function_type",
-                   &LLVMValueWrapper::get_inline_asm_function_type)
+                   &LLVMValueWrapper::get_inline_asm_function_type,
+                   R"(Get the function type of an inline asm value.
+
+<sub>C API: LLVMGetInlineAsmFunctionType</sub>)")
       .def_prop_ro("inline_asm_has_side_effects",
-                   &LLVMValueWrapper::get_inline_asm_has_side_effects)
+                   &LLVMValueWrapper::get_inline_asm_has_side_effects,
+                   R"(Check if this inline assembly has side effects.
+
+<sub>C API: LLVMGetInlineAsmHasSideEffects</sub>)")
       .def_prop_ro("inline_asm_needs_aligned_stack",
-                   &LLVMValueWrapper::get_inline_asm_needs_aligned_stack)
+                   &LLVMValueWrapper::get_inline_asm_needs_aligned_stack,
+                   R"(Check if this inline assembly requires an aligned stack.
+
+<sub>C API: LLVMGetInlineAsmNeedsAlignedStack</sub>)")
       .def_prop_ro("inline_asm_can_unwind",
-                   &LLVMValueWrapper::get_inline_asm_can_unwind)
-      // Phase 5.9: Flag setters
-      .def("set_nsw", &LLVMValueWrapper::set_nsw, "nsw"_a)
-      .def("set_nuw", &LLVMValueWrapper::set_nuw, "nuw"_a)
-      .def("set_exact", &LLVMValueWrapper::set_exact, "exact"_a)
-      .def("set_nneg", &LLVMValueWrapper::set_nneg, "nneg"_a)
-      .def_prop_ro("is_disjoint", &LLVMValueWrapper::get_is_disjoint)
+                   &LLVMValueWrapper::get_inline_asm_can_unwind,
+                   R"(Check if inline assembly can unwind the stack.
+
+<sub>C API: LLVMGetInlineAsmCanUnwind</sub>)")
+      // Flag setters
+      .def("set_nsw", &LLVMValueWrapper::set_nsw, "nsw"_a,
+           R"(Set NSW flag.
+
+<sub>C API: LLVMSetNSW</sub>)")
+      .def("set_nuw", &LLVMValueWrapper::set_nuw, "nuw"_a,
+           R"(Set NUW flag.
+
+<sub>C API: LLVMSetNUW</sub>)")
+      .def("set_exact", &LLVMValueWrapper::set_exact, "exact"_a,
+           R"(Set exact flag.
+
+<sub>C API: LLVMSetExact</sub>)")
+      .def("set_nneg", &LLVMValueWrapper::set_nneg, "nneg"_a,
+           R"(Set nneg flag.
+
+<sub>C API: LLVMSetNNeg</sub>)")
+      .def_prop_ro("is_disjoint", &LLVMValueWrapper::get_is_disjoint,
+                   R"(Get disjoint flag.
+
+<sub>C API: LLVMGetIsDisjoint</sub>)")
       .def("set_is_disjoint", &LLVMValueWrapper::set_is_disjoint,
-           "is_disjoint"_a)
-      .def_prop_ro("icmp_same_sign", &LLVMValueWrapper::get_icmp_same_sign)
+           "is_disjoint"_a, R"(Set disjoint flag.
+
+<sub>C API: LLVMSetIsDisjoint</sub>)")
+      .def_prop_ro("icmp_same_sign", &LLVMValueWrapper::get_icmp_same_sign,
+                   R"(Get same sign flag.
+
+<sub>C API: LLVMGetICmpSameSign</sub>)")
       .def("set_icmp_same_sign", &LLVMValueWrapper::set_icmp_same_sign,
-           "same_sign"_a)
-      .def("set_ordering", &LLVMValueWrapper::set_ordering, "ordering"_a)
-      .def("set_volatile", &LLVMValueWrapper::set_volatile, "is_volatile"_a)
+           "same_sign"_a, R"(Set same sign flag.
+
+<sub>C API: LLVMSetICmpSameSign</sub>)")
+      .def("set_ordering", &LLVMValueWrapper::set_ordering, "ordering"_a,
+           R"(Set atomic ordering.
+
+<sub>C API: LLVMSetOrdering</sub>)")
+      .def("set_volatile", &LLVMValueWrapper::set_volatile, "is_volatile"_a,
+           R"(Set volatile flag.
+
+<sub>C API: LLVMSetVolatile</sub>)")
       // Atomic properties
-      .def_prop_ro("is_atomic", &LLVMValueWrapper::is_atomic)
+      .def_prop_ro("is_atomic", &LLVMValueWrapper::is_atomic,
+                   R"(Check if this atomic operation uses singlethread ordering.
+
+<sub>C API: LLVMIsAtomicSingleThread</sub>)")
       .def_prop_ro("atomic_sync_scope_id",
-                   &LLVMValueWrapper::get_atomic_sync_scope_id)
+                   &LLVMValueWrapper::get_atomic_sync_scope_id,
+                   R"(Get sync scope ID.
+
+<sub>C API: LLVMGetAtomicSyncScopeID</sub>)")
       .def("set_atomic_sync_scope_id",
-           &LLVMValueWrapper::set_atomic_sync_scope_id, "scope_id"_a)
-      .def_prop_ro("atomic_rmw_bin_op",
-                   &LLVMValueWrapper::get_atomic_rmw_bin_op)
-      .def_prop_ro("cmpxchg_success_ordering",
-                   &LLVMValueWrapper::get_cmpxchg_success_ordering)
-      .def_prop_ro("cmpxchg_failure_ordering",
-                   &LLVMValueWrapper::get_cmpxchg_failure_ordering)
-      .def_prop_ro("weak", &LLVMValueWrapper::get_weak)
-      .def("set_weak", &LLVMValueWrapper::set_weak, "is_weak"_a)
+           &LLVMValueWrapper::set_atomic_sync_scope_id, "scope_id"_a,
+           R"(Set sync scope ID.
+
+<sub>C API: LLVMSetAtomicSyncScopeID</sub>)")
+      .def_prop_ro(
+          "atomic_rmw_bin_op", &LLVMValueWrapper::get_atomic_rmw_bin_op,
+          R"(Get the operation kind for an atomic read-modify-write instruction.
+
+<sub>C API: LLVMGetAtomicRMWBinOp</sub>)")
+      .def_prop_ro(
+          "cmpxchg_success_ordering",
+          &LLVMValueWrapper::get_cmpxchg_success_ordering,
+          R"(Get the memory ordering on success for a compare-exchange instruction.
+
+<sub>C API: LLVMGetCmpXchgSuccessOrdering</sub>)")
+      .def_prop_ro(
+          "cmpxchg_failure_ordering",
+          &LLVMValueWrapper::get_cmpxchg_failure_ordering,
+          R"(Get the memory ordering on failure for a compare-exchange instruction.
+
+<sub>C API: LLVMGetCmpXchgFailureOrdering</sub>)")
+      .def_prop_ro("weak", &LLVMValueWrapper::get_weak,
+                   R"(Get weak flag.
+
+<sub>C API: LLVMGetWeak</sub>)")
+      .def("set_weak", &LLVMValueWrapper::set_weak, "is_weak"_a,
+           R"(Set weak flag.
+
+<sub>C API: LLVMSetWeak</sub>)")
       // Tail call kind
-      .def_prop_ro("tail_call_kind", &LLVMValueWrapper::get_tail_call_kind)
+      .def_prop_ro("tail_call_kind", &LLVMValueWrapper::get_tail_call_kind,
+                   R"(Get tail call kind.
+
+<sub>C API: LLVMGetTailCallKind</sub>)")
       .def("set_tail_call_kind", &LLVMValueWrapper::set_tail_call_kind,
-           "kind"_a)
+           "kind"_a, R"(Set tail call kind.
+
+<sub>C API: LLVMSetTailCallKind</sub>)")
       // Called function
       .def_prop_ro("called_function_type",
-                   &LLVMValueWrapper::get_called_function_type)
-      .def_prop_ro("called_value", &LLVMValueWrapper::get_called_value)
-      // Branch properties (duplicated from instruction helpers with same name)
-      // Note: is_conditional and condition already defined as properties above
+                   &LLVMValueWrapper::get_called_function_type,
+                   R"(Get called function type.
+
+<sub>C API: LLVMGetCalledFunctionType</sub>)")
+      .def_prop_ro("called_value", &LLVMValueWrapper::get_called_value,
+                   R"(Get called value.
+
+<sub>C API: LLVMGetCalledValue</sub>)")
       // Landing pad properties
-      .def_prop_ro("num_clauses", &LLVMValueWrapper::get_num_clauses)
-      .def("get_clause", &LLVMValueWrapper::get_clause, "index"_a)
-      .def_prop_ro("is_cleanup", &LLVMValueWrapper::is_cleanup)
-      .def("set_cleanup", &LLVMValueWrapper::set_cleanup, "is_cleanup"_a)
+      .def_prop_ro("num_clauses", &LLVMValueWrapper::get_num_clauses,
+                   R"(Get number of clauses.
+
+<sub>C API: LLVMGetNumClauses</sub>)")
+      .def("get_clause", &LLVMValueWrapper::get_clause, "index"_a,
+           R"(Get clause at index.
+
+<sub>C API: LLVMGetClause</sub>)")
+      .def_prop_ro("is_cleanup", &LLVMValueWrapper::is_cleanup,
+                   R"(Check if cleanup.
+
+<sub>C API: LLVMIsCleanup</sub>)")
+      .def("set_cleanup", &LLVMValueWrapper::set_cleanup, "is_cleanup"_a,
+           R"(Set cleanup flag.
+
+<sub>C API: LLVMSetCleanup</sub>)")
       // Catch switch/pad properties
       .def_prop_ro("parent_catch_switch",
-                   &LLVMValueWrapper::get_parent_catch_switch)
-      .def_prop_ro("num_handlers", &LLVMValueWrapper::get_num_handlers)
+                   &LLVMValueWrapper::get_parent_catch_switch,
+                   R"(Get parent catch switch.
+
+<sub>C API: LLVMGetParentCatchSwitch</sub>)")
+      .def_prop_ro("num_handlers", &LLVMValueWrapper::get_num_handlers,
+                   R"(Get number of handlers.
+
+<sub>C API: LLVMGetNumHandlers</sub>)")
       // Shuffle vector mask
       .def_prop_ro("num_mask_elements",
-                   &LLVMValueWrapper::get_num_mask_elements)
-      .def("get_mask_value", &LLVMValueWrapper::get_mask_value, "index"_a)
+                   &LLVMValueWrapper::get_num_mask_elements,
+                   R"(Get number of mask elements.
+
+<sub>C API: LLVMGetNumMaskElements</sub>)")
+      .def("get_mask_value", &LLVMValueWrapper::get_mask_value, "index"_a,
+           R"(Get mask value at index.
+
+<sub>C API: LLVMGetMaskValue</sub>)")
       // Fast-math flags
       .def_prop_ro("can_use_fast_math_flags",
-                   &LLVMValueWrapper::can_use_fast_math_flags)
-      .def_prop_ro("fast_math_flags", &LLVMValueWrapper::get_fast_math_flags)
+                   &LLVMValueWrapper::can_use_fast_math_flags,
+                   R"(Can use fast-math flags.
+
+<sub>C API: LLVMCanValueUseFastMathFlags</sub>)")
+      .def_prop_ro("fast_math_flags", &LLVMValueWrapper::get_fast_math_flags,
+                   R"(Get fast-math flags.
+
+<sub>C API: LLVMGetFastMathFlags</sub>)")
       .def("set_fast_math_flags", &LLVMValueWrapper::set_fast_math_flags,
-           "flags"_a)
+           "flags"_a, R"(Set fast-math flags.
+
+<sub>C API: LLVMSetFastMathFlags</sub>)")
       // Call instruction arg operand
-      .def("get_arg_operand", &LLVMValueWrapper::get_arg_operand, "index"_a)
+      .def("get_arg_operand", &LLVMValueWrapper::get_arg_operand, "index"_a,
+           R"(Get arg operand at index.
+
+<sub>C API: LLVMGetArgOperand</sub>)")
       // Instruction manipulation
-      .def("remove_from_parent", &LLVMValueWrapper::remove_from_parent)
-      .def_prop_ro("is_instruction", &LLVMValueWrapper::is_a_instruction)
+      .def("remove_from_parent", &LLVMValueWrapper::remove_from_parent,
+           R"(Remove instruction from parent.
+
+<sub>C API: LLVMInstructionRemoveFromParent</sub>)")
+      .def_prop_ro("is_instruction", &LLVMValueWrapper::is_a_instruction,
+                   R"(Check if instruction.
+
+<sub>C API: LLVMIsAInstruction</sub>)")
       .def_prop_ro("is_terminator_inst",
-                   &LLVMValueWrapper::is_a_terminator_inst)
-      .def_prop_ro("is_argument", &LLVMValueWrapper::is_a_argument)
+                   &LLVMValueWrapper::is_a_terminator_inst,
+                   R"(Check if terminator.
+
+<sub>C API: LLVMIsATerminatorInst</sub>)")
+      .def_prop_ro("is_argument", &LLVMValueWrapper::is_a_argument,
+                   R"(Check if argument.
+
+<sub>C API: LLVMIsAArgument</sub>)")
       // Parent navigation: value -> block -> function -> module -> context
-      .def_prop_ro(
-          "block", &LLVMValueWrapper::block,
-          R"(Get the basic block this instruction belongs to (throws if not an instruction).)")
-      .def_prop_ro(
-          "function", &LLVMValueWrapper::get_function,
-          R"(Get the function this value belongs to (works for instructions and parameters).)")
-      .def_prop_ro(
-          "module", &LLVMValueWrapper::get_module,
-          R"(Get the module this value belongs to (works for instructions, parameters, and globals).)",
-          nb::rv_policy::take_ownership)
-      .def_prop_ro(
-          "context", &LLVMValueWrapper::get_context,
-          R"(Get the context this value belongs to (works for instructions, parameters, and globals).)",
-          nb::rv_policy::take_ownership)
+      .def_prop_ro("block", &LLVMValueWrapper::block,
+                   R"(Get the basic block this instruction belongs to.
+
+<sub>C API: LLVMGetInstructionParent</sub>)")
+      .def_prop_ro("function", &LLVMValueWrapper::get_function,
+                   R"(Get the function this value belongs to.
+
+<sub>C API: LLVMGetBasicBlockParent, LLVMGetParamParent</sub>)")
+      .def_prop_ro("module", &LLVMValueWrapper::get_module,
+                   R"(Get the module this value belongs to.
+
+<sub>C API: LLVMGetGlobalParent</sub>)",
+                   nb::rv_policy::take_ownership)
+      .def_prop_ro("context", &LLVMValueWrapper::get_context,
+                   R"(Get the context this value belongs to.
+
+<sub>C API: LLVMGetTypeContext</sub>)",
+                   nb::rv_policy::take_ownership)
       // BasicBlock properties
-      .def_prop_ro("normal_dest", &LLVMValueWrapper::get_normal_dest)
-      .def_prop_ro("unwind_dest", &LLVMValueWrapper::get_unwind_dest)
-      .def("get_successor", &LLVMValueWrapper::get_successor, "index"_a)
+      .def_prop_ro("normal_dest", &LLVMValueWrapper::get_normal_dest,
+                   R"(Get normal destination.
+
+<sub>C API: LLVMGetNormalDest</sub>)")
+      .def_prop_ro("unwind_dest", &LLVMValueWrapper::get_unwind_dest,
+                   R"(Get unwind destination.
+
+<sub>C API: LLVMGetUnwindDest</sub>)")
+      .def("get_successor", &LLVMValueWrapper::get_successor, "index"_a,
+           R"(Get successor at index.
+
+<sub>C API: LLVMGetSuccessor</sub>)")
       .def_prop_ro("callbr_default_dest",
-                   &LLVMValueWrapper::get_callbr_default_dest)
+                   &LLVMValueWrapper::get_callbr_default_dest,
+                   R"(Get callbr default dest.
+
+<sub>C API: LLVMGetCallBrDefaultDest</sub>)")
       .def_prop_ro("callbr_num_indirect_dests",
-                   &LLVMValueWrapper::get_callbr_num_indirect_dests)
+                   &LLVMValueWrapper::get_callbr_num_indirect_dests,
+                   R"(Get callbr indirect dest count.
+
+<sub>C API: LLVMGetCallBrNumIndirectDests</sub>)")
       .def("get_callbr_indirect_dest",
-           &LLVMValueWrapper::get_callbr_indirect_dest, "index"_a)
+           &LLVMValueWrapper::get_callbr_indirect_dest, "index"_a,
+           R"(Get callbr indirect dest.
+
+<sub>C API: LLVMGetCallBrIndirectDest</sub>)")
       // Value/BasicBlock conversion
       .def_prop_ro("value_is_basic_block",
-                   &LLVMValueWrapper::value_is_basic_block)
-      .def("value_as_basic_block", &LLVMValueWrapper::value_as_basic_block)
-      // Echo command support - landing pad and catch switch operations
-      .def("add_clause", &LLVMValueWrapper::add_clause, "clause_val"_a)
-      .def("add_handler", &LLVMValueWrapper::add_handler, "handler"_a)
-      .def_prop_ro("handlers", &LLVMValueWrapper::get_handlers)
+                   &LLVMValueWrapper::value_is_basic_block,
+                   R"(Check if value is basic block.
+
+<sub>C API: LLVMValueIsBasicBlock</sub>)")
+      .def("value_as_basic_block", &LLVMValueWrapper::value_as_basic_block,
+           R"(Convert value to basic block.
+
+<sub>C API: LLVMValueAsBasicBlock</sub>)")
+      // Landing pad and catch switch operations
+      .def("add_clause", &LLVMValueWrapper::add_clause, "clause_val"_a,
+           R"(Add landing pad clause.
+
+<sub>C API: LLVMAddClause</sub>)")
+      .def("add_handler", &LLVMValueWrapper::add_handler, "handler"_a,
+           R"(Add catch switch handler.
+
+<sub>C API: LLVMAddHandler</sub>)")
+      .def_prop_ro("handlers", &LLVMValueWrapper::get_handlers,
+                   R"(Get all handlers.
+
+<sub>C API: LLVMGetHandlers</sub>)")
       .def("get_operand_bundle_at_index",
-           &LLVMValueWrapper::get_operand_bundle_at_index, "index"_a)
-      .def_prop_ro("indices", &LLVMValueWrapper::get_indices)
-      // Global/instruction metadata for echo command
+           &LLVMValueWrapper::get_operand_bundle_at_index, "index"_a,
+           R"(Get operand bundle at index.
+
+<sub>C API: LLVMGetOperandBundleAtIndex</sub>)")
+      .def_prop_ro(
+          "indices", &LLVMValueWrapper::get_indices,
+          R"(Get the indices for GEP or ExtractValue/InsertValue instructions.
+
+<sub>C API: LLVMGetIndices</sub>)")
+      // Global/instruction metadata
       .def("global_copy_all_metadata",
            &LLVMValueWrapper::global_copy_all_metadata,
-           "Copy all metadata from this global value.")
+           R"(Copy all metadata.
+
+<sub>C API: LLVMGlobalCopyAllMetadata</sub>)")
       .def("instruction_get_all_metadata_other_than_debug_loc",
            &LLVMValueWrapper::instruction_get_all_metadata_other_than_debug_loc,
-           "Get all metadata from this instruction except debug locations.")
-      // Value API refactor methods
+           R"(Get all metadata except debug loc.
+
+<sub>C API: LLVMInstructionGetAllMetadataOtherThanDebugLoc</sub>)")
+      // Value methods
       .def("const_bitcast", &LLVMValueWrapper::const_bitcast, "type"_a,
-           R"(Create a constant bitcast expression.)")
+           R"(Create constant bitcast.
+
+<sub>C API: LLVMConstBitCast</sub>)")
       .def("as_metadata", &LLVMValueWrapper::as_metadata,
-           R"(Convert value to metadata.)")
+           R"(Convert to metadata.
+
+<sub>C API: LLVMValueAsMetadata</sub>)")
       .def("delete_instruction", &LLVMValueWrapper::delete_instruction,
-           R"(Delete this instruction from its parent basic block.)")
+           R"(Delete this instruction from its parent block.
+
+<sub>C API: LLVMInstructionEraseFromParent</sub>)")
       // Callsite attribute methods (for call/invoke instructions)
       .def("get_callsite_attribute_count",
            &LLVMValueWrapper::get_callsite_attribute_count, "idx"_a,
-           R"(Get the number of callsite attributes at the given index.)")
-      .def(
-          "get_callsite_enum_attribute",
-          &LLVMValueWrapper::get_callsite_enum_attribute, "idx"_a, "kind_id"_a,
-          R"(Get an enum attribute at the given callsite index. Returns None if not found.)")
+           R"(Get the number of attributes at a call site index.
+
+<sub>C API: LLVMGetCallSiteAttributeCount</sub>)")
+      .def("get_callsite_enum_attribute",
+           &LLVMValueWrapper::get_callsite_enum_attribute, "idx"_a, "kind_id"_a,
+           R"(Get an enum attribute at a call site index (None if not found).
+
+<sub>C API: LLVMGetCallSiteEnumAttribute</sub>)")
       .def("add_callsite_attribute", &LLVMValueWrapper::add_callsite_attribute,
            "idx"_a, "attr"_a,
-           R"(Add an attribute to a callsite at the given index.)")
-      // Unified metadata method for instructions and globals
-      .def(
-          "set_metadata", &LLVMValueWrapper::set_metadata, "kind"_a, "md"_a,
-          "ctx"_a,
-          R"(Set metadata on this value (works for both instructions and globals).)")
+           R"(Add an attribute to a call site at the given index.
+
+<sub>C API: LLVMAddCallSiteAttribute</sub>)")
+      // Unified metadata method
+      .def("set_metadata", &LLVMValueWrapper::set_metadata, "kind"_a, "md"_a,
+           "ctx"_a,
+           R"(Set metadata on value.
+
+<sub>C API: LLVMSetMetadata, LLVMGlobalSetMetadata</sub>)")
       // Builder creation for instructions
       .def("create_builder", &LLVMValueWrapper::create_builder, nb::kw_only(),
            "before_dbg"_a = false, nb::rv_policy::take_ownership,
@@ -9292,15 +9912,11 @@ Only valid for instructions. For other value types, this will fail.
 Args:
   before_dbg: If True, insert before debug records.
               If False, insert after debug records but before the instruction.
-              Debug records (like llvm.dbg.value) are typically placed before
-              the instruction they describe.
 
 Returns:
   A BuilderManager for use with Python's 'with' statement.
 
-Example:
-  with inst.create_builder(before_dbg=False) as builder:
-      builder.add(x, y, "result"))");
+<sub>C API: LLVMCreateBuilderInContext, LLVMPositionBuilderBefore</sub>)");
 
   // BasicBlock wrapper
   nb::class_<LLVMBasicBlockWrapper>(m, "BasicBlock")
@@ -9312,121 +9928,232 @@ Example:
            [](const LLVMBasicBlockWrapper &v) {
              return std::hash<LLVMBasicBlockRef>{}(v.m_ref);
            })
-      .def_prop_ro("name", &LLVMBasicBlockWrapper::get_name)
-      .def("as_value", &LLVMBasicBlockWrapper::as_value)
-      .def_prop_ro("next_block", &LLVMBasicBlockWrapper::next_block)
-      .def_prop_ro("prev_block", &LLVMBasicBlockWrapper::prev_block)
-      .def_prop_ro("has_terminator", &LLVMBasicBlockWrapper::has_terminator)
-      .def_prop_ro("terminator", &LLVMBasicBlockWrapper::terminator)
+      .def_prop_ro("name", &LLVMBasicBlockWrapper::get_name,
+                   R"(Block name.
+
+<sub>C API: LLVMGetBasicBlockName</sub>)")
+      .def("as_value", &LLVMBasicBlockWrapper::as_value,
+           R"(Get as value.
+
+<sub>C API: LLVMBasicBlockAsValue</sub>)")
+      .def_prop_ro("next_block", &LLVMBasicBlockWrapper::next_block,
+                   R"(Next block.
+
+<sub>C API: LLVMGetNextBasicBlock</sub>)")
+      .def_prop_ro("prev_block", &LLVMBasicBlockWrapper::prev_block,
+                   R"(Previous block.
+
+<sub>C API: LLVMGetPreviousBasicBlock</sub>)")
+      .def_prop_ro("has_terminator", &LLVMBasicBlockWrapper::has_terminator,
+                   R"(Check if this basic block has a terminator instruction.
+
+<sub>C API: LLVMGetBasicBlockTerminator</sub>)")
+      .def_prop_ro("terminator", &LLVMBasicBlockWrapper::terminator,
+                   R"(Get terminator.
+
+<sub>C API: LLVMGetBasicBlockTerminator</sub>)")
       .def_prop_ro("first_instruction",
-                   &LLVMBasicBlockWrapper::first_instruction)
-      .def_prop_ro("last_instruction", &LLVMBasicBlockWrapper::last_instruction)
-      .def_prop_ro("instructions", &LLVMBasicBlockWrapper::instructions)
-      // Parent navigation: block -> function -> module -> context
+                   &LLVMBasicBlockWrapper::first_instruction,
+                   R"(First instruction.
+
+<sub>C API: LLVMGetFirstInstruction</sub>)")
+      .def_prop_ro("last_instruction", &LLVMBasicBlockWrapper::last_instruction,
+                   R"(Last instruction.
+
+<sub>C API: LLVMGetLastInstruction</sub>)")
+      .def_prop_ro("instructions", &LLVMBasicBlockWrapper::instructions,
+                   R"(All instructions.
+
+<sub>C API: LLVMGetFirstInstruction, LLVMGetNextInstruction</sub>)")
+      // Parent navigation
       .def_prop_ro("function", &LLVMBasicBlockWrapper::function,
-                   R"(Get the function this basic block belongs to.)")
+                   R"(Parent function.
+
+<sub>C API: LLVMGetBasicBlockParent</sub>)")
       .def_prop_ro("module", &LLVMBasicBlockWrapper::module,
-                   R"(Get the module this basic block belongs to.)",
+                   R"(Parent module.
+
+<sub>C API: LLVMGetGlobalParent</sub>)",
                    nb::rv_policy::take_ownership)
       .def_prop_ro("context", &LLVMBasicBlockWrapper::context,
-                   R"(Get the context this basic block belongs to.)",
+                   R"(Parent context.
+
+<sub>C API: LLVMGetTypeContext</sub>)",
                    nb::rv_policy::take_ownership)
-      .def_prop_ro("successors", &LLVMBasicBlockWrapper::successors)
-      .def_prop_ro("predecessors", &LLVMBasicBlockWrapper::predecessors)
-      .def("move_before", &LLVMBasicBlockWrapper::move_before, "other"_a)
-      .def("move_after", &LLVMBasicBlockWrapper::move_after, "other"_a)
+      .def_prop_ro("successors", &LLVMBasicBlockWrapper::successors,
+                   R"(Successor blocks.
+
+<sub>C API: LLVMGetNumSuccessors, LLVMGetSuccessor</sub>)")
+      .def_prop_ro("predecessors", &LLVMBasicBlockWrapper::predecessors,
+                   R"(Predecessor blocks.
+
+<sub>C API: LLVMGetNumPredecessors</sub>)")
+      .def("move_before", &LLVMBasicBlockWrapper::move_before, "other"_a,
+           R"(Move before block.
+
+<sub>C API: LLVMMoveBasicBlockBefore</sub>)")
+      .def("move_after", &LLVMBasicBlockWrapper::move_after, "other"_a,
+           R"(Move after block.
+
+<sub>C API: LLVMMoveBasicBlockAfter</sub>)")
       .def("create_builder", &LLVMBasicBlockWrapper::create_builder,
            nb::rv_policy::take_ownership,
            R"(Create a Builder positioned at the end of this BasicBlock.
 
-Returns:
-  A BuilderManager for use with Python's 'with' statement.
+Returns a BuilderManager for use with Python's 'with' statement.
 
-Example:
-  with bb.create_builder() as builder:
-      builder.add(x, y, "result"))");
+<sub>C API: LLVMCreateBuilderInContext</sub>)");
 
   // Function wrapper
   nb::class_<LLVMFunctionWrapper, LLVMValueWrapper>(m, "Function")
-      .def_prop_ro("param_count", &LLVMFunctionWrapper::param_count)
-      .def("get_param", &LLVMFunctionWrapper::get_param, "index"_a)
-      .def_prop_ro("params", &LLVMFunctionWrapper::params)
+      .def_prop_ro("param_count", &LLVMFunctionWrapper::param_count,
+                   R"(Parameter count.
+
+<sub>C API: LLVMCountParams</sub>)")
+      .def("get_param", &LLVMFunctionWrapper::get_param, "index"_a,
+           R"(Get parameter.
+
+<sub>C API: LLVMGetParam</sub>)")
+      .def_prop_ro("params", &LLVMFunctionWrapper::params,
+                   R"(All parameters.
+
+<sub>C API: LLVMGetParams</sub>)")
       .def_prop_rw("linkage", &LLVMFunctionWrapper::get_linkage,
-                   &LLVMFunctionWrapper::set_linkage)
+                   &LLVMFunctionWrapper::set_linkage,
+                   R"(Linkage.
+
+<sub>C API: LLVMGetLinkage, LLVMSetLinkage</sub>)")
       .def_prop_rw("calling_conv", &LLVMFunctionWrapper::get_calling_conv,
-                   &LLVMFunctionWrapper::set_calling_conv)
+                   &LLVMFunctionWrapper::set_calling_conv,
+                   R"(Calling convention.
+
+<sub>C API: LLVMGetFunctionCallConv, LLVMSetFunctionCallConv</sub>)")
       .def(
           "append_basic_block",
           [](LLVMFunctionWrapper &self, const std::string &name) {
             return self.append_basic_block(name);
           },
-          "name"_a = "")
-      .def_prop_ro("entry_block", &LLVMFunctionWrapper::entry_block)
-      .def_prop_ro("basic_block_count", &LLVMFunctionWrapper::basic_block_count)
-      .def_prop_ro("first_basic_block", &LLVMFunctionWrapper::first_basic_block)
-      .def_prop_ro("last_basic_block", &LLVMFunctionWrapper::last_basic_block)
-      .def_prop_ro("basic_blocks", &LLVMFunctionWrapper::basic_blocks)
+          "name"_a = "",
+          R"(Append basic block.
+
+<sub>C API: LLVMAppendBasicBlockInContext</sub>)")
+      .def_prop_ro("entry_block", &LLVMFunctionWrapper::entry_block,
+                   R"(Entry block.
+
+<sub>C API: LLVMGetEntryBasicBlock</sub>)")
+      .def_prop_ro("basic_block_count", &LLVMFunctionWrapper::basic_block_count,
+                   R"(Block count.
+
+<sub>C API: LLVMCountBasicBlocks</sub>)")
+      .def_prop_ro("first_basic_block", &LLVMFunctionWrapper::first_basic_block,
+                   R"(First block.
+
+<sub>C API: LLVMGetFirstBasicBlock</sub>)")
+      .def_prop_ro("last_basic_block", &LLVMFunctionWrapper::last_basic_block,
+                   R"(Last block.
+
+<sub>C API: LLVMGetLastBasicBlock</sub>)")
+      .def_prop_ro("basic_blocks", &LLVMFunctionWrapper::basic_blocks,
+                   R"(All blocks.
+
+<sub>C API: LLVMGetBasicBlocks</sub>)")
       .def("append_existing_basic_block",
-           &LLVMFunctionWrapper::append_existing_basic_block, "bb"_a)
-      .def("erase", &LLVMFunctionWrapper::erase)
-      .def("delete", &LLVMFunctionWrapper::erase) // Alias for erase
-      // Echo command support - parameter iteration
-      .def("first_param", &LLVMFunctionWrapper::first_param)
-      .def("last_param", &LLVMFunctionWrapper::last_param)
-      // Echo command support - function iteration
-      .def_prop_ro("next_function", &LLVMFunctionWrapper::next_function)
-      .def_prop_ro("prev_function", &LLVMFunctionWrapper::prev_function)
-      // Attribute methods (moved from global functions)
+           &LLVMFunctionWrapper::append_existing_basic_block, "bb"_a,
+           R"(Append existing block.
+
+<sub>C API: LLVMAppendExistingBasicBlock</sub>)")
+      .def("erase", &LLVMFunctionWrapper::erase,
+           R"(Erase function.
+
+<sub>C API: LLVMDeleteFunction</sub>)")
+      .def("delete", &LLVMFunctionWrapper::erase,
+           R"(Delete function (alias for erase).
+
+<sub>C API: LLVMDeleteFunction</sub>)")
+      // Parameter iteration
+      .def("first_param", &LLVMFunctionWrapper::first_param,
+           R"(First parameter.
+
+<sub>C API: LLVMGetFirstParam</sub>)")
+      .def("last_param", &LLVMFunctionWrapper::last_param,
+           R"(Last parameter.
+
+<sub>C API: LLVMGetLastParam</sub>)")
+      // Function iteration
+      .def_prop_ro("next_function", &LLVMFunctionWrapper::next_function,
+                   R"(Next function.
+
+<sub>C API: LLVMGetNextFunction</sub>)")
+      .def_prop_ro("prev_function", &LLVMFunctionWrapper::prev_function,
+                   R"(Previous function.
+
+<sub>C API: LLVMGetPreviousFunction</sub>)")
+      // Attribute methods
       .def("get_attribute_count", &LLVMFunctionWrapper::get_attribute_count,
-           "idx"_a, R"(Get the number of attributes at the given index.)")
-      .def(
-          "get_enum_attribute", &LLVMFunctionWrapper::get_enum_attribute,
-          "idx"_a, "kind_id"_a,
-          R"(Get an enum attribute at the given index. Returns None if not found.)")
+           "idx"_a, R"(Attribute count.
+
+<sub>C API: LLVMGetAttributeCountAtIndex</sub>)")
+      .def("get_enum_attribute", &LLVMFunctionWrapper::get_enum_attribute,
+           "idx"_a, "kind_id"_a,
+           R"(Get enum attribute.
+
+<sub>C API: LLVMGetEnumAttributeAtIndex</sub>)")
       .def("add_attribute", &LLVMFunctionWrapper::add_attribute, "idx"_a,
-           "attr"_a, R"(Add an attribute to this function at the given index.)")
+           "attr"_a, R"(Add attribute.
+
+<sub>C API: LLVMAddAttributeAtIndex</sub>)")
       .def("get_attributes", &LLVMFunctionWrapper::get_attributes, "idx"_a,
-           R"(Get all attributes at the given index.)")
-      .def(
-          "get_string_attribute", &LLVMFunctionWrapper::get_string_attribute,
-          "idx"_a, "key"_a,
-          R"(Get a string attribute at the given index by key. Returns None if not found.)")
+           R"(Get all attributes.
+
+<sub>C API: LLVMGetAttributesAtIndex</sub>)")
+      .def("get_string_attribute", &LLVMFunctionWrapper::get_string_attribute,
+           "idx"_a, "key"_a,
+           R"(Get string attribute.
+
+<sub>C API: LLVMGetStringAttributeAtIndex</sub>)")
       .def("remove_enum_attribute", &LLVMFunctionWrapper::remove_enum_attribute,
            "idx"_a, "kind_id"_a,
-           R"(Remove an enum attribute at the given index.)")
+           R"(Remove enum attribute.
+
+<sub>C API: LLVMRemoveEnumAttributeAtIndex</sub>)")
       .def("remove_string_attribute",
            &LLVMFunctionWrapper::remove_string_attribute, "idx"_a, "key"_a,
-           R"(Remove a string attribute at the given index by key.)")
+           R"(Remove string attribute.
+
+<sub>C API: LLVMRemoveStringAttributeAtIndex</sub>)")
       .def("add_target_attribute", &LLVMFunctionWrapper::add_target_attribute,
            "key"_a, "value"_a,
-           R"(Add a target-dependent attribute to this function.)")
-      // =====================================================================
-      // Function API Refactor: Methods moved from global functions
-      // =====================================================================
+           R"(Add target attribute.
+
+<sub>C API: LLVMAddTargetDependentFunctionAttr</sub>)")
+      // Debug info
       .def("set_subprogram", &LLVMFunctionWrapper::set_subprogram, "sp"_a,
-           R"(Set subprogram metadata for this function.)")
-      // =====================================================================
-      // Parent navigation: function -> module -> context
-      // =====================================================================
+           R"(Set debug info subprogram metadata for this function.
+
+<sub>C API: LLVMSetSubprogram</sub>)")
+      // Parent navigation
       .def_prop_ro("module", &LLVMFunctionWrapper::module,
-                   R"(Get the module this function belongs to.)",
+                   R"(Parent module.
+
+<sub>C API: LLVMGetGlobalParent</sub>)",
                    nb::rv_policy::take_ownership)
       .def_prop_ro("context", &LLVMFunctionWrapper::context,
-                   R"(Get the context this function belongs to.)",
+                   R"(Parent context.
+
+<sub>C API: LLVMGetTypeContext</sub>)",
                    nb::rv_policy::take_ownership)
-      // =====================================================================
-      // Function verification (Analysis.h)
-      // =====================================================================
+      // Verification
       .def("verify", &LLVMFunctionWrapper::verify,
-           R"(Verify this function.
+           R"(Verify function.
+
+<sub>C API: LLVMVerifyFunction</sub>
            
            Returns True if the function is valid, False otherwise.
-           Wraps LLVMVerifyFunction.)")
+           <sub>C API: LLVMVerifyFunction</sub>)")
       .def("verify_and_print", &LLVMFunctionWrapper::verify_and_print,
-           R"(Verify this function and print any errors to stderr.
-           
-           Returns True if the function is valid, False otherwise.
-           Wraps LLVMVerifyFunction with LLVMPrintMessageAction.)")
+           R"(Verify function and print errors to stderr.
+
+<sub>C API: LLVMVerifyFunction</sub>)")
       // =====================================================================
       // Intrinsic functions
       // =====================================================================
@@ -9434,27 +10161,31 @@ Example:
                    R"(Get the intrinsic ID for this function.
            
            Returns 0 if the function is not an intrinsic.
-           Wraps LLVMGetIntrinsicID.)")
+
+<sub>C API: LLVMGetIntrinsicID</sub>)")
       .def_prop_ro("is_intrinsic", &LLVMFunctionWrapper::is_intrinsic,
-                   R"(Check if this function is an intrinsic.)")
+                   R"(Check if intrinsic.
+
+<sub>C API: LLVMGetIntrinsicID</sub>)")
       // =====================================================================
       // Personality function (for exception handling)
       // =====================================================================
       .def_prop_ro("has_personality_fn",
                    &LLVMFunctionWrapper::has_personality_fn,
                    R"(Check if this function has a personality function.
-           
-           Wraps LLVMHasPersonalityFn.)")
+
+<sub>C API: LLVMHasPersonalityFn</sub>)")
       .def("get_personality_fn", &LLVMFunctionWrapper::get_personality_fn,
            R"(Get the personality function.
            
            Returns None if no personality function is set.
-           Wraps LLVMGetPersonalityFn.)")
+
+<sub>C API: LLVMGetPersonalityFn</sub>)")
       .def("set_personality_fn", &LLVMFunctionWrapper::set_personality_fn,
            "fn"_a,
            R"(Set the personality function.
-           
-           Wraps LLVMSetPersonalityFn.)")
+
+<sub>C API: LLVMSetPersonalityFn</sub>)")
       // =====================================================================
       // GC name
       // =====================================================================
@@ -9462,183 +10193,420 @@ Example:
            R"(Get the GC name for this function.
            
            Returns None if no GC is set.
-           Wraps LLVMGetGC.)")
+
+<sub>C API: LLVMGetGC</sub>)")
       .def("set_gc", &LLVMFunctionWrapper::set_gc, "gc"_a,
            R"(Set the GC name for this function.
-           
-           Wraps LLVMSetGC.)");
+
+<sub>C API: LLVMSetGC</sub>)");
 
   // Builder wrapper
   nb::class_<LLVMBuilderWrapper>(m, "Builder")
       .def("position_at_end", &LLVMBuilderWrapper::position_at_end, "bb"_a,
-           nb::kw_only(), "before_dbg"_a = false)
+           nb::kw_only(), "before_dbg"_a = false,
+           R"(Position at end of block.
+
+<sub>C API: LLVMPositionBuilderAtEnd</sub>)")
       .def("position_before", &LLVMBuilderWrapper::position_before, "inst"_a,
-           nb::kw_only(), "before_dbg"_a = false)
-      .def(
-          "position_at", &LLVMBuilderWrapper::position_at, "bb"_a, "inst"_a,
-          R"(Position the builder at a specific instruction in a basic block.)")
+           nb::kw_only(), "before_dbg"_a = false,
+           R"(Position before instruction.
+
+<sub>C API: LLVMPositionBuilderBefore</sub>)")
+      .def("position_at", &LLVMBuilderWrapper::position_at, "bb"_a, "inst"_a,
+           R"(Position at instruction.
+
+<sub>C API: LLVMPositionBuilder</sub>)")
       .def("clear_insertion_position",
            &LLVMBuilderWrapper::clear_insertion_position,
-           R"(Clear the insertion position.)")
-      .def_prop_ro("insert_block", &LLVMBuilderWrapper::insert_block)
+           R"(Clear insertion position.
+
+<sub>C API: LLVMClearInsertionPosition</sub>)")
+      .def_prop_ro("insert_block", &LLVMBuilderWrapper::insert_block,
+                   R"(Get current insert block.
+
+<sub>C API: LLVMGetInsertBlock</sub>)")
       // Arithmetic
-      .def("add", &LLVMBuilderWrapper::add, "lhs"_a, "rhs"_a, "name"_a = "")
+      .def("add", &LLVMBuilderWrapper::add, "lhs"_a, "rhs"_a, "name"_a = "",
+           R"(Build add.
+
+<sub>C API: LLVMBuildAdd</sub>)")
       .def("nsw_add", &LLVMBuilderWrapper::nsw_add, "lhs"_a, "rhs"_a,
-           "name"_a = "")
+           "name"_a = "", R"(Build nsw add.
+
+<sub>C API: LLVMBuildNSWAdd</sub>)")
       .def("nuw_add", &LLVMBuilderWrapper::nuw_add, "lhs"_a, "rhs"_a,
-           "name"_a = "")
-      .def("sub", &LLVMBuilderWrapper::sub, "lhs"_a, "rhs"_a, "name"_a = "")
+           "name"_a = "", R"(Build nuw add.
+
+<sub>C API: LLVMBuildNUWAdd</sub>)")
+      .def("sub", &LLVMBuilderWrapper::sub, "lhs"_a, "rhs"_a, "name"_a = "",
+           R"(Build sub.
+
+<sub>C API: LLVMBuildSub</sub>)")
       .def("nsw_sub", &LLVMBuilderWrapper::nsw_sub, "lhs"_a, "rhs"_a,
-           "name"_a = "")
+           "name"_a = "", R"(Build nsw sub.
+
+<sub>C API: LLVMBuildNSWSub</sub>)")
       .def("nuw_sub", &LLVMBuilderWrapper::nuw_sub, "lhs"_a, "rhs"_a,
-           "name"_a = "")
-      .def("mul", &LLVMBuilderWrapper::mul, "lhs"_a, "rhs"_a, "name"_a = "")
+           "name"_a = "", R"(Build nuw sub.
+
+<sub>C API: LLVMBuildNUWSub</sub>)")
+      .def("mul", &LLVMBuilderWrapper::mul, "lhs"_a, "rhs"_a, "name"_a = "",
+           R"(Build mul.
+
+<sub>C API: LLVMBuildMul</sub>)")
       .def("nsw_mul", &LLVMBuilderWrapper::nsw_mul, "lhs"_a, "rhs"_a,
-           "name"_a = "")
+           "name"_a = "", R"(Build nsw mul.
+
+<sub>C API: LLVMBuildNSWMul</sub>)")
       .def("nuw_mul", &LLVMBuilderWrapper::nuw_mul, "lhs"_a, "rhs"_a,
-           "name"_a = "")
-      .def("sdiv", &LLVMBuilderWrapper::sdiv, "lhs"_a, "rhs"_a, "name"_a = "")
-      .def("udiv", &LLVMBuilderWrapper::udiv, "lhs"_a, "rhs"_a, "name"_a = "")
+           "name"_a = "", R"(Build nuw mul.
+
+<sub>C API: LLVMBuildNUWMul</sub>)")
+      .def("sdiv", &LLVMBuilderWrapper::sdiv, "lhs"_a, "rhs"_a, "name"_a = "",
+           R"(Build sdiv.
+
+<sub>C API: LLVMBuildSDiv</sub>)")
+      .def("udiv", &LLVMBuilderWrapper::udiv, "lhs"_a, "rhs"_a, "name"_a = "",
+           R"(Build udiv.
+
+<sub>C API: LLVMBuildUDiv</sub>)")
       .def("exact_sdiv", &LLVMBuilderWrapper::exact_sdiv, "lhs"_a, "rhs"_a,
-           "name"_a = "")
+           "name"_a = "", R"(Build exact sdiv.
+
+<sub>C API: LLVMBuildExactSDiv</sub>)")
       .def("exact_udiv", &LLVMBuilderWrapper::exact_udiv, "lhs"_a, "rhs"_a,
-           "name"_a = "")
-      .def("srem", &LLVMBuilderWrapper::srem, "lhs"_a, "rhs"_a, "name"_a = "")
-      .def("urem", &LLVMBuilderWrapper::urem, "lhs"_a, "rhs"_a, "name"_a = "")
+           "name"_a = "", R"(Build exact udiv.
+
+<sub>C API: LLVMBuildExactUDiv</sub>)")
+      .def("srem", &LLVMBuilderWrapper::srem, "lhs"_a, "rhs"_a, "name"_a = "",
+           R"(Build srem.
+
+<sub>C API: LLVMBuildSRem</sub>)")
+      .def("urem", &LLVMBuilderWrapper::urem, "lhs"_a, "rhs"_a, "name"_a = "",
+           R"(Build urem.
+
+<sub>C API: LLVMBuildURem</sub>)")
       // Float arithmetic
-      .def("fadd", &LLVMBuilderWrapper::fadd, "lhs"_a, "rhs"_a, "name"_a = "")
-      .def("fsub", &LLVMBuilderWrapper::fsub, "lhs"_a, "rhs"_a, "name"_a = "")
-      .def("fmul", &LLVMBuilderWrapper::fmul, "lhs"_a, "rhs"_a, "name"_a = "")
-      .def("fdiv", &LLVMBuilderWrapper::fdiv, "lhs"_a, "rhs"_a, "name"_a = "")
-      .def("frem", &LLVMBuilderWrapper::frem, "lhs"_a, "rhs"_a, "name"_a = "")
+      .def("fadd", &LLVMBuilderWrapper::fadd, "lhs"_a, "rhs"_a, "name"_a = "",
+           R"(Build fadd.
+
+<sub>C API: LLVMBuildFAdd</sub>)")
+      .def("fsub", &LLVMBuilderWrapper::fsub, "lhs"_a, "rhs"_a, "name"_a = "",
+           R"(Build fsub.
+
+<sub>C API: LLVMBuildFSub</sub>)")
+      .def("fmul", &LLVMBuilderWrapper::fmul, "lhs"_a, "rhs"_a, "name"_a = "",
+           R"(Build fmul.
+
+<sub>C API: LLVMBuildFMul</sub>)")
+      .def("fdiv", &LLVMBuilderWrapper::fdiv, "lhs"_a, "rhs"_a, "name"_a = "",
+           R"(Build fdiv.
+
+<sub>C API: LLVMBuildFDiv</sub>)")
+      .def("frem", &LLVMBuilderWrapper::frem, "lhs"_a, "rhs"_a, "name"_a = "",
+           R"(Build frem.
+
+<sub>C API: LLVMBuildFRem</sub>)")
       // Unary
-      .def("neg", &LLVMBuilderWrapper::neg, "val"_a, "name"_a = "")
-      .def("nsw_neg", &LLVMBuilderWrapper::nsw_neg, "val"_a, "name"_a = "")
-      .def("fneg", &LLVMBuilderWrapper::fneg, "val"_a, "name"_a = "")
-      .def("not_", &LLVMBuilderWrapper::not_, "val"_a, "name"_a = "")
+      .def("neg", &LLVMBuilderWrapper::neg, "val"_a, "name"_a = "",
+           R"(Build neg.
+
+<sub>C API: LLVMBuildNeg</sub>)")
+      .def("nsw_neg", &LLVMBuilderWrapper::nsw_neg, "val"_a, "name"_a = "",
+           R"(Build nsw neg.
+
+<sub>C API: LLVMBuildNSWNeg</sub>)")
+      .def("fneg", &LLVMBuilderWrapper::fneg, "val"_a, "name"_a = "",
+           R"(Build fneg.
+
+<sub>C API: LLVMBuildFNeg</sub>)")
+      .def("not_", &LLVMBuilderWrapper::not_, "val"_a, "name"_a = "",
+           R"(Build not.
+
+<sub>C API: LLVMBuildNot</sub>)")
       // Bitwise
-      .def("shl", &LLVMBuilderWrapper::shl, "lhs"_a, "rhs"_a, "name"_a = "")
-      .def("lshr", &LLVMBuilderWrapper::lshr, "lhs"_a, "rhs"_a, "name"_a = "")
-      .def("ashr", &LLVMBuilderWrapper::ashr, "lhs"_a, "rhs"_a, "name"_a = "")
-      .def("and_", &LLVMBuilderWrapper::and_, "lhs"_a, "rhs"_a, "name"_a = "")
-      .def("or_", &LLVMBuilderWrapper::or_, "lhs"_a, "rhs"_a, "name"_a = "")
-      .def("xor", &LLVMBuilderWrapper::xor_, "lhs"_a, "rhs"_a, "name"_a = "")
+      .def("shl", &LLVMBuilderWrapper::shl, "lhs"_a, "rhs"_a, "name"_a = "",
+           R"(Build shl.
+
+<sub>C API: LLVMBuildShl</sub>)")
+      .def("lshr", &LLVMBuilderWrapper::lshr, "lhs"_a, "rhs"_a, "name"_a = "",
+           R"(Build lshr.
+
+<sub>C API: LLVMBuildLShr</sub>)")
+      .def("ashr", &LLVMBuilderWrapper::ashr, "lhs"_a, "rhs"_a, "name"_a = "",
+           R"(Build ashr.
+
+<sub>C API: LLVMBuildAShr</sub>)")
+      .def("and_", &LLVMBuilderWrapper::and_, "lhs"_a, "rhs"_a, "name"_a = "",
+           R"(Build and.
+
+<sub>C API: LLVMBuildAnd</sub>)")
+      .def("or_", &LLVMBuilderWrapper::or_, "lhs"_a, "rhs"_a, "name"_a = "",
+           R"(Build or.
+
+<sub>C API: LLVMBuildOr</sub>)")
+      .def("xor", &LLVMBuilderWrapper::xor_, "lhs"_a, "rhs"_a, "name"_a = "",
+           R"(Build xor.
+
+<sub>C API: LLVMBuildXor</sub>)")
       .def("binop", &LLVMBuilderWrapper::binop, "opcode"_a, "lhs"_a, "rhs"_a,
-           "name"_a = "")
+           "name"_a = "", R"(Build binary op.
+
+<sub>C API: LLVMBuildBinOp</sub>)")
       // Memory
-      .def("alloca", &LLVMBuilderWrapper::build_alloca, "ty"_a, "name"_a = "")
+      .def("alloca", &LLVMBuilderWrapper::build_alloca, "ty"_a, "name"_a = "",
+           R"(Build alloca.
+
+<sub>C API: LLVMBuildAlloca</sub>)")
       .def("array_alloca", &LLVMBuilderWrapper::build_array_alloca, "ty"_a,
-           "size"_a, "name"_a = "")
-      .def("load", &LLVMBuilderWrapper::load, "ty"_a, "ptr"_a, "name"_a = "")
-      .def("store", &LLVMBuilderWrapper::store, "val"_a, "ptr"_a)
+           "size"_a, "name"_a = "",
+           R"(Build array alloca.
+
+<sub>C API: LLVMBuildArrayAlloca</sub>)")
+      .def("load", &LLVMBuilderWrapper::load, "ty"_a, "ptr"_a, "name"_a = "",
+           R"(Build load.
+
+<sub>C API: LLVMBuildLoad2</sub>)")
+      .def("store", &LLVMBuilderWrapper::store, "val"_a, "ptr"_a,
+           R"(Build store.
+
+<sub>C API: LLVMBuildStore</sub>)")
       .def("gep", &LLVMBuilderWrapper::gep, "ty"_a, "ptr"_a, "indices"_a,
-           "name"_a = "")
-      .def("inbounds_gep", &LLVMBuilderWrapper::inbounds_gep, "ty"_a, "ptr"_a,
-           "indices"_a, "name"_a = "")
+           "name"_a = "",
+           R"(Build a GetElementPtr instruction for pointer arithmetic.
+
+<sub>C API: LLVMBuildGEP2</sub>)")
+      .def(
+          "inbounds_gep", &LLVMBuilderWrapper::inbounds_gep, "ty"_a, "ptr"_a,
+          "indices"_a, "name"_a = "",
+          R"(Build an inbounds GetElementPtr instruction (asserts pointer stays in bounds).
+
+<sub>C API: LLVMBuildInBoundsGEP2</sub>)")
       .def("struct_gep", &LLVMBuilderWrapper::struct_gep, "ty"_a, "ptr"_a,
-           "idx"_a, "name"_a = "")
+           "idx"_a, "name"_a = "",
+           R"(Build a GEP to access a struct field by index.
+
+<sub>C API: LLVMBuildStructGEP2</sub>)")
       // Comparisons
       .def("icmp", &LLVMBuilderWrapper::icmp, "pred"_a, "lhs"_a, "rhs"_a,
-           "name"_a = "")
+           "name"_a = "", R"(Build icmp.
+
+<sub>C API: LLVMBuildICmp</sub>)")
       .def("fcmp", &LLVMBuilderWrapper::fcmp, "pred"_a, "lhs"_a, "rhs"_a,
-           "name"_a = "")
+           "name"_a = "", R"(Build fcmp.
+
+<sub>C API: LLVMBuildFCmp</sub>)")
       .def("select", &LLVMBuilderWrapper::select, "cond"_a, "then_val"_a,
-           "else_val"_a, "name"_a = "")
+           "else_val"_a, "name"_a = "",
+           R"(Build select.
+
+<sub>C API: LLVMBuildSelect</sub>)")
       // Casts
-      .def("trunc", &LLVMBuilderWrapper::trunc, "val"_a, "ty"_a, "name"_a = "")
-      .def("zext", &LLVMBuilderWrapper::zext, "val"_a, "ty"_a, "name"_a = "")
-      .def("sext", &LLVMBuilderWrapper::sext, "val"_a, "ty"_a, "name"_a = "")
+      .def("trunc", &LLVMBuilderWrapper::trunc, "val"_a, "ty"_a, "name"_a = "",
+           R"(Build trunc.
+
+<sub>C API: LLVMBuildTrunc</sub>)")
+      .def("zext", &LLVMBuilderWrapper::zext, "val"_a, "ty"_a, "name"_a = "",
+           R"(Build zext.
+
+<sub>C API: LLVMBuildZExt</sub>)")
+      .def("sext", &LLVMBuilderWrapper::sext, "val"_a, "ty"_a, "name"_a = "",
+           R"(Build sext.
+
+<sub>C API: LLVMBuildSExt</sub>)")
       .def("fptrunc", &LLVMBuilderWrapper::fptrunc, "val"_a, "ty"_a,
-           "name"_a = "")
-      .def("fpext", &LLVMBuilderWrapper::fpext, "val"_a, "ty"_a, "name"_a = "")
+           "name"_a = "", R"(Build fptrunc.
+
+<sub>C API: LLVMBuildFPTrunc</sub>)")
+      .def("fpext", &LLVMBuilderWrapper::fpext, "val"_a, "ty"_a, "name"_a = "",
+           R"(Build fpext.
+
+<sub>C API: LLVMBuildFPExt</sub>)")
       .def("fptosi", &LLVMBuilderWrapper::fptosi, "val"_a, "ty"_a,
-           "name"_a = "")
+           "name"_a = "", R"(Build fptosi.
+
+<sub>C API: LLVMBuildFPToSI</sub>)")
       .def("fptoui", &LLVMBuilderWrapper::fptoui, "val"_a, "ty"_a,
-           "name"_a = "")
+           "name"_a = "", R"(Build fptoui.
+
+<sub>C API: LLVMBuildFPToUI</sub>)")
       .def("sitofp", &LLVMBuilderWrapper::sitofp, "val"_a, "ty"_a,
-           "name"_a = "")
+           "name"_a = "", R"(Build sitofp.
+
+<sub>C API: LLVMBuildSIToFP</sub>)")
       .def("uitofp", &LLVMBuilderWrapper::uitofp, "val"_a, "ty"_a,
-           "name"_a = "")
+           "name"_a = "", R"(Build uitofp.
+
+<sub>C API: LLVMBuildUIToFP</sub>)")
       .def("ptrtoint", &LLVMBuilderWrapper::ptrtoint, "val"_a, "ty"_a,
-           "name"_a = "")
+           "name"_a = "", R"(Build ptrtoint.
+
+<sub>C API: LLVMBuildPtrToInt</sub>)")
       .def("inttoptr", &LLVMBuilderWrapper::inttoptr, "val"_a, "ty"_a,
-           "name"_a = "")
+           "name"_a = "", R"(Build inttoptr.
+
+<sub>C API: LLVMBuildIntToPtr</sub>)")
       .def("bitcast", &LLVMBuilderWrapper::bitcast, "val"_a, "ty"_a,
-           "name"_a = "")
+           "name"_a = "", R"(Build bitcast.
+
+<sub>C API: LLVMBuildBitCast</sub>)")
       .def("int_cast2", &LLVMBuilderWrapper::int_cast2, "val"_a, "ty"_a,
-           "is_signed"_a, "name"_a = "")
+           "is_signed"_a, "name"_a = "",
+           R"(Build int cast.
+
+<sub>C API: LLVMBuildIntCast2</sub>)")
       .def("addr_space_cast", &LLVMBuilderWrapper::addr_space_cast, "val"_a,
            "ty"_a, "name"_a = "",
            R"(Cast a pointer to a different address space.
 
-Wraps LLVMBuildAddrSpaceCast.)")
+<sub>C API: LLVMBuildAddrSpaceCast</sub>)")
       // Convenience casts
       .def("zext_or_bitcast", &LLVMBuilderWrapper::zext_or_bitcast, "val"_a,
            "ty"_a, "name"_a = "",
-           R"(Zero extend or bitcast depending on type sizes.)")
+           R"(Zero extend or bitcast.
+
+<sub>C API: LLVMBuildZExtOrBitCast</sub>)")
       .def("sext_or_bitcast", &LLVMBuilderWrapper::sext_or_bitcast, "val"_a,
            "ty"_a, "name"_a = "",
-           R"(Sign extend or bitcast depending on type sizes.)")
+           R"(Sign extend or bitcast.
+
+<sub>C API: LLVMBuildSExtOrBitCast</sub>)")
       .def("trunc_or_bitcast", &LLVMBuilderWrapper::trunc_or_bitcast, "val"_a,
            "ty"_a, "name"_a = "",
-           R"(Truncate or bitcast depending on type sizes.)")
+           R"(Truncate or bitcast.
+
+<sub>C API: LLVMBuildTruncOrBitCast</sub>)")
       .def("pointer_cast", &LLVMBuilderWrapper::pointer_cast, "val"_a, "ty"_a,
-           "name"_a = "", R"(Cast a pointer to a different pointer type.)")
+           "name"_a = "", R"(Pointer cast.
+
+<sub>C API: LLVMBuildPointerCast</sub>)")
       .def("fp_cast", &LLVMBuilderWrapper::fp_cast, "val"_a, "ty"_a,
-           "name"_a = "",
-           R"(Cast a floating-point value to a different floating-point type.)")
+           "name"_a = "", R"(FP cast.
+
+<sub>C API: LLVMBuildFPCast</sub>)")
       .def("cast", &LLVMBuilderWrapper::cast, "op"_a, "val"_a, "ty"_a,
-           "name"_a = "", R"(Build a generic cast instruction.)")
+           "name"_a = "", R"(Generic cast.
+
+<sub>C API: LLVMBuildCast</sub>)")
       // Control flow
-      .def("ret", &LLVMBuilderWrapper::ret, "val"_a)
-      .def("ret_void", &LLVMBuilderWrapper::ret_void)
-      .def("br", &LLVMBuilderWrapper::br, "dest"_a)
+      .def("ret", &LLVMBuilderWrapper::ret, "val"_a,
+           R"(Build ret.
+
+<sub>C API: LLVMBuildRet</sub>)")
+      .def("ret_void", &LLVMBuilderWrapper::ret_void,
+           R"(Build ret void.
+
+<sub>C API: LLVMBuildRetVoid</sub>)")
+      .def("br", &LLVMBuilderWrapper::br, "dest"_a,
+           R"(Build br.
+
+<sub>C API: LLVMBuildBr</sub>)")
       .def("cond_br", &LLVMBuilderWrapper::cond_br, "cond"_a, "then_bb"_a,
-           "else_bb"_a)
+           "else_bb"_a, R"(Build cond_br.
+
+<sub>C API: LLVMBuildCondBr</sub>)")
       .def("switch_", &LLVMBuilderWrapper::switch_, "val"_a, "else_bb"_a,
-           "num_cases"_a)
+           "num_cases"_a, R"(Build switch.
+
+<sub>C API: LLVMBuildSwitch</sub>)")
       .def("indirect_br", &LLVMBuilderWrapper::indirect_br, "addr"_a,
-           "num_dests"_a, R"(Build an indirect branch instruction.)")
+           "num_dests"_a, R"(Build indirect br.
+
+<sub>C API: LLVMBuildIndirectBr</sub>)")
       .def("call", &LLVMBuilderWrapper::call, "func_ty"_a, "func"_a, "args"_a,
-           "name"_a = "")
-      .def("unreachable", &LLVMBuilderWrapper::unreachable)
-      .def("phi", &LLVMBuilderWrapper::phi, "ty"_a, "name"_a = "")
-      // Phase 5.6: Additional instruction builders
-      .def("resume", &LLVMBuilderWrapper::resume, "exn"_a)
+           "name"_a = "", R"(Build call.
+
+<sub>C API: LLVMBuildCall2</sub>)")
+      .def("unreachable", &LLVMBuilderWrapper::unreachable,
+           R"(Build unreachable.
+
+<sub>C API: LLVMBuildUnreachable</sub>)")
+      .def("phi", &LLVMBuilderWrapper::phi, "ty"_a, "name"_a = "",
+           R"(Build phi.
+
+<sub>C API: LLVMBuildPhi</sub>)")
+      // Additional instruction builders
+      .def("resume", &LLVMBuilderWrapper::resume, "exn"_a,
+           R"(Build resume.
+
+<sub>C API: LLVMBuildResume</sub>)")
       .def("landing_pad", &LLVMBuilderWrapper::landing_pad, "ty"_a,
-           "num_clauses"_a, "name"_a = "")
-      .def("catch_ret", &LLVMBuilderWrapper::catch_ret, "catch_pad"_a, "bb"_a)
+           "num_clauses"_a, "name"_a = "",
+           R"(Build landing_pad.
+
+<sub>C API: LLVMBuildLandingPad</sub>)")
+      .def("catch_ret", &LLVMBuilderWrapper::catch_ret, "catch_pad"_a, "bb"_a,
+           R"(Build catch_ret.
+
+<sub>C API: LLVMBuildCatchRet</sub>)")
       .def("catch_pad", &LLVMBuilderWrapper::catch_pad, "parent_pad"_a,
-           "args"_a, "name"_a = "")
+           "args"_a, "name"_a = "",
+           R"(Build catch_pad.
+
+<sub>C API: LLVMBuildCatchPad</sub>)")
       .def("cleanup_pad", &LLVMBuilderWrapper::cleanup_pad, "parent_pad"_a,
-           "args"_a, "name"_a = "")
+           "args"_a, "name"_a = "",
+           R"(Build cleanup_pad.
+
+<sub>C API: LLVMBuildCleanupPad</sub>)")
       .def("extract_value", &LLVMBuilderWrapper::extract_value, "agg"_a,
-           "index"_a, "name"_a = "")
+           "index"_a, "name"_a = "",
+           R"(Build extract_value.
+
+<sub>C API: LLVMBuildExtractValue</sub>)")
       .def("insert_value", &LLVMBuilderWrapper::insert_value, "agg"_a, "val"_a,
-           "index"_a, "name"_a = "")
+           "index"_a, "name"_a = "",
+           R"(Build insert_value.
+
+<sub>C API: LLVMBuildInsertValue</sub>)")
       .def("extract_element", &LLVMBuilderWrapper::extract_element, "vec"_a,
-           "index"_a, "name"_a = "")
+           "index"_a, "name"_a = "",
+           R"(Build extract_element.
+
+<sub>C API: LLVMBuildExtractElement</sub>)")
       .def("insert_element", &LLVMBuilderWrapper::insert_element, "vec"_a,
-           "val"_a, "index"_a, "name"_a = "")
+           "val"_a, "index"_a, "name"_a = "",
+           R"(Build insert_element.
+
+<sub>C API: LLVMBuildInsertElement</sub>)")
       .def("shuffle_vector", &LLVMBuilderWrapper::shuffle_vector, "v1"_a,
-           "v2"_a, "mask"_a, "name"_a = "")
-      .def("freeze", &LLVMBuilderWrapper::freeze, "val"_a, "name"_a = "")
+           "v2"_a, "mask"_a, "name"_a = "",
+           R"(Build shuffle_vector.
+
+<sub>C API: LLVMBuildShuffleVector</sub>)")
+      .def("freeze", &LLVMBuilderWrapper::freeze, "val"_a, "name"_a = "",
+           R"(Build freeze.
+
+<sub>C API: LLVMBuildFreeze</sub>)")
       .def("gep_with_no_wrap_flags",
            &LLVMBuilderWrapper::gep_with_no_wrap_flags, "ty"_a, "ptr"_a,
-           "indices"_a, "flags"_a, "name"_a = "")
+           "indices"_a, "flags"_a, "name"_a = "",
+           R"(Build a GEP with explicit no-wrap flags (nuw/nusw).
+
+<sub>C API: LLVMBuildGEPWithNoWrapFlags</sub>)")
       .def("atomic_rmw", &LLVMBuilderWrapper::atomic_rmw, "op"_a, "ptr"_a,
            "val"_a, "ordering"_a, "single_thread"_a = false,
-           R"(Build an atomic read-modify-write instruction.)")
+           R"(Build an atomic read-modify-write instruction.
+
+<sub>C API: LLVMBuildAtomicRMW</sub>)")
       .def("atomic_rmw_sync_scope", &LLVMBuilderWrapper::atomic_rmw_sync_scope,
-           "op"_a, "ptr"_a, "val"_a, "ordering"_a, "sync_scope_id"_a)
+           "op"_a, "ptr"_a, "val"_a, "ordering"_a, "sync_scope_id"_a,
+           R"(Build an atomic RMW with explicit sync scope.
+
+<sub>C API: LLVMBuildAtomicRMWSyncScope</sub>)")
       .def("atomic_cmpxchg", &LLVMBuilderWrapper::atomic_cmpxchg, "ptr"_a,
            "cmp"_a, "new_val"_a, "success_ordering"_a, "failure_ordering"_a,
            "single_thread"_a = false,
-           R"(Build an atomic compare-and-exchange instruction.)")
+           R"(Build an atomic compare-exchange instruction.
+
+<sub>C API: LLVMBuildAtomicCmpXchg</sub>)")
       .def("atomic_cmpxchg_sync_scope",
            &LLVMBuilderWrapper::atomic_cmpxchg_sync_scope, "ptr"_a, "cmp"_a,
            "new_val"_a, "success_ordering"_a, "failure_ordering"_a,
-           "sync_scope_id"_a)
+           "sync_scope_id"_a,
+           R"(Build an atomic cmpxchg with explicit sync scope.
+
+<sub>C API: LLVMBuildAtomicCmpXchgSyncScope</sub>)")
       .def("fence", &LLVMBuilderWrapper::fence, "ordering"_a,
            "single_thread"_a = false, "name"_a = "",
            R"(Build a memory fence instruction.
@@ -9648,14 +10616,23 @@ Args:
     single_thread: If true, only synchronizes with this thread (default false)
     name: Optional name for the instruction
 
-Wraps LLVMBuildFence.)")
+<sub>C API: LLVMBuildFence</sub>)")
       .def("fence_sync_scope", &LLVMBuilderWrapper::fence_sync_scope,
-           "ordering"_a, "sync_scope_id"_a, "name"_a = "")
+           "ordering"_a, "sync_scope_id"_a, "name"_a = "",
+           R"(Build fence with scope.
+
+<sub>C API: LLVMBuildFenceSyncScope</sub>)")
       .def("insert_into_builder_with_name",
            &LLVMBuilderWrapper::insert_into_builder_with_name, "instr"_a,
-           "name"_a)
+           "name"_a,
+           R"(Insert instruction.
+
+<sub>C API: LLVMInsertIntoBuilderWithName</sub>)")
       .def("add_metadata_to_inst", &LLVMBuilderWrapper::add_metadata_to_inst,
-           "instr"_a)
+           "instr"_a,
+           R"(Add metadata to instruction.
+
+<sub>C API: LLVMAddMetadataToInst</sub>)")
       // Missing builders for echo command - wrapped to convert
       // OperandBundleWrapper
       .def(
@@ -9674,7 +10651,10 @@ Wraps LLVMBuildFence.)")
                 fn_ty, fn, args, then_bb, catch_bb, bundle_refs, name);
           },
           "fn_ty"_a, "fn"_a, "args"_a, "then_bb"_a, "catch_bb"_a, "bundles"_a,
-          "name"_a = "")
+          "name"_a = "",
+          R"(Build invoke with bundles.
+
+<sub>C API: LLVMBuildInvokeWithOperandBundles</sub>)")
       .def(
           "call_with_operand_bundles",
           [](LLVMBuilderWrapper &self, const LLVMTypeWrapper &fn_ty,
@@ -9688,7 +10668,10 @@ Wraps LLVMBuildFence.)")
             return self.call_with_operand_bundles(fn_ty, fn, args, bundle_refs,
                                                   name);
           },
-          "fn_ty"_a, "fn"_a, "args"_a, "bundles"_a, "name"_a = "")
+          "fn_ty"_a, "fn"_a, "args"_a, "bundles"_a, "name"_a = "",
+          R"(Build call with bundles.
+
+<sub>C API: LLVMBuildCallWithOperandBundles</sub>)")
       .def(
           "callbr",
           [](LLVMBuilderWrapper &self, const LLVMTypeWrapper &fn_ty,
@@ -9705,62 +10688,104 @@ Wraps LLVMBuildFence.)")
                                bundle_refs, name);
           },
           "fn_ty"_a, "fn"_a, "default_dest"_a, "indirect_dests"_a, "args"_a,
-          "bundles"_a, "name"_a = "")
+          "bundles"_a, "name"_a = "",
+          R"(Build callbr.
+
+<sub>C API: LLVMBuildCallBr</sub>)")
       .def("catch_switch", &LLVMBuilderWrapper::catch_switch, "parent_pad"_a,
-           "unwind_bb"_a = nb::none(), "num_handlers"_a = 0, "name"_a = "")
+           "unwind_bb"_a = nb::none(), "num_handlers"_a = 0, "name"_a = "",
+           R"(Build catch_switch.
+
+<sub>C API: LLVMBuildCatchSwitch</sub>)")
       .def("cleanup_ret", &LLVMBuilderWrapper::cleanup_ret, "catch_pad"_a,
-           "bb"_a = nb::none());
+           "bb"_a = nb::none(),
+           R"(Build cleanup_ret.
+
+<sub>C API: LLVMBuildCleanupRet</sub>)");
 
   // Operand Bundle wrapper
   nb::class_<LLVMOperandBundleWrapper>(m, "OperandBundle")
-      .def_prop_ro("tag", &LLVMOperandBundleWrapper::get_tag)
-      .def_prop_ro("num_args", &LLVMOperandBundleWrapper::get_num_args)
+      .def_prop_ro("tag", &LLVMOperandBundleWrapper::get_tag,
+                   R"(Get operand bundle tag.
+
+<sub>C API: LLVMGetOperandBundleTag</sub>)")
+      .def_prop_ro("num_args", &LLVMOperandBundleWrapper::get_num_args,
+                   R"(Get number of args.
+
+<sub>C API: LLVMGetNumOperandBundleArgs</sub>)")
       .def("get_arg_at_index", &LLVMOperandBundleWrapper::get_arg_at_index,
-           "index"_a);
+           "index"_a,
+           R"(Get arg at index.
+
+<sub>C API: LLVMGetOperandBundleArgAtIndex</sub>)");
 
   // Attribute wrapper
   nb::class_<LLVMAttributeWrapper>(m, "Attribute")
-      .def_prop_ro("is_valid", &LLVMAttributeWrapper::is_valid)
+      .def_prop_ro("is_valid", &LLVMAttributeWrapper::is_valid,
+                   R"(Check if attribute is valid.
+
+<sub>C API: LLVMIsEnumAttribute</sub>)")
       .def_prop_ro("kind", &LLVMAttributeWrapper::get_kind,
-                   "Get the kind ID of this enum attribute.")
+                   R"(Get kind ID.
+
+<sub>C API: LLVMGetEnumAttributeKind</sub>)")
       .def_prop_ro("value", &LLVMAttributeWrapper::get_value,
-                   "Get the value of this enum attribute (0 if none).")
+                   R"(Get enum attribute value.
+
+<sub>C API: LLVMGetEnumAttributeValue</sub>)")
       .def_prop_ro("is_enum_attribute",
                    &LLVMAttributeWrapper::is_enum_attribute,
-                   "Check if this is an enum attribute.")
+                   R"(Check if enum attribute.
+
+<sub>C API: LLVMIsEnumAttribute</sub>)")
       .def_prop_ro("is_string_attribute",
                    &LLVMAttributeWrapper::is_string_attribute,
-                   "Check if this is a string attribute.")
+                   R"(Check if string attribute.
+
+<sub>C API: LLVMIsStringAttribute</sub>)")
       .def_prop_ro("is_type_attribute",
                    &LLVMAttributeWrapper::is_type_attribute,
-                   "Check if this is a type attribute.")
+                   R"(Check if type attribute.
+
+<sub>C API: LLVMIsTypeAttribute</sub>)")
       .def_prop_ro("string_kind", &LLVMAttributeWrapper::get_string_kind,
-                   "Get the key of this string attribute (raises if not a "
-                   "string attribute).")
+                   R"(Get string key.
+
+<sub>C API: LLVMGetStringAttributeKind</sub>)")
       .def_prop_ro("string_value", &LLVMAttributeWrapper::get_string_value,
-                   "Get the value of this string attribute (raises if not a "
-                   "string attribute).")
+                   R"(Get string value.
+
+<sub>C API: LLVMGetStringAttributeValue</sub>)")
       .def_prop_ro("type_value", &LLVMAttributeWrapper::get_type_value,
-                   "Get the type of this type attribute (raises if not a type "
-                   "attribute).");
+                   R"(Get type value.
+
+<sub>C API: LLVMGetTypeAttributeValue</sub>)");
 
   // Comdat wrapper (for Windows/COFF COMDAT sections)
   nb::class_<LLVMComdatWrapper>(m, "Comdat",
                                 "COMDAT section for Windows/COFF linking.")
       .def_prop_ro("is_valid", &LLVMComdatWrapper::is_valid,
-                   "Check if this Comdat reference is valid.")
+                   R"(Check if Comdat is valid.
+
+<sub>C API: LLVMGetComdatSelectionKind</sub>)")
       .def_prop_rw("selection_kind", &LLVMComdatWrapper::get_selection_kind,
                    &LLVMComdatWrapper::set_selection_kind,
-                   "Get or set the selection kind for this COMDAT. Wraps "
-                   "LLVMGetComdatSelectionKind/LLVMSetComdatSelectionKind.");
+                   R"(Get or set the selection kind for this COMDAT.
+
+<sub>C API: LLVMGetComdatSelectionKind, LLVMSetComdatSelectionKind</sub>)");
 
   // Value metadata entries wrapper (for global/instruction metadata copying)
   nb::class_<LLVMValueMetadataEntriesWrapper>(m, "ValueMetadataEntries")
       .def("__len__", &LLVMValueMetadataEntriesWrapper::size)
       .def("get_kind", &LLVMValueMetadataEntriesWrapper::get_kind, "index"_a,
-           "Get the metadata kind at the given index.")
+           R"(Get metadata kind at index.
+
+<sub>C API: LLVMValueMetadataEntriesGetKind</sub>)")
       .def("get_metadata", &LLVMValueMetadataEntriesWrapper_get_metadata,
-           "index"_a, "Get the metadata at the given index.");
+           "index"_a,
+           R"(Get metadata at index.
+
+<sub>C API: LLVMValueMetadataEntriesGetMetadata</sub>)");
 
   // Named metadata node wrapper
   nb::class_<LLVMNamedMDNodeWrapper>(m, "NamedMDNode")
@@ -9772,72 +10797,176 @@ Wraps LLVMBuildFence.)")
            [](const LLVMNamedMDNodeWrapper &v) {
              return std::hash<LLVMNamedMDNodeRef>{}(v.m_ref);
            })
-      .def_prop_ro("name", &LLVMNamedMDNodeWrapper::get_name)
-      .def_prop_ro("next", &LLVMNamedMDNodeWrapper::next)
-      .def_prop_ro("prev", &LLVMNamedMDNodeWrapper::prev);
+      .def_prop_ro("name", &LLVMNamedMDNodeWrapper::get_name,
+                   R"(Get name.
+
+<sub>C API: LLVMGetNamedMetadataName</sub>)")
+      .def_prop_ro("next", &LLVMNamedMDNodeWrapper::next,
+                   R"(Get next.
+
+<sub>C API: LLVMGetNextNamedMetadata</sub>)")
+      .def_prop_ro("prev", &LLVMNamedMDNodeWrapper::prev,
+                   R"(Get previous.
+
+<sub>C API: LLVMGetPreviousNamedMetadata</sub>)");
 
   // Module wrapper
   nb::class_<LLVMModuleWrapper>(m, "Module")
       .def_prop_rw("name", &LLVMModuleWrapper::get_name,
-                   &LLVMModuleWrapper::set_name)
+                   &LLVMModuleWrapper::set_name,
+                   R"(Module identifier.
+
+<sub>C API: LLVMGetModuleIdentifier, LLVMSetModuleIdentifier</sub>)")
       .def_prop_rw("source_filename", &LLVMModuleWrapper::get_source_filename,
-                   &LLVMModuleWrapper::set_source_filename)
+                   &LLVMModuleWrapper::set_source_filename,
+                   R"(Source filename.
+
+<sub>C API: LLVMGetSourceFileName, LLVMSetSourceFileName</sub>)")
       .def_prop_rw("data_layout", &LLVMModuleWrapper::get_data_layout,
-                   &LLVMModuleWrapper::set_data_layout)
+                   &LLVMModuleWrapper::set_data_layout,
+                   R"(Data layout string.
+
+<sub>C API: LLVMGetDataLayoutStr, LLVMSetDataLayout</sub>)")
       .def_prop_rw("target_triple", &LLVMModuleWrapper::get_target_triple,
-                   &LLVMModuleWrapper::set_target_triple)
+                   &LLVMModuleWrapper::set_target_triple,
+                   R"(Target triple.
+
+<sub>C API: LLVMGetTarget, LLVMSetTarget</sub>)")
       .def("add_function", &LLVMModuleWrapper::add_function, "name"_a,
-           "func_ty"_a)
-      .def("get_function", &LLVMModuleWrapper::get_function, "name"_a)
-      .def("add_global", &LLVMModuleWrapper::add_global, "ty"_a, "name"_a)
+           "func_ty"_a, R"(Add a function.
+
+<sub>C API: LLVMAddFunction</sub>)")
+      .def("get_function", &LLVMModuleWrapper::get_function, "name"_a,
+           R"(Get a function by name.
+
+<sub>C API: LLVMGetNamedFunction</sub>)")
+      .def("add_global", &LLVMModuleWrapper::add_global, "ty"_a, "name"_a,
+           R"(Add a global variable.
+
+<sub>C API: LLVMAddGlobal</sub>)")
       .def("add_global_in_address_space",
            &LLVMModuleWrapper::add_global_in_address_space, "ty"_a, "name"_a,
-           "address_space"_a)
-      .def("get_global", &LLVMModuleWrapper::get_global, "name"_a)
-      .def_prop_ro("first_global", &LLVMModuleWrapper::first_global)
-      .def_prop_ro("last_global", &LLVMModuleWrapper::last_global)
-      .def_prop_ro("globals", &LLVMModuleWrapper::globals)
-      .def_prop_ro("functions", &LLVMModuleWrapper::functions)
-      .def_prop_ro("first_function", &LLVMModuleWrapper::first_function)
-      .def_prop_ro("last_function", &LLVMModuleWrapper::last_function)
+           "address_space"_a,
+           R"(Add global in address space.
+
+<sub>C API: LLVMAddGlobalInAddressSpace</sub>)")
+      .def("get_global", &LLVMModuleWrapper::get_global, "name"_a,
+           R"(Get a global by name.
+
+<sub>C API: LLVMGetNamedGlobal</sub>)")
+      .def_prop_ro("first_global", &LLVMModuleWrapper::first_global,
+                   R"(First global.
+
+<sub>C API: LLVMGetFirstGlobal</sub>)")
+      .def_prop_ro("last_global", &LLVMModuleWrapper::last_global,
+                   R"(Last global.
+
+<sub>C API: LLVMGetLastGlobal</sub>)")
+      .def_prop_ro("globals", &LLVMModuleWrapper::globals,
+                   R"(All globals.
+
+<sub>C API: LLVMGetFirstGlobal, LLVMGetNextGlobal</sub>)")
+      .def_prop_ro("functions", &LLVMModuleWrapper::functions,
+                   R"(All functions.
+
+<sub>C API: LLVMGetFirstFunction, LLVMGetNextFunction</sub>)")
+      .def_prop_ro("first_function", &LLVMModuleWrapper::first_function,
+                   R"(First function.
+
+<sub>C API: LLVMGetFirstFunction</sub>)")
+      .def_prop_ro("last_function", &LLVMModuleWrapper::last_function,
+                   R"(Last function.
+
+<sub>C API: LLVMGetLastFunction</sub>)")
       .def("__str__", &LLVMModuleWrapper::to_string)
-      .def("to_string", &LLVMModuleWrapper::to_string)
-      .def("verify", &LLVMModuleWrapper::verify)
-      .def("get_verification_error", &LLVMModuleWrapper::get_verification_error)
+      .def("to_string", &LLVMModuleWrapper::to_string,
+           R"(Get module as IR string.
+
+<sub>C API: LLVMPrintModuleToString</sub>)")
+      .def("verify", &LLVMModuleWrapper::verify,
+           R"(Verify the module.
+
+<sub>C API: LLVMVerifyModule</sub>)")
+      .def("get_verification_error", &LLVMModuleWrapper::get_verification_error,
+           R"(Get verification error message.
+
+<sub>C API: LLVMVerifyModule</sub>)")
       // Global alias support
-      .def_prop_ro("first_global_alias", &LLVMModuleWrapper::first_global_alias)
-      .def_prop_ro("last_global_alias", &LLVMModuleWrapper::last_global_alias)
+      .def_prop_ro("first_global_alias", &LLVMModuleWrapper::first_global_alias,
+                   R"(First global alias.
+
+<sub>C API: LLVMGetFirstGlobalAlias</sub>)")
+      .def_prop_ro("last_global_alias", &LLVMModuleWrapper::last_global_alias,
+                   R"(Last global alias.
+
+<sub>C API: LLVMGetLastGlobalAlias</sub>)")
       .def("get_named_global_alias", &LLVMModuleWrapper::get_named_global_alias,
-           "name"_a)
+           "name"_a, R"(Get named global alias.
+
+<sub>C API: LLVMGetNamedGlobalAlias</sub>)")
       .def("add_alias", &LLVMModuleWrapper::add_alias, "value_ty"_a,
-           "addr_space"_a, "aliasee"_a, "name"_a)
+           "addr_space"_a, "aliasee"_a, "name"_a,
+           R"(Add a global alias.
+
+<sub>C API: LLVMAddAlias2</sub>)")
       // Global IFunc support
-      .def_prop_ro("first_global_ifunc", &LLVMModuleWrapper::first_global_ifunc)
-      .def_prop_ro("last_global_ifunc", &LLVMModuleWrapper::last_global_ifunc)
+      .def_prop_ro("first_global_ifunc", &LLVMModuleWrapper::first_global_ifunc,
+                   R"(Get the first indirect function (IFunc) in the module.
+
+<sub>C API: LLVMGetFirstGlobalIFunc</sub>)")
+      .def_prop_ro("last_global_ifunc", &LLVMModuleWrapper::last_global_ifunc,
+                   R"(Get the last indirect function (IFunc) in the module.
+
+<sub>C API: LLVMGetLastGlobalIFunc</sub>)")
       .def("get_named_global_ifunc", &LLVMModuleWrapper::get_named_global_ifunc,
-           "name"_a)
+           "name"_a, R"(Get an indirect function by name.
+
+<sub>C API: LLVMGetNamedGlobalIFunc</sub>)")
       .def("add_global_ifunc", &LLVMModuleWrapper::add_global_ifunc, "name"_a,
-           "ty"_a, "addr_space"_a, "resolver"_a)
+           "ty"_a, "addr_space"_a, "resolver"_a,
+           R"(Add an indirect function (IFunc) to the module.
+
+<sub>C API: LLVMAddGlobalIFunc</sub>)")
       // Named metadata support
       .def_prop_ro("first_named_metadata",
-                   &LLVMModuleWrapper::first_named_metadata)
+                   &LLVMModuleWrapper::first_named_metadata,
+                   R"(First named metadata.
+
+<sub>C API: LLVMGetFirstNamedMetadata</sub>)")
       .def_prop_ro("last_named_metadata",
-                   &LLVMModuleWrapper::last_named_metadata)
+                   &LLVMModuleWrapper::last_named_metadata,
+                   R"(Last named metadata.
+
+<sub>C API: LLVMGetLastNamedMetadata</sub>)")
       .def("get_named_metadata", &LLVMModuleWrapper::get_named_metadata,
-           "name"_a)
+           "name"_a, R"(Get named metadata.
+
+<sub>C API: LLVMGetNamedMetadata</sub>)")
       .def("get_or_insert_named_metadata",
-           &LLVMModuleWrapper::get_or_insert_named_metadata, "name"_a)
+           &LLVMModuleWrapper::get_or_insert_named_metadata, "name"_a,
+           R"(Get or insert named metadata.
+
+<sub>C API: LLVMGetOrInsertNamedMetadata</sub>)")
       .def("get_named_metadata_num_operands",
-           &LLVMModuleWrapper::get_named_metadata_num_operands, "name"_a)
+           &LLVMModuleWrapper::get_named_metadata_num_operands, "name"_a,
+           R"(Get operand count.
+
+<sub>C API: LLVMGetNamedMetadataNumOperands</sub>)")
       .def("get_named_metadata_operands",
-           &LLVMModuleWrapper::get_named_metadata_operands, "name"_a)
+           &LLVMModuleWrapper::get_named_metadata_operands, "name"_a,
+           R"(Get operands.
+
+<sub>C API: LLVMGetNamedMetadataOperands</sub>)")
       // Inline assembly support
       .def_prop_rw("inline_asm", &LLVMModuleWrapper::get_inline_asm,
-                   &LLVMModuleWrapper::set_inline_asm)
+                   &LLVMModuleWrapper::set_inline_asm,
+                   R"(Module inline ASM.
+
+<sub>C API: LLVMGetModuleInlineAsm, LLVMSetModuleInlineAsm2</sub>)")
       .def("clone", &LLVMModuleWrapper::clone, nb::rv_policy::take_ownership,
            R"(Create a copy of this module.
-           
-           Wraps LLVMCloneModule.)")
+
+<sub>C API: LLVMCloneModule</sub>)")
       // BitWriter methods
       .def("write_bitcode_to_file", &LLVMModuleWrapper::write_bitcode_to_file,
            "path"_a,
@@ -9845,16 +10974,16 @@ Wraps LLVMBuildFence.)")
            
            Args:
                path: Output file path
-               
-           Wraps LLVMWriteBitcodeToFile.)")
+
+<sub>C API: LLVMWriteBitcodeToFile</sub>)")
       .def("write_bitcode_to_memory_buffer",
            &LLVMModuleWrapper::write_bitcode_to_memory_buffer,
            R"(Write the module as bitcode to a bytes object.
            
            Returns:
                bytes: The bitcode data.
-               
-           Wraps LLVMWriteBitcodeToMemoryBuffer.)")
+
+<sub>C API: LLVMWriteBitcodeToMemoryBuffer</sub>)")
       // Linker methods
       .def("link_module", &LLVMModuleWrapper::link_module, "src"_a,
            R"(Link another module into this module.
@@ -9863,8 +10992,8 @@ Wraps LLVMBuildFence.)")
            
            Args:
                src: Source module to link in
-               
-           Wraps LLVMLinkModules2.)")
+
+<sub>C API: LLVMLinkModules2</sub>)")
       // COMDAT support
       .def("get_or_insert_comdat", &LLVMModuleWrapper::get_or_insert_comdat,
            "name"_a,
@@ -9878,20 +11007,22 @@ Wraps LLVMBuildFence.)")
                
            Returns:
                A Comdat object for the named section.
-               
-           Wraps LLVMGetOrInsertComdat.)")
+
+<sub>C API: LLVMGetOrInsertComdat</sub>)")
       // Module printing to file
       .def("print_to_file", &LLVMModuleWrapper::print_to_file, "filename"_a,
            R"(Print the module IR to a file.
            
            Args:
                filename: Output file path
-               
-           Wraps LLVMPrintModuleToFile.)")
-      // Named metadata operand (moved from global function)
+
+<sub>C API: LLVMPrintModuleToFile</sub>)")
+      // Named metadata operand
       .def("add_named_metadata_operand",
            &LLVMModuleWrapper::add_named_metadata_operand, "name"_a, "md"_a,
-           R"(Add operand to named metadata.)")
+           R"(Add operand.
+
+<sub>C API: LLVMAddNamedMetadataOperand</sub>)")
       // =====================================================================
       // Module Flags API
       // =====================================================================
@@ -9904,7 +11035,7 @@ Args:
     key: The flag name
     val: The metadata value
 
-Wraps LLVMAddModuleFlag.)")
+<sub>C API: LLVMAddModuleFlag</sub>)")
       .def("get_module_flag", &LLVMModuleWrapper::get_module_flag, "key"_a,
            R"(Get a module-level flag by key.
 
@@ -9914,20 +11045,25 @@ Args:
 Returns:
     The metadata value, or None if not found.
 
-Wraps LLVMGetModuleFlag.)")
-      // =====================================================================
-      // Module API Refactor: Methods moved from global functions
-      // =====================================================================
+<sub>C API: LLVMGetModuleFlag</sub>)")
+      // Module methods
       .def_prop_ro("context", &LLVMModuleWrapper::get_context,
                    nb::rv_policy::take_ownership,
-                   R"(Get the context for this module (read-only).)")
+                   R"(Get the context for this module.
+
+<sub>C API: LLVMGetModuleContext</sub>)")
       .def_prop_rw("is_new_dbg_info_format",
                    &LLVMModuleWrapper::is_new_dbg_info_format,
                    &LLVMModuleWrapper::set_is_new_dbg_info_format,
-                   R"(Whether to use new debug info format.)")
+                   R"(Whether to use new debug info format.
+
+<sub>C API: LLVMIsNewDbgInfoFormat, LLVMSetIsNewDbgInfoFormat</sub>)")
       .def("get_intrinsic_declaration",
            &LLVMModuleWrapper::get_intrinsic_declaration, "id"_a,
-           "param_types"_a, R"(Get intrinsic declaration for this module.)")
+           "param_types"_a,
+           R"(Get intrinsic declaration for this module.
+
+<sub>C API: LLVMGetIntrinsicDeclaration</sub>)")
       .def("create_dibuilder", &LLVMModuleWrapper::create_dibuilder,
            nb::rv_policy::take_ownership,
            R"(Create a debug info builder for this module.
@@ -9937,74 +11073,160 @@ Use with 'with' statement:
         file = dib.create_file("foo.c", ".")
         # ... create debug info ...
         dib.finalize()
-)");
+
+<sub>C API: LLVMCreateDIBuilder</sub>)");
 
   // TypeFactory wrapper (property-based type namespace)
   nb::class_<LLVMTypeFactoryWrapper>(m, "TypeFactory")
-      // Fixed-width integer types (properties)
-      .def_prop_ro("i1", &LLVMTypeFactoryWrapper::i1)
-      .def_prop_ro("i8", &LLVMTypeFactoryWrapper::i8)
-      .def_prop_ro("i16", &LLVMTypeFactoryWrapper::i16)
-      .def_prop_ro("i32", &LLVMTypeFactoryWrapper::i32)
-      .def_prop_ro("i64", &LLVMTypeFactoryWrapper::i64)
-      .def_prop_ro("i128", &LLVMTypeFactoryWrapper::i128)
-      // Floating-point types (properties)
-      .def_prop_ro("f16", &LLVMTypeFactoryWrapper::f16)
-      .def_prop_ro("bf16", &LLVMTypeFactoryWrapper::bf16)
-      .def_prop_ro("f32", &LLVMTypeFactoryWrapper::f32)
-      .def_prop_ro("f64", &LLVMTypeFactoryWrapper::f64)
-      .def_prop_ro("x86_fp80", &LLVMTypeFactoryWrapper::x86_fp80)
-      .def_prop_ro("fp128", &LLVMTypeFactoryWrapper::fp128)
-      .def_prop_ro("ppc_fp128", &LLVMTypeFactoryWrapper::ppc_fp128)
-      // Other types (properties)
-      .def_prop_ro("void", &LLVMTypeFactoryWrapper::void_)
-      .def_prop_ro("label", &LLVMTypeFactoryWrapper::label)
-      .def_prop_ro("metadata", &LLVMTypeFactoryWrapper::metadata)
-      .def_prop_ro("token", &LLVMTypeFactoryWrapper::token)
-      .def_prop_ro("x86_amx", &LLVMTypeFactoryWrapper::x86_amx)
-      // Parameterized types (methods)
-      .def("ptr", &LLVMTypeFactoryWrapper::ptr, "address_space"_a = 0)
-      .def("int_n", &LLVMTypeFactoryWrapper::int_n, "bits"_a)
+      // Fixed-width integer types
+      .def_prop_ro("i1", &LLVMTypeFactoryWrapper::i1,
+                   R"(1-bit int.
+
+<sub>C API: LLVMInt1TypeInContext</sub>)")
+      .def_prop_ro("i8", &LLVMTypeFactoryWrapper::i8,
+                   R"(8-bit int.
+
+<sub>C API: LLVMInt8TypeInContext</sub>)")
+      .def_prop_ro("i16", &LLVMTypeFactoryWrapper::i16,
+                   R"(16-bit int.
+
+<sub>C API: LLVMInt16TypeInContext</sub>)")
+      .def_prop_ro("i32", &LLVMTypeFactoryWrapper::i32,
+                   R"(32-bit int.
+
+<sub>C API: LLVMInt32TypeInContext</sub>)")
+      .def_prop_ro("i64", &LLVMTypeFactoryWrapper::i64,
+                   R"(64-bit int.
+
+<sub>C API: LLVMInt64TypeInContext</sub>)")
+      .def_prop_ro("i128", &LLVMTypeFactoryWrapper::i128,
+                   R"(128-bit int.
+
+<sub>C API: LLVMInt128TypeInContext</sub>)")
+      // Floating-point types
+      .def_prop_ro("f16", &LLVMTypeFactoryWrapper::f16,
+                   R"(Half type.
+
+<sub>C API: LLVMHalfTypeInContext</sub>)")
+      .def_prop_ro("bf16", &LLVMTypeFactoryWrapper::bf16,
+                   R"(BFloat16 type.
+
+<sub>C API: LLVMBFloatTypeInContext</sub>)")
+      .def_prop_ro("f32", &LLVMTypeFactoryWrapper::f32,
+                   R"(Float type.
+
+<sub>C API: LLVMFloatTypeInContext</sub>)")
+      .def_prop_ro("f64", &LLVMTypeFactoryWrapper::f64,
+                   R"(Double type.
+
+<sub>C API: LLVMDoubleTypeInContext</sub>)")
+      .def_prop_ro("x86_fp80", &LLVMTypeFactoryWrapper::x86_fp80,
+                   R"(X86 FP80 type.
+
+<sub>C API: LLVMX86FP80TypeInContext</sub>)")
+      .def_prop_ro("fp128", &LLVMTypeFactoryWrapper::fp128,
+                   R"(FP128 type.
+
+<sub>C API: LLVMFP128TypeInContext</sub>)")
+      .def_prop_ro("ppc_fp128", &LLVMTypeFactoryWrapper::ppc_fp128,
+                   R"(PPC FP128 type.
+
+<sub>C API: LLVMPPCFP128TypeInContext</sub>)")
+      // Other types
+      .def_prop_ro("void", &LLVMTypeFactoryWrapper::void_,
+                   R"(Void type.
+
+<sub>C API: LLVMVoidTypeInContext</sub>)")
+      .def_prop_ro("label", &LLVMTypeFactoryWrapper::label,
+                   R"(Label type.
+
+<sub>C API: LLVMLabelTypeInContext</sub>)")
+      .def_prop_ro("metadata", &LLVMTypeFactoryWrapper::metadata,
+                   R"(Metadata type.
+
+<sub>C API: LLVMMetadataTypeInContext</sub>)")
+      .def_prop_ro("token", &LLVMTypeFactoryWrapper::token,
+                   R"(Token type.
+
+<sub>C API: LLVMTokenTypeInContext</sub>)")
+      .def_prop_ro("x86_amx", &LLVMTypeFactoryWrapper::x86_amx,
+                   R"(X86 AMX type.
+
+<sub>C API: LLVMX86AMXTypeInContext</sub>)")
+      // Parameterized types
+      .def("ptr", &LLVMTypeFactoryWrapper::ptr, "address_space"_a = 0,
+           R"(Pointer type.
+
+<sub>C API: LLVMPointerTypeInContext</sub>)")
+      .def("int_n", &LLVMTypeFactoryWrapper::int_n, "bits"_a,
+           R"(N-bit int.
+
+<sub>C API: LLVMIntTypeInContext</sub>)")
       .def("function", &LLVMTypeFactoryWrapper::function, "ret_ty"_a,
-           "param_types"_a, "vararg"_a = false)
+           "param_types"_a, "vararg"_a = false,
+           R"(Function type.
+
+<sub>C API: LLVMFunctionType</sub>)")
       .def("struct", &LLVMTypeFactoryWrapper::struct_, "elem_types"_a,
-           "packed"_a = false, "name"_a = "")
-      .def("opaque_struct", &LLVMTypeFactoryWrapper::opaque_struct, "name"_a)
-      .def("array", &LLVMTypeFactoryWrapper::array, "elem_ty"_a, "count"_a)
+           "packed"_a = false, "name"_a = "",
+           R"(Struct type.
+
+<sub>C API: LLVMStructTypeInContext, LLVMStructCreateNamed</sub>)")
+      .def("opaque_struct", &LLVMTypeFactoryWrapper::opaque_struct, "name"_a,
+           R"(Opaque struct type.
+
+<sub>C API: LLVMStructCreateNamed</sub>)")
+      .def("array", &LLVMTypeFactoryWrapper::array, "elem_ty"_a, "count"_a,
+           R"(Array type.
+
+<sub>C API: LLVMArrayType2</sub>)")
       .def("vector", &LLVMTypeFactoryWrapper::vector, "elem_ty"_a,
-           "elem_count"_a)
+           "elem_count"_a, R"(Vector type.
+
+<sub>C API: LLVMVectorType</sub>)")
       .def("scalable_vector", &LLVMTypeFactoryWrapper::scalable_vector,
-           "elem_ty"_a, "elem_count"_a)
+           "elem_ty"_a, "elem_count"_a,
+           R"(Scalable vector type.
+
+<sub>C API: LLVMScalableVectorType</sub>)")
       .def("target_ext", &LLVMTypeFactoryWrapper::target_ext, "name"_a,
-           "type_params"_a, "int_params"_a)
-      .def("get", &LLVMTypeFactoryWrapper::get, "name"_a);
+           "type_params"_a, "int_params"_a,
+           R"(Target extension type.
+
+<sub>C API: LLVMTargetExtTypeInContext</sub>)")
+      .def("get", &LLVMTypeFactoryWrapper::get, "name"_a,
+           R"(Get named struct type.
+
+<sub>C API: LLVMGetTypeByName2</sub>)");
 
   // Context wrapper
   nb::class_<LLVMContextWrapper>(m, "Context")
       .def_prop_rw("discard_value_names",
                    &LLVMContextWrapper::get_discard_value_names,
-                   &LLVMContextWrapper::set_discard_value_names)
+                   &LLVMContextWrapper::set_discard_value_names,
+                   R"(Discard value names.
+
+<sub>C API: LLVMContextShouldDiscardValueNames, LLVMContextSetDiscardValueNames</sub>)")
       // Property-based type factory
-      .def_prop_ro("types", &LLVMContextWrapper::get_types)
+      .def_prop_ro("types", &LLVMContextWrapper::get_types,
+                   R"(Type factory for this context.
+
+<sub>C API: LLVMInt</sub>*TypeInContext)")
       // Module/Builder creation
       .def("create_module", &LLVMContextWrapper::create_module, "name"_a,
-           nb::rv_policy::take_ownership)
+           nb::rv_policy::take_ownership,
+           R"(Create a module.
+
+<sub>C API: LLVMModuleCreateWithNameInContext</sub>)")
       .def("create_builder",
            nb::overload_cast<const LLVMBasicBlockWrapper &>(
                &LLVMContextWrapper::create_builder),
            "bb"_a, nb::rv_policy::take_ownership,
            R"(Create a Builder positioned at the end of a BasicBlock.
 
-Args:
-  bb: The BasicBlock to position at. New instructions will be appended
-     to the end of this block.
+Returns a BuilderManager for use with Python's 'with' statement.
 
-Returns:
-  A BuilderManager for use with Python's 'with' statement.
-
-Example:
-  with ctx.create_builder(bb) as builder:
-      builder.add(x, y, "result"))")
+<sub>C API: LLVMCreateBuilderInContext, LLVMPositionBuilderAtEnd</sub>)")
       .def("create_builder",
            nb::overload_cast<const LLVMValueWrapper &, bool>(
                &LLVMContextWrapper::create_builder),
@@ -10012,40 +11234,47 @@ Example:
            nb::rv_policy::take_ownership,
            R"(Create a Builder positioned before an Instruction.
 
-Args:
-  inst: The Instruction to insert before. New instructions will be placed
-        immediately before this instruction.
-  before_dbg: If True, insert before debug records.
-              If False, insert after debug records but before the instruction.
-              Debug records (like llvm.dbg.value) are typically placed before
-              the instruction they describe.
+Returns a BuilderManager for use with Python's 'with' statement.
 
-Returns:
-  A BuilderManager for use with Python's 'with' statement.
-
-Example:
-  with ctx.create_builder(inst, before_dbg=False) as builder:
-      builder.add(x, y, "result"))")
+<sub>C API: LLVMCreateBuilderInContext, LLVMPositionBuilderBefore</sub>)")
       .def("create_basic_block", &LLVMContextWrapper::create_basic_block,
-           "name"_a)
+           "name"_a,
+           R"(Create orphan basic block.
+
+<sub>C API: LLVMCreateBasicBlockInContext</sub>)")
       // Parsing methods
       .def("parse_bitcode_from_file",
            &LLVMContextWrapper::parse_bitcode_from_file, "filename"_a,
            "lazy"_a = false, nb::rv_policy::take_ownership,
-           "Parse LLVM bitcode from file")
+           R"(Parse bitcode from file.
+
+<sub>C API: LLVMParseBitcodeInContext2</sub>)")
       .def("parse_bitcode_from_bytes",
            &LLVMContextWrapper::parse_bitcode_from_bytes, "data"_a,
            "lazy"_a = false, nb::rv_policy::take_ownership,
-           "Parse LLVM bitcode from bytes")
+           R"(Parse bitcode from bytes.
+
+<sub>C API: LLVMParseBitcodeInContext2</sub>)")
       .def("parse_ir", &LLVMContextWrapper::parse_ir, "source"_a,
            "mod_name"_a = "<source>", nb::rv_policy::take_ownership,
-           "Parse LLVM IR from string")
+           R"(Parse IR from string.
+
+<sub>C API: LLVMParseIRInContext</sub>)")
       // Diagnostics
-      .def("get_diagnostics", &LLVMContextWrapper::get_diagnostics)
-      .def("clear_diagnostics", &LLVMContextWrapper::clear_diagnostics)
-      // Attribute creation methods (moved from global function)
+      .def("get_diagnostics", &LLVMContextWrapper::get_diagnostics,
+           R"(Get accumulated diagnostics.
+
+<sub>C API: LLVMContextSetDiagnosticHandler</sub>)")
+      .def("clear_diagnostics", &LLVMContextWrapper::clear_diagnostics,
+           R"(Clear accumulated diagnostics.
+
+<sub>C API: LLVMContextSetDiagnosticHandler</sub>)")
+      // Attribute creation methods
       .def("create_enum_attribute", &LLVMContextWrapper::create_enum_attribute,
-           "kind_id"_a, "val"_a, R"(Create an enum attribute.)")
+           "kind_id"_a, "val"_a,
+           R"(Create enum attribute.
+
+<sub>C API: LLVMCreateEnumAttribute</sub>)")
       .def("create_string_attribute",
            &LLVMContextWrapper::create_string_attribute, "key"_a, "value"_a,
            R"(Create a string attribute.
@@ -10057,7 +11286,7 @@ Args:
 Returns:
     A new string attribute.
 
-Wraps LLVMCreateStringAttribute.)")
+<sub>C API: LLVMCreateStringAttribute</sub>)")
       .def("create_type_attribute", &LLVMContextWrapper::create_type_attribute,
            "kind_id"_a, "type"_a,
            R"(Create a type attribute.
@@ -10069,22 +11298,20 @@ Args:
 Returns:
     A new type attribute.
 
-Wraps LLVMCreateTypeAttribute.)")
+<sub>C API: LLVMCreateTypeAttribute</sub>)")
       .def("get_md_kind_id", &LLVMContextWrapper::get_md_kind_id, "name"_a,
-           R"(Get the metadata kind ID for a named metadata kind.
+           R"(Get metadata kind ID.
 
-Maps a metadata kind name to an ID unique within this context.
-
-Args:
-    name: The metadata kind name.
-
-Returns:
-    The metadata kind ID.)")
-      // Metadata creation methods (moved from global functions)
+<sub>C API: LLVMGetMDKindIDInContext</sub>)")
+      // Metadata creation methods
       .def("md_string", &LLVMContextWrapper::md_string, "str"_a,
-           R"(Create metadata string in context.)")
+           R"(Create metadata string.
+
+<sub>C API: LLVMMDStringInContext2</sub>)")
       .def("md_node", &LLVMContextWrapper::md_node, "mds"_a,
-           R"(Create metadata node in context from metadata refs.)")
+           R"(Create metadata node.
+
+<sub>C API: LLVMMDNodeInContext2</sub>)")
       // Sync scope
       .def("get_sync_scope_id", &LLVMContextWrapper::get_sync_scope_id,
            "name"_a,
@@ -10093,11 +11320,7 @@ Returns:
 Maps a synchronization scope name to an ID unique within this context.
 Common scope names include "singlethread" for thread-local synchronization.
 
-Args:
-    name: The synchronization scope name.
-
-Returns:
-    The sync scope ID for use with atomic operations.)");
+<sub>C API: LLVMGetSyncScopeID</sub>)");
 
   // Context manager
   nb::class_<LLVMContextManager>(m, "ContextManager")
@@ -10130,7 +11353,9 @@ Returns:
   m.def(
       "create_context", [] { return new LLVMContextManager(); },
       nb::rv_policy::take_ownership,
-      R"(Create a new LLVM context manager for use with 'with' statement.)");
+      R"(Create new LLVM context.
+
+<sub>C API: LLVMContextCreate</sub>)");
 
   m.def(
       "global_context",
@@ -10139,7 +11364,9 @@ Returns:
         return &context;
       },
       nb::rv_policy::reference,
-      R"(Get the global LLVM context (use sparingly).)");
+      R"(Get global context.
+
+<sub>C API: LLVMGetGlobalContext</sub>)");
 
   // Constant creation functions
   // Note: Basic constant creation (const_int, const_real, const_null, etc.)
@@ -10149,38 +11376,56 @@ Returns:
   // TODO: these need to be refactored to not be in the llvm module as globals
   // they are specific to values and therefore to a context (or even module?)
   m.def("const_array", &const_array, "elem_ty"_a, "vals"_a,
-        R"(Create an array constant.)");
+        R"(Create array constant.
+
+<sub>C API: LLVMConstArray2</sub>)");
   m.def("const_struct", &const_struct, "vals"_a, "packed"_a, "ctx"_a,
-        R"(Create a struct constant.)");
+        R"(Create struct constant.
+
+<sub>C API: LLVMConstStructInContext</sub>)");
   m.def("const_vector", &const_vector, "vals"_a,
-        R"(Create a vector constant.)");
+        R"(Create vector constant.
+
+<sub>C API: LLVMConstVector</sub>)");
   m.def("const_string", &const_string, "ctx"_a, "str"_a,
-        "dont_null_terminate"_a = false, R"(Create a string constant.)");
+        "dont_null_terminate"_a = false,
+        R"(Create string constant.
+
+<sub>C API: LLVMConstStringInContext2</sub>)");
   m.def("const_named_struct", &const_named_struct, "struct_ty"_a, "vals"_a,
-        R"(Create a named struct constant.)");
-  // Advanced constant creation (for echo command and complex use cases)
-  m.def(
-      "const_int_of_arbitrary_precision", &const_int_of_arbitrary_precision,
-      "ty"_a, "words"_a,
-      R"(Create an integer constant of arbitrary precision from 64-bit words (little-endian).)");
+        R"(Create named struct constant.
+
+<sub>C API: LLVMConstNamedStruct</sub>)");
+  // Advanced constant creation
+  m.def("const_int_of_arbitrary_precision", &const_int_of_arbitrary_precision,
+        "ty"_a, "words"_a,
+        R"(Arbitrary precision int.
+
+<sub>C API: LLVMConstIntOfArbitraryPrecision</sub>)");
   m.def("const_data_array", &const_data_array, "elem_ty"_a, "data"_a,
-        R"(Create a constant data array from raw bytes.)");
+        R"(Create data array.
+
+<sub>C API: LLVMConstDataArray</sub>)");
   m.def("const_gep_with_no_wrap_flags", &const_gep_with_no_wrap_flags, "ty"_a,
         "ptr"_a, "indices"_a, "no_wrap_flags"_a,
-        R"(Create a constant GEP expression with no-wrap flags.)");
+        R"(Create a constant GEP expression with explicit no-wrap flags.
+
+<sub>C API: LLVMConstGEPWithNoWrapFlags</sub>)");
   m.def("const_ptr_auth", &const_ptr_auth, "ptr"_a, "key"_a, "discriminator"_a,
         "addr_discriminator"_a,
-        R"(Create a constant pointer authentication expression.)");
+        R"(Create a constant pointer authentication expression for ARM64e.
+
+<sub>C API: LLVMConstantPtrAuth</sub>)");
   m.def("block_address", &block_address, "fn"_a, "bb"_a,
         R"(Create a BlockAddress constant that is the address of a basic block.
 
 This is used for computed goto (indirect branch) support.
 
-Wraps LLVMBlockAddress.)");
-  // TODO: this should probably be a custom LLVMIntrinsic class instead of an
-  // integer-based lookup
+<sub>C API: LLVMBlockAddress</sub>)");
   m.def("intrinsic_is_overloaded", &intrinsic_is_overloaded, "id"_a,
-        R"(Check if an intrinsic is overloaded.)");
+        R"(Check if intrinsic is overloaded.
+
+<sub>C API: LLVMIntrinsicIsOverloaded</sub>)");
   // NOTE: get_intrinsic_declaration has been moved to
   // Module.get_intrinsic_declaration() method
 
@@ -10197,12 +11442,16 @@ Wraps LLVMBlockAddress.)");
         return new LLVMOperandBundleWrapper(bundle, ctx->m_token);
       },
       "tag"_a, "args"_a, "ctx"_a, nb::rv_policy::take_ownership,
-      R"(Create an operand bundle with the given tag and arguments.)");
+      R"(Create operand bundle.
+
+<sub>C API: LLVMCreateOperandBundle</sub>)");
 
   // Get undef mask element constant
   m.def(
       "get_undef_mask_elem", []() { return LLVMGetUndefMaskElem(); },
-      R"(Get the value that indicates an undef element in a shuffle mask.)");
+      R"(Get undef mask element.
+
+<sub>C API: LLVMGetUndefMaskElem</sub>)");
 
   // Get inline assembly
   // TODO: this should be a method on type instead
@@ -10221,98 +11470,124 @@ Wraps LLVMBlockAddress.)");
       },
       "fn_ty"_a, "asm_string"_a, "constraints"_a, "has_side_effects"_a,
       "needs_aligned_stack"_a, "dialect"_a, "can_unwind"_a,
-      R"(Create an inline assembly value.)");
+      R"(Create inline assembly.
+
+<sub>C API: LLVMGetInlineAsm</sub>)");
 
   // Target wrapper
   nb::class_<LLVMTargetWrapper>(m, "Target")
-      .def_prop_ro("name", &LLVMTargetWrapper::get_name)
-      .def_prop_ro("description", &LLVMTargetWrapper::get_description)
-      .def_prop_ro("has_jit", &LLVMTargetWrapper::has_jit)
-      .def_prop_ro("has_target_machine", &LLVMTargetWrapper::has_target_machine)
-      .def_prop_ro("has_asm_backend", &LLVMTargetWrapper::has_asm_backend)
-      .def_prop_ro("next", &LLVMTargetWrapper::next);
+      .def_prop_ro("name", &LLVMTargetWrapper::get_name,
+                   R"(Target name.
+
+<sub>C API: LLVMGetTargetName</sub>)")
+      .def_prop_ro("description", &LLVMTargetWrapper::get_description,
+                   R"(Target description.
+
+<sub>C API: LLVMGetTargetDescription</sub>)")
+      .def_prop_ro("has_jit", &LLVMTargetWrapper::has_jit,
+                   R"(Has JIT support.
+
+<sub>C API: LLVMTargetHasJIT</sub>)")
+      .def_prop_ro("has_target_machine", &LLVMTargetWrapper::has_target_machine,
+                   R"(Check if this target has a TargetMachine implementation.
+
+<sub>C API: LLVMTargetHasTargetMachine</sub>)")
+      .def_prop_ro("has_asm_backend", &LLVMTargetWrapper::has_asm_backend,
+                   R"(Has ASM backend.
+
+<sub>C API: LLVMTargetHasAsmBackend</sub>)")
+      .def_prop_ro("next", &LLVMTargetWrapper::next,
+                   R"(Next target.
+
+<sub>C API: LLVMGetNextTarget</sub>)");
 
   // Target functions
   m.def("initialize_all_target_infos", &initialize_all_target_infos,
         R"(Initialize all target infos.
-        
-        Wraps LLVMInitializeAllTargetInfos.)");
+
+<sub>C API: LLVMInitializeAllTargetInfos</sub>)");
   m.def("initialize_all_targets", &initialize_all_targets,
         R"(Initialize all targets.
-        
-        Wraps LLVMInitializeAllTargets.)");
+
+<sub>C API: LLVMInitializeAllTargets</sub>)");
   m.def("initialize_all_target_mcs", &initialize_all_target_mcs,
         R"(Initialize all target MCs.
-        
-        Wraps LLVMInitializeAllTargetMCs.)");
+
+<sub>C API: LLVMInitializeAllTargetMCs</sub>)");
   m.def("initialize_all_asm_printers", &initialize_all_asm_printers,
         R"(Initialize all ASM printers.
-        
-        Wraps LLVMInitializeAllAsmPrinters.)");
+
+<sub>C API: LLVMInitializeAllAsmPrinters</sub>)");
   m.def("initialize_all_asm_parsers", &initialize_all_asm_parsers,
         R"(Initialize all ASM parsers.
-        
-        Wraps LLVMInitializeAllAsmParsers.)");
+
+<sub>C API: LLVMInitializeAllAsmParsers</sub>)");
   m.def("initialize_all_disassemblers", &initialize_all_disassemblers,
         R"(Initialize all disassemblers.
-        
-        Wraps LLVMInitializeAllDisassemblers.)");
+
+<sub>C API: LLVMInitializeAllDisassemblers</sub>)");
   m.def("get_first_target", &get_first_target,
         R"(Get the first registered target (returns None if no targets).
-        
-        Wraps LLVMGetFirstTarget.)");
+
+<sub>C API: LLVMGetFirstTarget</sub>)");
 
   // Native target initialization
   m.def("initialize_native_target", &initialize_native_target,
         R"(Initialize the native target.
         
         Returns True on success, False on failure.
-        Wraps LLVMInitializeNativeTarget.)");
+
+<sub>C API: LLVMInitializeNativeTarget</sub>)");
   m.def("initialize_native_asm_printer", &initialize_native_asm_printer,
         R"(Initialize the native ASM printer.
         
         Returns True on success, False on failure.
-        Wraps LLVMInitializeNativeAsmPrinter.)");
+
+<sub>C API: LLVMInitializeNativeAsmPrinter</sub>)");
   m.def("initialize_native_asm_parser", &initialize_native_asm_parser,
         R"(Initialize the native ASM parser.
         
         Returns True on success, False on failure.
-        Wraps LLVMInitializeNativeAsmParser.)");
+
+<sub>C API: LLVMInitializeNativeAsmParser</sub>)");
   m.def("initialize_native_disassembler", &initialize_native_disassembler,
         R"(Initialize the native disassembler.
         
         Returns True on success, False on failure.
-        Wraps LLVMInitializeNativeDisassembler.)");
+
+<sub>C API: LLVMInitializeNativeDisassembler</sub>)");
 
   // Host target queries
   m.def("get_default_target_triple", &get_default_target_triple,
         R"(Get the default target triple for the current host.
-        
-        Wraps LLVMGetDefaultTargetTriple.)");
+
+<sub>C API: LLVMGetDefaultTargetTriple</sub>)");
   m.def("normalize_target_triple", &normalize_target_triple, "triple"_a,
         R"(Normalize a target triple string.
-        
-        Wraps LLVMNormalizeTargetTriple.)");
+
+<sub>C API: LLVMNormalizeTargetTriple</sub>)");
   m.def("get_host_cpu_name", &get_host_cpu_name,
         R"(Get the host CPU name.
-        
-        Wraps LLVMGetHostCPUName.)");
+
+<sub>C API: LLVMGetHostCPUName</sub>)");
   m.def("get_host_cpu_features", &get_host_cpu_features,
         R"(Get the host CPU features as a feature string.
-        
-        Wraps LLVMGetHostCPUFeatures.)");
+
+<sub>C API: LLVMGetHostCPUFeatures</sub>)");
 
   // Target lookup
   m.def("get_target_from_triple", &get_target_from_triple, "triple"_a,
         R"(Get a target from a target triple string.
         
         Raises LLVMError if the target is not found.
-        Wraps LLVMGetTargetFromTriple.)");
+
+<sub>C API: LLVMGetTargetFromTriple</sub>)");
   m.def("get_target_from_name", &get_target_from_name, "name"_a,
         R"(Get a target from its name.
         
         Returns None if the target is not found.
-        Wraps LLVMGetTargetFromName.)");
+
+<sub>C API: LLVMGetTargetFromName</sub>)");
 
   // ==========================================================================
   // Target Machine Enums
@@ -10368,33 +11643,56 @@ Wraps LLVMBlockAddress.)");
         Provides information about type sizes and alignment for a specific target.)")
       .def("__str__", &LLVMTargetDataWrapper::to_string)
       .def_prop_ro("byte_order", &LLVMTargetDataWrapper::byte_order,
-                   R"(Get the byte ordering (endianness).)")
+                   R"(Get byte order.
+
+<sub>C API: LLVMByteOrder</sub>)")
       .def("pointer_size", &LLVMTargetDataWrapper::pointer_size,
            "address_space"_a = 0,
-           R"(Get pointer size in bytes for the given address space.)")
+           R"(Get pointer size.
+
+<sub>C API: LLVMPointerSizeForAS</sub>)")
       .def("size_of_type_in_bits", &LLVMTargetDataWrapper::size_of_type_in_bits,
-           "ty"_a, R"(Get size of type in bits.)")
+           "ty"_a, R"(Get size in bits.
+
+<sub>C API: LLVMSizeOfTypeInBits</sub>)")
       .def("store_size_of_type", &LLVMTargetDataWrapper::store_size_of_type,
-           "ty"_a, R"(Get store size of type in bytes.)")
+           "ty"_a, R"(Get store size.
+
+<sub>C API: LLVMStoreSizeOfType</sub>)")
       .def("abi_size_of_type", &LLVMTargetDataWrapper::abi_size_of_type, "ty"_a,
-           R"(Get ABI size of type in bytes.)")
+           R"(Get ABI size.
+
+<sub>C API: LLVMABISizeOfType</sub>)")
       .def("abi_alignment_of_type",
            &LLVMTargetDataWrapper::abi_alignment_of_type, "ty"_a,
-           R"(Get ABI alignment of type in bytes.)")
+           R"(Get ABI alignment.
+
+<sub>C API: LLVMABIAlignmentOfType</sub>)")
       .def("call_frame_alignment_of_type",
            &LLVMTargetDataWrapper::call_frame_alignment_of_type, "ty"_a,
-           R"(Get call frame alignment of type in bytes.)")
+           R"(Get call frame alignment.
+
+<sub>C API: LLVMCallFrameAlignmentOfType</sub>)")
       .def("preferred_alignment_of_type",
            &LLVMTargetDataWrapper::preferred_alignment_of_type, "ty"_a,
-           R"(Get preferred alignment of type in bytes.)")
+           R"(Get preferred alignment.
+
+<sub>C API: LLVMPreferredAlignmentOfType</sub>)")
       .def("preferred_alignment_of_global",
            &LLVMTargetDataWrapper::preferred_alignment_of_global, "gv"_a,
-           R"(Get preferred alignment of global variable in bytes.)")
+           R"(Get global alignment.
+
+<sub>C API: LLVMPreferredAlignmentOfGlobal</sub>)")
       .def("element_at_offset", &LLVMTargetDataWrapper::element_at_offset,
            "struct_ty"_a, "offset"_a,
-           R"(Get element index at byte offset in struct.)")
+           R"(Get element at offset.
+
+<sub>C API: LLVMElementAtOffset</sub>)")
       .def("offset_of_element", &LLVMTargetDataWrapper::offset_of_element,
-           "struct_ty"_a, "elem"_a, R"(Get byte offset of element in struct.)")
+           "struct_ty"_a, "elem"_a,
+           R"(Get element offset.
+
+<sub>C API: LLVMOffsetOfElement</sub>)")
       .def(
           "int_ptr_type", &LLVMTargetDataWrapper::int_ptr_type, "ctx"_a,
           "address_space"_a = 0, nb::rv_policy::take_ownership,
@@ -10407,46 +11705,66 @@ Args:
 Returns:
     An integer type with the same bit width as a pointer.
 
-Wraps LLVMIntPtrTypeForASInContext.)");
+<sub>C API: LLVMIntPtrTypeForASInContext</sub>)");
 
   m.def("create_target_data", &create_target_data, "string_rep"_a,
         nb::rv_policy::take_ownership,
         R"(Create a target data layout from a string representation.
-        
-        Wraps LLVMCreateTargetData.)");
+
+<sub>C API: LLVMCreateTargetData</sub>)");
 
   // ==========================================================================
   // Target Machine Wrapper
   // ==========================================================================
 
   nb::class_<LLVMTargetMachineWrapper>(m, "TargetMachine",
-                                       R"(Target machine for code generation.
-        
-        Use create_target_machine() to create a TargetMachine.)")
+                                       R"(Target machine for code generation.)")
       .def_prop_ro("target", &LLVMTargetMachineWrapper::get_target,
-                   R"(Get the target for this machine.)")
+                   R"(Get target.
+
+<sub>C API: LLVMGetTargetMachineTarget</sub>)")
       .def_prop_ro("triple", &LLVMTargetMachineWrapper::get_triple,
-                   R"(Get the target triple.)")
+                   R"(Get triple.
+
+<sub>C API: LLVMGetTargetMachineTriple</sub>)")
       .def_prop_ro("cpu", &LLVMTargetMachineWrapper::get_cpu,
-                   R"(Get the CPU name.)")
+                   R"(Get CPU.
+
+<sub>C API: LLVMGetTargetMachineCPU</sub>)")
       .def_prop_ro("feature_string",
                    &LLVMTargetMachineWrapper::get_feature_string,
-                   R"(Get the feature string.)")
+                   R"(Get features.
+
+<sub>C API: LLVMGetTargetMachineFeatureString</sub>)")
       .def("create_data_layout", &LLVMTargetMachineWrapper::create_data_layout,
            nb::rv_policy::take_ownership,
-           R"(Create a TargetData from this target machine.)")
+           R"(Create data layout.
+
+<sub>C API: LLVMCreateTargetDataLayout</sub>)")
       .def("set_asm_verbosity", &LLVMTargetMachineWrapper::set_asm_verbosity,
-           "verbose"_a, R"(Set verbosity of ASM output.)")
+           "verbose"_a,
+           R"(Set ASM verbosity.
+
+<sub>C API: LLVMSetTargetMachineAsmVerbosity</sub>)")
       .def("set_fast_isel", &LLVMTargetMachineWrapper::set_fast_isel,
-           "enable"_a, R"(Enable/disable fast instruction selection.)")
+           "enable"_a, R"(Enable/disable fast instruction selection.
+
+<sub>C API: LLVMSetTargetMachineFastISel</sub>)")
       .def("set_global_isel", &LLVMTargetMachineWrapper::set_global_isel,
-           "enable"_a, R"(Enable/disable global instruction selection.)")
+           "enable"_a,
+           R"(Enable/disable global instruction selection.
+
+<sub>C API: LLVMSetTargetMachineGlobalISel</sub>)")
       .def("set_global_isel_abort",
            &LLVMTargetMachineWrapper::set_global_isel_abort, "mode"_a,
-           R"(Set global instruction selection abort mode.)")
+           R"(Set global instruction selection abort mode.
+
+<sub>C API: LLVMSetTargetMachineGlobalISelAbort</sub>)")
       .def("set_machine_outliner",
            &LLVMTargetMachineWrapper::set_machine_outliner, "enable"_a,
-           R"(Enable/disable machine outliner.)")
+           R"(Enable/disable the machine outliner pass.
+
+<sub>C API: LLVMSetTargetMachineMachineOutliner</sub>)")
       .def("emit_to_file", &LLVMTargetMachineWrapper::emit_to_file, "mod"_a,
            "filename"_a, "file_type"_a,
            R"(Emit the module to a file.
@@ -10455,8 +11773,8 @@ Wraps LLVMIntPtrTypeForASInContext.)");
                mod: Module to emit
                filename: Output filename
                file_type: Type of file (AssemblyFile or ObjectFile)
-               
-           Wraps LLVMTargetMachineEmitToFile.)")
+
+<sub>C API: LLVMTargetMachineEmitToFile</sub>)")
       .def("emit_to_memory_buffer",
            &LLVMTargetMachineWrapper::emit_to_memory_buffer, "mod"_a,
            "file_type"_a,
@@ -10468,8 +11786,8 @@ Wraps LLVMIntPtrTypeForASInContext.)");
                
            Returns:
                bytes: The generated output.
-               
-           Wraps LLVMTargetMachineEmitToMemoryBuffer.)");
+
+<sub>C API: LLVMTargetMachineEmitToMemoryBuffer</sub>)");
 
   m.def("create_target_machine", &create_target_machine, "target"_a, "triple"_a,
         "cpu"_a = "", "features"_a = "",
@@ -10489,8 +11807,8 @@ Wraps LLVMIntPtrTypeForASInContext.)");
             
         Returns:
             TargetMachine instance
-            
-        Wraps LLVMCreateTargetMachine.)");
+
+<sub>C API: LLVMCreateTargetMachine</sub>)");
 
   // ==========================================================================
   // Pass Builder Options Wrapper
@@ -10500,43 +11818,71 @@ Wraps LLVMIntPtrTypeForASInContext.)");
                                             R"(Options for the pass builder.
         
         Used to configure optimization passes when calling run_passes().)")
-      .def(nb::init<>())
+      .def(nb::init<>(), R"(Create options.
+
+<sub>C API: LLVMCreatePassBuilderOptions</sub>)")
       .def("set_verify_each", &LLVMPassBuilderOptionsWrapper::set_verify_each,
-           "verify"_a, R"(Verify the module after each pass.)")
+           "verify"_a, R"(Verify the module after each pass.
+
+<sub>C API: LLVMPassBuilderOptionsSetVerifyEach</sub>)")
       .def("set_debug_logging",
            &LLVMPassBuilderOptionsWrapper::set_debug_logging, "enable"_a,
-           R"(Enable debug logging for passes.)")
+           R"(Enable debug logging for passes.
+
+<sub>C API: LLVMPassBuilderOptionsSetDebugLogging</sub>)")
       .def("set_loop_interleaving",
            &LLVMPassBuilderOptionsWrapper::set_loop_interleaving, "enable"_a,
-           R"(Enable loop interleaving.)")
+           R"(Enable loop interleaving optimization.
+
+<sub>C API: LLVMPassBuilderOptionsSetLoopInterleaving</sub>)")
       .def("set_loop_vectorization",
            &LLVMPassBuilderOptionsWrapper::set_loop_vectorization, "enable"_a,
-           R"(Enable loop vectorization.)")
+           R"(Enable loop vectorization optimization.
+
+<sub>C API: LLVMPassBuilderOptionsSetLoopVectorization</sub>)")
       .def("set_slp_vectorization",
            &LLVMPassBuilderOptionsWrapper::set_slp_vectorization, "enable"_a,
-           R"(Enable SLP (Superword-Level Parallelism) vectorization.)")
+           R"(Enable SLP (superword-level parallelism) vectorization.
+
+<sub>C API: LLVMPassBuilderOptionsSetSLPVectorization</sub>)")
       .def("set_loop_unrolling",
            &LLVMPassBuilderOptionsWrapper::set_loop_unrolling, "enable"_a,
-           R"(Enable loop unrolling.)")
+           R"(Enable loop unrolling optimization.
+
+<sub>C API: LLVMPassBuilderOptionsSetLoopUnrolling</sub>)")
       .def("set_forget_all_scev_in_loop_unroll",
            &LLVMPassBuilderOptionsWrapper::set_forget_all_scev_in_loop_unroll,
-           "forget"_a, R"(Forget all SCEV information during loop unrolling.)")
+           "forget"_a,
+           R"(Forget all Scalar Evolution analysis during loop unrolling.
+
+<sub>C API: LLVMPassBuilderOptionsSetForgetAllSCEVInLoopUnroll</sub>)")
       .def("set_licm_mssa_opt_cap",
            &LLVMPassBuilderOptionsWrapper::set_licm_mssa_opt_cap, "cap"_a,
-           R"(Set LICM MSSA optimization cap.)")
+           R"(Set LICM (loop-invariant code motion) MSSA optimization cap.
+
+<sub>C API: LLVMPassBuilderOptionsSetLicmMssaOptCap</sub>)")
       .def("set_licm_mssa_no_acc_for_promotion_cap",
            &LLVMPassBuilderOptionsWrapper::
                set_licm_mssa_no_acc_for_promotion_cap,
-           "cap"_a, R"(Set LICM MSSA no-acc-for-promotion cap.)")
+           "cap"_a,
+           R"(Set LICM MSSA no-acc-for-promotion cap.
+
+<sub>C API: LLVMPassBuilderOptionsSetLicmMssaNoAccForPromotionCap</sub>)")
       .def("set_call_graph_profile",
            &LLVMPassBuilderOptionsWrapper::set_call_graph_profile, "enable"_a,
-           R"(Enable call graph profile.)")
+           R"(Enable call graph profile for PGO.
+
+<sub>C API: LLVMPassBuilderOptionsSetCallGraphProfile</sub>)")
       .def("set_merge_functions",
            &LLVMPassBuilderOptionsWrapper::set_merge_functions, "enable"_a,
-           R"(Enable function merging.)")
+           R"(Enable function merging optimization.
+
+<sub>C API: LLVMPassBuilderOptionsSetMergeFunctions</sub>)")
       .def("set_inliner_threshold",
            &LLVMPassBuilderOptionsWrapper::set_inliner_threshold, "threshold"_a,
-           R"(Set the inliner threshold.)");
+           R"(Set the inliner threshold (higher = more inlining).
+
+<sub>C API: LLVMPassBuilderOptionsSetInlinerThreshold</sub>)");
 
   m.def("run_passes", &run_passes, "mod"_a, "passes"_a,
         "target_machine"_a.none() = nullptr, "options"_a.none() = nullptr,
@@ -10556,7 +11902,7 @@ Wraps LLVMIntPtrTypeForASInContext.)");
             - 'default<Os>': Size optimization
             - 'default<Oz>': Aggressive size optimization
             
-        Wraps LLVMRunPasses.)doc");
+        <sub>C API: LLVMRunPasses</sub>)doc");
 
   // Memory buffer is internal only - not exposed to Python
 
@@ -10568,7 +11914,9 @@ Wraps LLVMIntPtrTypeForASInContext.)");
 
   nb::class_<LLVMDisasmContextWrapper>(m, "DisasmContext")
       .def_prop_ro("is_valid", &LLVMDisasmContextWrapper::is_valid,
-                   R"(Check if disassembler context is valid.)")
+                   R"(Check if disassembler context is valid.
+
+<sub>C API: LLVMCreateDisasmCPUFeatures</sub>)")
       .def("disasm_instruction", &LLVMDisasmContextWrapper::disasm_instruction,
            "bytes"_a, "offset"_a, "pc"_a,
            R"(Disassemble a single instruction.
@@ -10580,7 +11928,9 @@ Wraps LLVMIntPtrTypeForASInContext.)");
                
            Returns:
                Tuple of (bytes_consumed, disassembly_string)
-               If bytes_consumed is 0, disassembly failed.)")
+               If bytes_consumed is 0, disassembly failed.
+
+<sub>C API: LLVMDisasmInstruction</sub>)")
       .def("set_options", &LLVMDisasmContextWrapper::set_options, "options"_a,
            R"(Set disassembler options.
 
@@ -10590,7 +11940,7 @@ Args:
 Returns:
     True on success, False on failure.
 
-Wraps LLVMSetDisasmOptions.)");
+<sub>C API: LLVMSetDisasmOptions</sub>)");
 
   // Disassembler option constants
   m.attr("DisasmOption_UseMarkup") = nb::int_(1);
@@ -10609,7 +11959,9 @@ Wraps LLVMSetDisasmOptions.)");
             features: Feature string (can be empty or "NULL")
             
         Returns:
-            DisasmContext, or one with is_valid=False if creation failed.)");
+            DisasmContext, or one with is_valid=False if creation failed.
+
+<sub>C API: LLVMCreateDisasmCPUFeatures</sub>)");
 
   // =============================================================================
   // Object File Bindings
@@ -10642,7 +11994,9 @@ Wraps LLVMSetDisasmOptions.)");
             self.check_valid();
             return self.get_type();
           },
-          R"(Get the binary type.)")
+          R"(Get binary type.
+
+<sub>C API: LLVMBinaryGetType</sub>)")
       .def_prop_ro(
           "sections",
           [](LLVMBinaryWrapper &self) {
@@ -10653,7 +12007,9 @@ Wraps LLVMSetDisasmOptions.)");
                                                   self.m_token);
           },
           nb::rv_policy::take_ownership,
-          R"(Get an iterator over sections in the binary.)")
+          R"(Section iterator.
+
+<sub>C API: LLVMObjectFileCopySectionIterator</sub>)")
       .def_prop_ro(
           "symbols",
           [](LLVMBinaryWrapper &self) {
@@ -10663,7 +12019,9 @@ Wraps LLVMSetDisasmOptions.)");
             return new LLVMSymbolIteratorWrapper(ref, self.m_ref, self.m_token);
           },
           nb::rv_policy::take_ownership,
-          R"(Get an iterator over symbols in the binary.)")
+          R"(Symbol iterator.
+
+<sub>C API: LLVMObjectFileCopySymbolIterator</sub>)")
       .def("copy_to_memory_buffer", &LLVMBinaryWrapper::copy_to_memory_buffer,
            R"(Copy the binary's contents to a memory buffer.
            
@@ -10671,25 +12029,39 @@ Wraps LLVMSetDisasmOptions.)");
            
            Returns:
                bytes: A copy of the binary data.
-               
-           Wraps LLVMBinaryCopyMemoryBuffer.)");
+
+<sub>C API: LLVMBinaryCopyMemoryBuffer</sub>)");
 
   // Section iterator
   nb::class_<LLVMSectionIteratorWrapper>(m, "SectionIterator")
       .def("is_at_end", &LLVMSectionIteratorWrapper::is_at_end,
-           R"(Check if iterator is at end.)")
+           R"(Check if iterator is at end.
+
+<sub>C API: LLVMObjectFileIsSectionIteratorAtEnd</sub>)")
       .def("move_next", &LLVMSectionIteratorWrapper::move_next,
-           R"(Move to next section.)")
+           R"(Move to next section.
+
+<sub>C API: LLVMMoveToNextSection</sub>)")
       .def_prop_ro("name", &LLVMSectionIteratorWrapper::get_name,
-                   R"(Get section name.)")
+                   R"(Section name.
+
+<sub>C API: LLVMGetSectionName</sub>)")
       .def_prop_ro("address", &LLVMSectionIteratorWrapper::get_address,
-                   R"(Get section address.)")
+                   R"(Section address.
+
+<sub>C API: LLVMGetSectionAddress</sub>)")
       .def_prop_ro("size", &LLVMSectionIteratorWrapper::get_size,
-                   R"(Get section size.)")
+                   R"(Section size.
+
+<sub>C API: LLVMGetSectionSize</sub>)")
       .def_prop_ro("contents", &LLVMSectionIteratorWrapper::get_contents,
-                   R"(Get section contents as bytes.)")
+                   R"(Section contents.
+
+<sub>C API: LLVMGetSectionContents</sub>)")
       .def("contains_symbol", &LLVMSectionIteratorWrapper::contains_symbol,
-           "symbol"_a, R"(Check if section contains the given symbol.)")
+           "symbol"_a, R"(Check if section contains the given symbol.
+
+<sub>C API: LLVMGetSectionContainsSymbol</sub>)")
       .def(
           "move_to_containing_section",
           [](LLVMSectionIteratorWrapper &self,
@@ -10699,7 +12071,9 @@ Wraps LLVMSetDisasmOptions.)");
             LLVMMoveToContainingSection(self.m_ref, sym.m_ref);
           },
           "symbol"_a,
-          R"(Move this section iterator to the section containing the given symbol.)")
+          R"(Move to containing section.
+
+<sub>C API: LLVMMoveToContainingSection</sub>)")
       .def_prop_ro(
           "relocations",
           [](LLVMSectionIteratorWrapper &self) {
@@ -10709,7 +12083,9 @@ Wraps LLVMSetDisasmOptions.)");
                                                      self.m_binary_token);
           },
           nb::rv_policy::take_ownership,
-          R"(Get an iterator over relocations in this section.)")
+          R"(Relocation iterator.
+
+<sub>C API: LLVMGetRelocations</sub>)")
       // Python iteration support
       .def("__iter__", &LLVMSectionIteratorWrapper::iter,
            nb::rv_policy::reference_internal)
@@ -10732,15 +12108,25 @@ Wraps LLVMSetDisasmOptions.)");
   // Symbol iterator
   nb::class_<LLVMSymbolIteratorWrapper>(m, "SymbolIterator")
       .def("is_at_end", &LLVMSymbolIteratorWrapper::is_at_end,
-           R"(Check if iterator is at end.)")
+           R"(Check if iterator is at end.
+
+<sub>C API: LLVMObjectFileIsSymbolIteratorAtEnd</sub>)")
       .def("move_next", &LLVMSymbolIteratorWrapper::move_next,
-           R"(Move to next symbol.)")
+           R"(Move to next symbol.
+
+<sub>C API: LLVMMoveToNextSymbol</sub>)")
       .def_prop_ro("name", &LLVMSymbolIteratorWrapper::get_name,
-                   R"(Get symbol name.)")
+                   R"(Symbol name.
+
+<sub>C API: LLVMGetSymbolName</sub>)")
       .def_prop_ro("address", &LLVMSymbolIteratorWrapper::get_address,
-                   R"(Get symbol address.)")
+                   R"(Symbol address.
+
+<sub>C API: LLVMGetSymbolAddress</sub>)")
       .def_prop_ro("size", &LLVMSymbolIteratorWrapper::get_size,
-                   R"(Get symbol size.)")
+                   R"(Symbol size.
+
+<sub>C API: LLVMGetSymbolSize</sub>)")
       // Python iteration support
       .def("__iter__", &LLVMSymbolIteratorWrapper::iter,
            nb::rv_policy::reference_internal)
@@ -10760,18 +12146,30 @@ Wraps LLVMSetDisasmOptions.)");
   // Relocation iterator
   nb::class_<LLVMRelocationIteratorWrapper>(m, "RelocationIterator")
       .def("is_at_end", &LLVMRelocationIteratorWrapper::is_at_end,
-           R"(Check if iterator is at end.)")
+           R"(Check if iterator is at end.
+
+<sub>C API: LLVMIsRelocationIteratorAtEnd</sub>)")
       .def("move_next", &LLVMRelocationIteratorWrapper::move_next,
-           R"(Move to next relocation.)")
+           R"(Move to next relocation.
+
+<sub>C API: LLVMMoveToNextRelocation</sub>)")
       .def_prop_ro("offset", &LLVMRelocationIteratorWrapper::get_offset,
-                   R"(Get relocation offset.)")
+                   R"(Offset.
+
+<sub>C API: LLVMGetRelocationOffset</sub>)")
       .def_prop_ro("type", &LLVMRelocationIteratorWrapper::get_type,
-                   R"(Get relocation type.)")
+                   R"(Type.
+
+<sub>C API: LLVMGetRelocationType</sub>)")
       .def_prop_ro("type_name", &LLVMRelocationIteratorWrapper::get_type_name,
-                   R"(Get relocation type name.)")
+                   R"(Type name.
+
+<sub>C API: LLVMGetRelocationTypeName</sub>)")
       .def_prop_ro("value_string",
                    &LLVMRelocationIteratorWrapper::get_value_string,
-                   R"(Get relocation value string.)")
+                   R"(Value string.
+
+<sub>C API: LLVMGetRelocationValueString</sub>)")
       // Python iteration support
       .def("__iter__", &LLVMRelocationIteratorWrapper::iter,
            nb::rv_policy::reference_internal)
@@ -10813,7 +12211,9 @@ Wraps LLVMSetDisasmOptions.)");
         Example:
             with llvm.create_binary_from_bytes(data) as binary:
                 for section in binary.sections:
-                    print(section.name))");
+                    print(section.name)
+
+<sub>C API: LLVMCreateBinary</sub>)");
 
   m.def("create_binary_from_file", &create_binary_from_file, "path"_a,
         nb::rv_policy::take_ownership,
@@ -10828,7 +12228,9 @@ Wraps LLVMSetDisasmOptions.)");
         Example:
             with llvm.create_binary_from_file("test.o") as binary:
                 for section in binary.sections:
-                    print(section.name))");
+                    print(section.name)
+
+<sub>C API: LLVMCreateBinary</sub>)");
 
   // BitReader functions
 
@@ -10838,20 +12240,24 @@ Wraps LLVMSetDisasmOptions.)");
   m.attr("AttributeFunctionIndex") =
       nb::int_(static_cast<int>(LLVMAttributeFunctionIndex));
 
-  // Static attribute function (kept as global - no object context needed)
+  // Static attribute function
   m.def(
       "get_last_enum_attribute_kind",
       []() { return LLVMGetLastEnumAttributeKind(); },
-      R"(Get the last enum attribute kind (highest attribute number).)");
+      R"(Get last enum attribute kind.
 
-  // Static metadata function (kept as global - no object context needed)
+<sub>C API: LLVMGetLastEnumAttributeKind</sub>)");
+
+  // Static metadata function
   m.def(
       "get_md_kind_id",
       [](const std::string &name) {
         return LLVMGetMDKindID(name.c_str(),
                                static_cast<unsigned>(name.size()));
       },
-      "name"_a, R"(Get metadata kind ID for name.)");
+      "name"_a, R"(Get metadata kind ID.
+
+<sub>C API: LLVMGetMDKindID</sub>)");
 
   // NOTE: get_module_context has been moved to Module.context property
 
@@ -10891,205 +12297,324 @@ Wraps LLVMSetDisasmOptions.)");
 
   nb::class_<LLVMDIBuilderWrapper>(m, "DIBuilder")
       .def("finalize", &LLVMDIBuilderWrapper::finalize,
-           R"(Finalize the debug info builder.)")
+           R"(Finalize the debug info builder and emit debug info.
+
+<sub>C API: LLVMDIBuilderFinalize</sub>)")
       // File & Scope Creation
       .def("create_file", &LLVMDIBuilderWrapper::create_file, "filename"_a,
-           "directory"_a, R"(Create file debug info metadata.)")
+           "directory"_a, R"(Create file debug info metadata.
+
+<sub>C API: LLVMDIBuilderCreateFile</sub>)")
       .def("create_compile_unit", &LLVMDIBuilderWrapper::create_compile_unit,
            "lang"_a, "file"_a, "producer"_a, "is_optimized"_a, "flags"_a,
            "runtime_ver"_a, "split_name"_a, "kind"_a, "dwo_id"_a,
            "split_debug_inlining"_a, "debug_info_for_profiling"_a, "sys_root"_a,
-           "sdk"_a, R"(Create compile unit debug info.)")
+           "sdk"_a, R"(Create compile unit debug info.
+
+<sub>C API: LLVMDIBuilderCreateCompileUnit</sub>)")
       .def("create_module", &LLVMDIBuilderWrapper::create_module,
            "parent_scope"_a, "name"_a, "config_macros"_a, "include_path"_a,
-           "api_notes_file"_a, R"(Create module debug info.)")
+           "api_notes_file"_a,
+           R"(Create module debug info metadata.
+
+<sub>C API: LLVMDIBuilderCreateModule</sub>)")
       .def("create_namespace", &LLVMDIBuilderWrapper::create_namespace,
            "parent_scope"_a, "name"_a, "export_symbols"_a,
-           R"(Create namespace debug info.)")
+           R"(Create namespace debug info metadata.
+
+<sub>C API: LLVMDIBuilderCreateNameSpace</sub>)")
       .def("create_lexical_block", &LLVMDIBuilderWrapper::create_lexical_block,
            "scope"_a, "file"_a, "line"_a, "column"_a,
-           R"(Create lexical block debug info.)")
+           R"(Create lexical block debug info for a scope.
+
+<sub>C API: LLVMDIBuilderCreateLexicalBlock</sub>)")
       // Function & Subroutine Creation
       .def("create_function", &LLVMDIBuilderWrapper::create_function, "scope"_a,
            "name"_a, "linkage_name"_a, "file"_a, "line_no"_a,
            "subroutine_type"_a.none(), "is_local_to_unit"_a, "is_definition"_a,
            "scope_line"_a, "flags"_a, "is_optimized"_a,
-           R"(Create function debug info.)")
+           R"(Create function (subprogram) debug info.
+
+<sub>C API: LLVMDIBuilderCreateFunction</sub>)")
       .def("create_subroutine_type",
            &LLVMDIBuilderWrapper::create_subroutine_type, "file"_a,
-           "param_types"_a, "flags"_a, R"(Create subroutine type debug info.)")
+           "param_types"_a, "flags"_a,
+           R"(Create subroutine type debug info (function signature).
+
+<sub>C API: LLVMDIBuilderCreateSubroutineType</sub>)")
       // Type Creation
       .def("create_basic_type", &LLVMDIBuilderWrapper::create_basic_type,
            "name"_a, "size_in_bits"_a, "encoding"_a, "flags"_a,
-           R"(Create basic type debug info.)")
+           R"(Create basic type debug info (int, float, etc.).
+
+<sub>C API: LLVMDIBuilderCreateBasicType</sub>)")
       .def("create_pointer_type", &LLVMDIBuilderWrapper::create_pointer_type,
            "pointee_type"_a, "size_in_bits"_a, "align_in_bits"_a,
-           "address_space"_a, "name"_a, R"(Create pointer type debug info.)")
+           "address_space"_a, "name"_a,
+           R"(Create pointer type debug info.
+
+<sub>C API: LLVMDIBuilderCreatePointerType</sub>)")
       .def("create_vector_type", &LLVMDIBuilderWrapper::create_vector_type,
            "size_in_bits"_a, "align_in_bits"_a, "element_type"_a,
-           "subscripts"_a, R"(Create vector type debug info.)")
+           "subscripts"_a,
+           R"(Create vector type debug info.
+
+<sub>C API: LLVMDIBuilderCreateVectorType</sub>)")
       .def("create_typedef", &LLVMDIBuilderWrapper::create_typedef, "type"_a,
            "name"_a, "file"_a, "line_no"_a, "scope"_a, "align_in_bits"_a,
-           R"(Create typedef debug info.)")
+           R"(Create typedef debug info.
+
+<sub>C API: LLVMDIBuilderCreateTypedef</sub>)")
       .def("create_struct_type", &LLVMDIBuilderWrapper::create_struct_type,
            "scope"_a, "name"_a, "file"_a, "line_number"_a, "size_in_bits"_a,
            "align_in_bits"_a, "flags"_a, "derived_from"_a.none() = nullptr,
            "elements"_a = std::vector<LLVMMetadataWrapper>{},
            "runtime_lang"_a = 0, "vtable_holder"_a.none() = nullptr,
-           "unique_id"_a = "", R"(Create struct type debug info metadata.)")
+           "unique_id"_a = "",
+           R"(Create struct type debug info.
+
+<sub>C API: LLVMDIBuilderCreateStructType</sub>)")
       .def("create_enumeration_type",
            &LLVMDIBuilderWrapper::create_enumeration_type, "scope"_a, "name"_a,
            "file"_a, "line_number"_a, "size_in_bits"_a, "align_in_bits"_a,
            "elements"_a, "underlying_type"_a,
-           R"(Create enumeration type debug info.)")
+           R"(Create enumeration type debug info.
+
+<sub>C API: LLVMDIBuilderCreateEnumerationType</sub>)")
       .def("create_forward_decl", &LLVMDIBuilderWrapper::create_forward_decl,
            "tag"_a, "name"_a, "scope"_a, "file"_a, "line"_a, "runtime_lang"_a,
            "size_in_bits"_a, "align_in_bits"_a, "unique_id"_a,
-           R"(Create forward declaration.)")
+           R"(Create forward declaration for a type.
+
+<sub>C API: LLVMDIBuilderCreateForwardDecl</sub>)")
       .def("create_replaceable_composite_type",
            &LLVMDIBuilderWrapper::create_replaceable_composite_type, "tag"_a,
            "name"_a, "scope"_a, "file"_a, "line"_a, "runtime_lang"_a,
            "size_in_bits"_a, "align_in_bits"_a, "flags"_a, "unique_id"_a,
-           R"(Create replaceable composite type.)")
+           R"(Create a temporary replaceable composite type.
+
+<sub>C API: LLVMDIBuilderCreateReplaceableCompositeType</sub>)")
       .def("create_subrange_type", &LLVMDIBuilderWrapper::create_subrange_type,
            "scope"_a, "name"_a, "line"_a, "file"_a, "size_in_bits"_a,
            "align_in_bits"_a, "flags"_a, "element_type"_a,
            "lower_bound"_a.none(), "upper_bound"_a.none(), "stride"_a.none(),
-           "bias"_a.none(), R"(Create subrange type with metadata bounds.)")
+           "bias"_a.none(),
+           R"(Create subrange type with metadata bounds.
+
+<sub>C API: LLVMDIBuilderCreateSubrangeType</sub>)")
       .def("create_set_type", &LLVMDIBuilderWrapper::create_set_type, "scope"_a,
            "name"_a, "file"_a, "line"_a, "size_in_bits"_a, "align_in_bits"_a,
-           "base_type"_a, R"(Create set type.)")
+           "base_type"_a, R"(Create set type debug info.
+
+<sub>C API: LLVMDIBuilderCreateSetType</sub>)")
       .def("create_dynamic_array_type",
            &LLVMDIBuilderWrapper::create_dynamic_array_type, "scope"_a,
            "name"_a, "line"_a, "file"_a, "size_in_bits"_a, "align_in_bits"_a,
            "element_type"_a, "subscripts"_a, "data_location"_a,
            "associated"_a.none(), "allocated"_a.none(), "rank"_a.none(),
-           "bit_stride"_a.none(), R"(Create dynamic array type.)")
+           "bit_stride"_a.none(),
+           R"(Create dynamic array type debug info.
+
+<sub>C API: LLVMDIBuilderCreateDynamicArrayType</sub>)")
       // Variable & Expression
       .def("create_parameter_variable",
            &LLVMDIBuilderWrapper::create_parameter_variable, "scope"_a,
            "name"_a, "arg_no"_a, "file"_a, "line_no"_a, "type"_a,
            "always_preserve"_a, "flags"_a,
-           R"(Create parameter variable debug info.)")
+           R"(Create parameter variable debug info.
+
+<sub>C API: LLVMDIBuilderCreateParameterVariable</sub>)")
       .def("create_auto_variable", &LLVMDIBuilderWrapper::create_auto_variable,
            "scope"_a, "name"_a, "file"_a, "line_no"_a, "type"_a,
            "always_preserve"_a, "flags"_a, "align_in_bits"_a,
-           R"(Create auto variable debug info.)")
+           R"(Create local (auto) variable debug info.
+
+<sub>C API: LLVMDIBuilderCreateAutoVariable</sub>)")
       .def("create_global_variable_expression",
            &LLVMDIBuilderWrapper::create_global_variable_expression, "scope"_a,
            "name"_a, "linkage"_a, "file"_a, "line_no"_a, "type"_a,
            "is_local_to_unit"_a, "expr"_a, "decl"_a.none(), "align_in_bits"_a,
-           R"(Create global variable expression debug info.)")
+           R"(Create global variable expression debug info.
+
+<sub>C API: LLVMDIBuilderCreateGlobalVariableExpression</sub>)")
       .def("create_expression", &LLVMDIBuilderWrapper::create_expression,
-           "addr"_a, R"(Create debug info expression.)")
+           "addr"_a, R"(Create debug info expression from address operations.
+
+<sub>C API: LLVMDIBuilderCreateExpression</sub>)")
       .def("create_constant_value_expression",
            &LLVMDIBuilderWrapper::create_constant_value_expression, "value"_a,
-           R"(Create constant value expression.)")
+           R"(Create debug info expression for a constant value.
+
+<sub>C API: LLVMDIBuilderCreateConstantValueExpression</sub>)")
       // Label Methods
       .def("create_label", &LLVMDIBuilderWrapper::create_label, "scope"_a,
            "name"_a, "file"_a, "line_no"_a, "always_preserve"_a,
-           R"(Create label debug info.)")
+           R"(Create label debug info.
+
+<sub>C API: LLVMDIBuilderCreateLabel</sub>)")
       .def("insert_label_at_end", &LLVMDIBuilderWrapper::insert_label_at_end,
            "label_info"_a, "debug_loc"_a, "block"_a,
-           R"(Insert label at end of block.)")
+           R"(Insert label debug record at end of block.
+
+<sub>C API: LLVMDIBuilderInsertLabelAtEnd</sub>)")
       .def("insert_label_before", &LLVMDIBuilderWrapper::insert_label_before,
            "label_info"_a, "debug_loc"_a, "insert_before"_a,
-           R"(Insert label before instruction.)")
+           R"(Insert label debug record before instruction.
+
+<sub>C API: LLVMDIBuilderInsertLabelBefore</sub>)")
       // Debug Record Insertion
       .def("insert_declare_record_at_end",
            &LLVMDIBuilderWrapper::insert_declare_record_at_end, "storage"_a,
            "var_info"_a, "expr"_a, "debug_loc"_a, "block"_a,
-           R"(Insert declare record at end of block.)")
+           R"(Insert variable declaration at end of block.
+
+<sub>C API: LLVMDIBuilderInsertDeclareRecordAtEnd</sub>)")
       .def("insert_dbg_value_record_at_end",
            &LLVMDIBuilderWrapper::insert_dbg_value_record_at_end, "val"_a,
            "var_info"_a, "expr"_a, "debug_loc"_a, "block"_a,
-           R"(Insert dbg value record at end of block.)")
+           R"(Insert debug value record at end of block.
+
+<sub>C API: LLVMDIBuilderInsertDbgValueRecordAtEnd</sub>)")
       // Array & Subrange
       .def("get_or_create_subrange",
            &LLVMDIBuilderWrapper::get_or_create_subrange, "lo"_a, "count"_a,
-           R"(Get or create subrange.)")
+           R"(Get or create array subrange descriptor.
+
+<sub>C API: LLVMDIBuilderGetOrCreateSubrange</sub>)")
       .def("get_or_create_array", &LLVMDIBuilderWrapper::get_or_create_array,
-           "elements"_a, R"(Get or create array of metadata.)")
+           "elements"_a,
+           R"(Get or create array.
+
+<sub>C API: LLVMDIBuilderGetOrCreateArray</sub>)")
       // Enumerator Methods
       .def("create_enumerator", &LLVMDIBuilderWrapper::create_enumerator,
            "name"_a, "value"_a, "is_unsigned"_a,
-           R"(Create enumerator debug info.)")
+           R"(Create enumerator.
+
+<sub>C API: LLVMDIBuilderCreateEnumerator</sub>)")
       .def("create_enumerator_of_arbitrary_precision",
            &LLVMDIBuilderWrapper::create_enumerator_of_arbitrary_precision,
            "name"_a, "value"_a, "is_unsigned"_a,
-           R"(Create enumerator with arbitrary precision.)")
+           R"(Create enumerator arbitrary precision.
+
+<sub>C API: LLVMDIBuilderCreateEnumeratorOfArbitraryPrecision</sub>)")
       // ObjC & Inheritance Methods
       .def("create_objc_property", &LLVMDIBuilderWrapper::create_objc_property,
            "name"_a, "file"_a, "line_no"_a, "getter_name"_a, "setter_name"_a,
            "property_attributes"_a, "type"_a,
-           R"(Create ObjC property debug info.)")
+           R"(Create ObjC property.
+
+<sub>C API: LLVMDIBuilderCreateObjCProperty</sub>)")
       .def("create_objc_ivar", &LLVMDIBuilderWrapper::create_objc_ivar,
            "name"_a, "file"_a, "line_no"_a, "size_in_bits"_a, "align_in_bits"_a,
            "offset_in_bits"_a, "flags"_a, "type"_a, "property"_a,
-           R"(Create ObjC ivar debug info.)")
+           R"(Create ObjC ivar.
+
+<sub>C API: LLVMDIBuilderCreateObjCIVar</sub>)")
       .def("create_inheritance", &LLVMDIBuilderWrapper::create_inheritance,
            "derived_type"_a, "base_type"_a, "offset_in_bits"_a,
-           "v_bptr_offset"_a, "flags"_a, R"(Create inheritance debug info.)")
+           "v_bptr_offset"_a, "flags"_a,
+           R"(Create inheritance.
+
+<sub>C API: LLVMDIBuilderCreateInheritance</sub>)")
       // Import & Macro Methods
       .def("create_imported_module_from_module",
            &LLVMDIBuilderWrapper::create_imported_module_from_module, "scope"_a,
            "import_module"_a, "file"_a, "line"_a, "elements"_a,
-           R"(Create imported module from module.)")
+           R"(Import from module.
+
+<sub>C API: LLVMDIBuilderCreateImportedModuleFromModule</sub>)")
       .def("create_imported_module_from_alias",
            &LLVMDIBuilderWrapper::create_imported_module_from_alias, "scope"_a,
            "imported_entity"_a, "file"_a, "line"_a, "elements"_a,
-           R"(Create imported module from alias.)")
+           R"(Import from alias.
+
+<sub>C API: LLVMDIBuilderCreateImportedModuleFromAlias</sub>)")
       .def("create_temp_macro_file",
            &LLVMDIBuilderWrapper::create_temp_macro_file,
            "parent_macro_file"_a.none(), "line"_a, "file"_a,
-           R"(Create temporary macro file.)")
+           R"(Create temp macro file.
+
+<sub>C API: LLVMDIBuilderCreateTempMacroFile</sub>)")
       .def("create_macro", &LLVMDIBuilderWrapper::create_macro,
            "parent_macro_file"_a, "line"_a, "macro_type"_a, "name"_a, "value"_a,
-           R"(Create macro.)")
-      // Missing DIBuilder Methods
+           R"(Create macro.
+
+<sub>C API: LLVMDIBuilderCreateMacro</sub>)")
+      // Additional DIBuilder Methods
       .def("finalize_subprogram", &LLVMDIBuilderWrapper::finalize_subprogram,
-           "subprogram"_a, R"(Finalize a specific subprogram.)")
+           "subprogram"_a,
+           R"(Finalize subprogram.
+
+<sub>C API: LLVMDIBuilderFinalizeSubprogram</sub>)")
       .def("create_member_type", &LLVMDIBuilderWrapper::create_member_type,
            "scope"_a, "name"_a, "file"_a, "line_no"_a, "size_in_bits"_a,
            "align_in_bits"_a, "offset_in_bits"_a, "flags"_a, "type"_a,
-           R"(Create a member type for struct/class.)")
+           R"(Create member type.
+
+<sub>C API: LLVMDIBuilderCreateMemberType</sub>)")
       .def("create_union_type", &LLVMDIBuilderWrapper::create_union_type,
            "scope"_a, "name"_a, "file"_a, "line_number"_a, "size_in_bits"_a,
            "align_in_bits"_a, "flags"_a, "elements"_a, "runtime_lang"_a,
-           "unique_id"_a, R"(Create a union type.)")
+           "unique_id"_a,
+           R"(Create union type.
+
+<sub>C API: LLVMDIBuilderCreateUnionType</sub>)")
       .def("create_array_type", &LLVMDIBuilderWrapper::create_array_type,
            "size_in_bits"_a, "align_in_bits"_a, "element_type"_a,
-           "subscripts"_a, R"(Create an array type.)")
+           "subscripts"_a,
+           R"(Create array type.
+
+<sub>C API: LLVMDIBuilderCreateArrayType</sub>)")
       .def("create_qualified_type",
            &LLVMDIBuilderWrapper::create_qualified_type, "tag"_a, "type"_a,
-           R"(Create a qualified type (const, volatile, etc).)")
+           R"(Create qualified type.
+
+<sub>C API: LLVMDIBuilderCreateQualifiedType</sub>)")
       .def("create_reference_type",
            &LLVMDIBuilderWrapper::create_reference_type, "tag"_a, "type"_a,
-           R"(Create a reference type.)")
+           R"(Create reference type.
+
+<sub>C API: LLVMDIBuilderCreateReferenceType</sub>)")
       .def("create_null_ptr_type", &LLVMDIBuilderWrapper::create_null_ptr_type,
-           R"(Create a null pointer type.)")
+           R"(Create nullptr type.
+
+<sub>C API: LLVMDIBuilderCreateNullPtrType</sub>)")
       .def("create_bit_field_member_type",
            &LLVMDIBuilderWrapper::create_bit_field_member_type, "scope"_a,
            "name"_a, "file"_a, "line_no"_a, "size_in_bits"_a,
            "offset_in_bits"_a, "storage_offset_in_bits"_a, "flags"_a, "type"_a,
-           R"(Create a bit field member type.)")
+           R"(Create bitfield member.
+
+<sub>C API: LLVMDIBuilderCreateBitFieldMemberType</sub>)")
       .def("create_artificial_type",
            &LLVMDIBuilderWrapper::create_artificial_type, "type"_a,
-           R"(Create an artificial type (compiler-generated).)")
+           R"(Create artificial type.
+
+<sub>C API: LLVMDIBuilderCreateArtificialType</sub>)")
       .def("get_or_create_type_array",
            &LLVMDIBuilderWrapper::get_or_create_type_array, "types"_a,
-           R"(Get or create a type array for function signatures.)")
+           R"(Get type array.
+
+<sub>C API: LLVMDIBuilderGetOrCreateTypeArray</sub>)")
       .def("create_lexical_block_file",
            &LLVMDIBuilderWrapper::create_lexical_block_file, "scope"_a,
-           "file"_a, "discriminator"_a, R"(Create a lexical block file.)")
+           "file"_a, "discriminator"_a,
+           R"(Create lexical block file.
+
+<sub>C API: LLVMDIBuilderCreateLexicalBlockFile</sub>)")
       .def("create_imported_declaration",
            &LLVMDIBuilderWrapper::create_imported_declaration, "scope"_a,
            "decl"_a, "file"_a, "line"_a, "name"_a, "elements"_a,
-           R"(Create an imported declaration (using declaration).)")
+           R"(Create imported decl.
+
+<sub>C API: LLVMDIBuilderCreateImportedDeclaration</sub>)")
       .def("create_imported_module_from_namespace",
            &LLVMDIBuilderWrapper::create_imported_module_from_namespace,
            "scope"_a, "ns"_a, "file"_a, "line"_a,
-           R"(Create imported module from namespace.)")
+           R"(Import from namespace.
+
+<sub>C API: LLVMDIBuilderCreateImportedModuleFromNamespace</sub>)")
       // C++ class/member types
       .def("create_class_type", &LLVMDIBuilderWrapper::create_class_type,
            "scope"_a, "name"_a, "file"_a, "line_number"_a, "size_in_bits"_a,
@@ -11112,8 +12637,8 @@ Wraps LLVMSetDisasmOptions.)");
                vtable_holder: VTable holder (optional).
                template_params: Template parameters (optional).
                unique_id: Unique identifier for the type.
-               
-           Wraps LLVMDIBuilderCreateClassType.)")
+
+<sub>C API: LLVMDIBuilderCreateClassType</sub>)")
       .def("create_static_member_type",
            &LLVMDIBuilderWrapper::create_static_member_type, "scope"_a,
            "name"_a, "file"_a, "line_no"_a, "type"_a, "flags"_a,
@@ -11131,8 +12656,8 @@ Wraps LLVMSetDisasmOptions.)");
                flags: DI flags.
                const_val: Constant initializer value (optional).
                align_in_bits: Alignment in bits.
-               
-           Wraps LLVMDIBuilderCreateStaticMemberType.)")
+
+<sub>C API: LLVMDIBuilderCreateStaticMemberType</sub>)")
       .def("create_member_pointer_type",
            &LLVMDIBuilderWrapper::create_member_pointer_type, "pointee_type"_a,
            "class_type"_a, "size_in_bits"_a, "align_in_bits"_a, "flags"_a,
@@ -11146,8 +12671,8 @@ Wraps LLVMSetDisasmOptions.)");
                size_in_bits: Size in bits.
                align_in_bits: Alignment in bits.
                flags: DI flags.
-               
-           Wraps LLVMDIBuilderCreateMemberPointerType.)")
+
+<sub>C API: LLVMDIBuilderCreateMemberPointerType</sub>)")
       // Insert debug records before an instruction
       .def("insert_declare_record_before",
            &LLVMDIBuilderWrapper::insert_declare_record_before, "storage"_a,
@@ -11162,8 +12687,8 @@ Wraps LLVMSetDisasmOptions.)");
                expr: Debug expression.
                debug_loc: Debug location.
                insert_before: Instruction to insert before.
-               
-           Wraps LLVMDIBuilderInsertDeclareRecordBefore.)")
+
+<sub>C API: LLVMDIBuilderInsertDeclareRecordBefore</sub>)")
       .def("insert_dbg_value_record_before",
            &LLVMDIBuilderWrapper::insert_dbg_value_record_before, "val"_a,
            "var_info"_a, "expr"_a, "debug_loc"_a, "insert_before"_a,
@@ -11177,12 +12702,14 @@ Wraps LLVMSetDisasmOptions.)");
                expr: Debug expression.
                debug_loc: Debug location.
                insert_before: Instruction to insert before.
-               
-           Wraps LLVMDIBuilderInsertDbgValueRecordBefore.)")
+
+<sub>C API: LLVMDIBuilderInsertDbgValueRecordBefore</sub>)")
       // Utility Methods
       .def("replace_arrays", &LLVMDIBuilderWrapper::replace_arrays,
            "composite_types"_a, "arrays"_a,
-           R"(Replace arrays in composite type.)");
+           R"(Replace arrays in composite type.
+
+<sub>C API: LLVMDIBuilderReplaceArrays</sub>)");
 
   nb::class_<LLVMDIBuilderManager>(m, "DIBuilderManager")
       .def("__enter__", &LLVMDIBuilderManager::enter,
@@ -11196,9 +12723,14 @@ Wraps LLVMSetDisasmOptions.)");
 
   nb::class_<LLVMMetadataWrapper>(m, "Metadata")
       .def("as_value", &LLVMMetadataWrapper::as_value, "ctx"_a,
-           R"(Convert metadata to value.)")
+           R"(Convert metadata to value.
+
+<sub>C API: LLVMMetadataAsValue</sub>)")
       .def("replace_all_uses_with", &LLVMMetadataWrapper::replace_all_uses_with,
-           "md"_a, R"(Replace all uses of this temporary metadata.)");
+           "md"_a,
+           R"(Replace all uses of this temporary metadata.
+
+<sub>C API: LLVMMetadataReplaceAllUsesWith</sub>)");
 
   m.def(
       "get_di_node_tag",
@@ -11206,7 +12738,9 @@ Wraps LLVMSetDisasmOptions.)");
         md.check_valid();
         return LLVMGetDINodeTag(md.m_ref);
       },
-      "md"_a, R"(Get DWARF tag from debug info node.)");
+      "md"_a, R"(Get DWARF tag from debug info node.
+
+<sub>C API: LLVMGetDINodeTag</sub>)");
 
   m.def(
       "di_type_get_name",
@@ -11216,7 +12750,9 @@ Wraps LLVMSetDisasmOptions.)");
         const char *name = LLVMDITypeGetName(di_type.m_ref, &len);
         return std::string(name, len);
       },
-      "di_type"_a, R"(Get name from debug info type.)");
+      "di_type"_a, R"(Get name from debug info type.
+
+<sub>C API: LLVMDITypeGetName</sub>)");
 
   // DILocation accessors
   m.def(
@@ -11225,7 +12761,9 @@ Wraps LLVMSetDisasmOptions.)");
         location.check_valid();
         return LLVMDILocationGetLine(location.m_ref);
       },
-      "location"_a, R"(Get line number from debug location.)");
+      "location"_a, R"(Get line number from debug location.
+
+<sub>C API: LLVMDILocationGetLine</sub>)");
 
   m.def(
       "di_location_get_column",
@@ -11233,7 +12771,9 @@ Wraps LLVMSetDisasmOptions.)");
         location.check_valid();
         return LLVMDILocationGetColumn(location.m_ref);
       },
-      "location"_a, R"(Get column number from debug location.)");
+      "location"_a, R"(Get column number from debug location.
+
+<sub>C API: LLVMDILocationGetColumn</sub>)");
 
   m.def(
       "di_location_get_scope",
@@ -11242,7 +12782,9 @@ Wraps LLVMSetDisasmOptions.)");
         return LLVMMetadataWrapper(LLVMDILocationGetScope(location.m_ref),
                                    location.m_context_token);
       },
-      "location"_a, R"(Get scope from debug location.)");
+      "location"_a, R"(Get scope from debug location.
+
+<sub>C API: LLVMDILocationGetScope</sub>)");
 
   m.def(
       "di_location_get_inlined_at",
@@ -11254,13 +12796,17 @@ Wraps LLVMSetDisasmOptions.)");
           return LLVMMetadataWrapper(ref, location.m_context_token);
         return std::nullopt;
       },
-      "location"_a, R"(Get inlined-at location from debug location, or None.)");
+      "location"_a, R"(Get inlined-at location from debug location, or None.
+
+<sub>C API: LLVMDILocationGetInlinedAt</sub>)");
 
   // Debug metadata version functions
   m.def(
       "debug_metadata_version",
       []() -> unsigned { return LLVMDebugMetadataVersion(); },
-      R"(Get the version of debug metadata supported by this LLVM version.)");
+      R"(Get the version of debug metadata supported by this LLVM version.
+
+<sub>C API: LLVMDebugMetadataVersion</sub>)");
 
   m.def(
       "get_module_debug_metadata_version",
@@ -11268,7 +12814,9 @@ Wraps LLVMSetDisasmOptions.)");
         mod.check_valid();
         return LLVMGetModuleDebugMetadataVersion(mod.m_ref);
       },
-      "mod"_a, R"(Get the debug metadata version from a module.)");
+      "mod"_a, R"(Get the debug metadata version from a module.
+
+<sub>C API: LLVMGetModuleDebugMetadataVersion</sub>)");
 
   m.def(
       "strip_module_debug_info",
@@ -11276,7 +12824,9 @@ Wraps LLVMSetDisasmOptions.)");
         mod.check_valid();
         return LLVMStripModuleDebugInfo(mod.m_ref);
       },
-      "mod"_a, R"(Strip debug info from a module. Returns true if changed.)");
+      "mod"_a, R"(Strip debug info from a module. Returns true if changed.
+
+<sub>C API: LLVMStripModuleDebugInfo</sub>)");
 
   // DI file/scope query functions
   m.def(
@@ -11289,7 +12839,9 @@ Wraps LLVMSetDisasmOptions.)");
           return LLVMMetadataWrapper(ref, scope.m_context_token);
         return std::nullopt;
       },
-      "scope"_a, R"(Get file from debug scope, or None.)");
+      "scope"_a, R"(Get file from debug scope, or None.
+
+<sub>C API: LLVMDIScopeGetFile</sub>)");
 
   m.def(
       "di_file_get_directory",
@@ -11299,7 +12851,9 @@ Wraps LLVMSetDisasmOptions.)");
         const char *dir = LLVMDIFileGetDirectory(file.m_ref, &len);
         return std::string(dir, len);
       },
-      "file"_a, R"(Get directory from debug file.)");
+      "file"_a, R"(Get directory from debug file.
+
+<sub>C API: LLVMDIFileGetDirectory</sub>)");
 
   m.def(
       "di_file_get_filename",
@@ -11309,7 +12863,9 @@ Wraps LLVMSetDisasmOptions.)");
         const char *name = LLVMDIFileGetFilename(file.m_ref, &len);
         return std::string(name, len);
       },
-      "file"_a, R"(Get filename from debug file.)");
+      "file"_a, R"(Get filename from debug file.
+
+<sub>C API: LLVMDIFileGetFilename</sub>)");
 
   m.def(
       "di_file_get_source",
@@ -11319,7 +12875,9 @@ Wraps LLVMSetDisasmOptions.)");
         const char *src = LLVMDIFileGetSource(file.m_ref, &len);
         return std::string(src, len);
       },
-      "file"_a, R"(Get embedded source from debug file.)");
+      "file"_a, R"(Get embedded source from debug file.
+
+<sub>C API: LLVMDIFileGetSource</sub>)");
 
   // DI subprogram/variable query functions
   m.def(
@@ -11328,7 +12886,9 @@ Wraps LLVMSetDisasmOptions.)");
         subprogram.check_valid();
         return LLVMDISubprogramGetLine(subprogram.m_ref);
       },
-      "subprogram"_a, R"(Get line number from debug subprogram.)");
+      "subprogram"_a, R"(Get line number from debug subprogram.
+
+<sub>C API: LLVMDISubprogramGetLine</sub>)");
 
   m.def(
       "di_variable_get_file",
@@ -11340,7 +12900,9 @@ Wraps LLVMSetDisasmOptions.)");
           return LLVMMetadataWrapper(ref, variable.m_context_token);
         return std::nullopt;
       },
-      "variable"_a, R"(Get file from debug variable, or None.)");
+      "variable"_a, R"(Get file from debug variable, or None.
+
+<sub>C API: LLVMDIVariableGetFile</sub>)");
 
   m.def(
       "di_variable_get_scope",
@@ -11352,7 +12914,9 @@ Wraps LLVMSetDisasmOptions.)");
           return LLVMMetadataWrapper(ref, variable.m_context_token);
         return std::nullopt;
       },
-      "variable"_a, R"(Get scope from debug variable, or None.)");
+      "variable"_a, R"(Get scope from debug variable, or None.
+
+<sub>C API: LLVMDIVariableGetScope</sub>)");
 
   m.def(
       "di_variable_get_line",
@@ -11360,7 +12924,9 @@ Wraps LLVMSetDisasmOptions.)");
         variable.check_valid();
         return LLVMDIVariableGetLine(variable.m_ref);
       },
-      "variable"_a, R"(Get line number from debug variable.)");
+      "variable"_a, R"(Get line number from debug variable.
+
+<sub>C API: LLVMDIVariableGetLine</sub>)");
 
   // DIGlobalVariableExpression accessors
   m.def(
@@ -11373,8 +12939,8 @@ Wraps LLVMSetDisasmOptions.)");
       },
       "gve"_a,
       R"(Get the DIGlobalVariable from a DIGlobalVariableExpression.
-      
-      Wraps LLVMDIGlobalVariableExpressionGetVariable.)");
+
+<sub>C API: LLVMDIGlobalVariableExpressionGetVariable</sub>)");
 
   m.def(
       "di_global_variable_expression_get_expression",
@@ -11386,8 +12952,8 @@ Wraps LLVMSetDisasmOptions.)");
       },
       "gve"_a,
       R"(Get the DIExpression from a DIGlobalVariableExpression.
-      
-      Wraps LLVMDIGlobalVariableExpressionGetExpression.)");
+
+<sub>C API: LLVMDIGlobalVariableExpressionGetExpression</sub>)");
 
   // ==========================================================================
   // Intrinsic lookup
@@ -11406,8 +12972,8 @@ Wraps LLVMSetDisasmOptions.)");
           
       Returns:
           Intrinsic ID (0 if not found).
-          
-      Wraps LLVMLookupIntrinsicID.)");
+
+<sub>C API: LLVMLookupIntrinsicID</sub>)");
 
   m.def(
       "intrinsic_is_overloaded",
@@ -11415,8 +12981,8 @@ Wraps LLVMSetDisasmOptions.)");
       R"(Check if an intrinsic is overloaded.
       
       Overloaded intrinsics require type parameters to get a declaration.
-      
-      Wraps LLVMIntrinsicIsOverloaded.)");
+
+<sub>C API: LLVMIntrinsicIsOverloaded</sub>)");
 
   m.def(
       "intrinsic_get_name",
@@ -11427,8 +12993,8 @@ Wraps LLVMSetDisasmOptions.)");
       },
       "id"_a,
       R"(Get the name of an intrinsic by ID.
-      
-      Wraps LLVMIntrinsicGetName.)");
+
+<sub>C API: LLVMIntrinsicGetName</sub>)");
 
   m.def("intrinsic_get_type", &intrinsic_get_type, "ctx"_a, "id"_a,
         "param_types"_a,
@@ -11441,8 +13007,8 @@ Wraps LLVMSetDisasmOptions.)");
             
         Returns:
             The function type of the intrinsic.
-            
-        Wraps LLVMIntrinsicGetType.)");
+
+<sub>C API: LLVMIntrinsicGetType</sub>)");
 
   m.def("get_cast_opcode", &get_cast_opcode, "src"_a, "src_is_signed"_a,
         "dest_ty"_a, "dest_is_signed"_a,
@@ -11456,8 +13022,8 @@ Wraps LLVMSetDisasmOptions.)");
             
         Returns:
             The LLVMOpcode for the appropriate cast instruction.
-            
-        Wraps LLVMGetCastOpcode.)");
+
+<sub>C API: LLVMGetCastOpcode</sub>)");
 
   m.def("replace_md_node_operand_with", &replace_md_node_operand_with, "val"_a,
         "index"_a, "replacement"_a,
@@ -11467,8 +13033,8 @@ Wraps LLVMSetDisasmOptions.)");
             val: The value containing the metadata node.
             index: The operand index to replace.
             replacement: The new metadata to use.
-            
-        Wraps LLVMReplaceMDNodeOperandWith.)");
+
+<sub>C API: LLVMReplaceMDNodeOperandWith</sub>)");
 
   m.def(
       "dibuilder_create_debug_location",
