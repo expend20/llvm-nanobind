@@ -704,3 +704,171 @@ get_directory_property(CMKR_VS_STARTUP_PROJECT DIRECTORY ${PROJECT_SOURCE_DIR} D
 if(NOT CMKR_VS_STARTUP_PROJECT)
 	set_property(DIRECTORY ${PROJECT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT test_symbol_size_crash)
 endif()
+
+# Target: mba_sub
+set(mba_sub_SOURCES
+	cmake.toml
+	"tools/obfuscation/mba_sub.cpp"
+)
+
+add_executable(mba_sub)
+
+target_sources(mba_sub PRIVATE ${mba_sub_SOURCES})
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${mba_sub_SOURCES})
+
+target_compile_features(mba_sub PRIVATE
+	cxx_std_20
+)
+
+if(NOT TARGET LLVM-Wrapper)
+	message(FATAL_ERROR "Target \"LLVM-Wrapper\" referenced by \"mba_sub\" does not exist!")
+endif()
+
+target_link_libraries(mba_sub PRIVATE
+	LLVM-Wrapper
+)
+
+get_directory_property(CMKR_VS_STARTUP_PROJECT DIRECTORY ${PROJECT_SOURCE_DIR} DEFINITION VS_STARTUP_PROJECT)
+if(NOT CMKR_VS_STARTUP_PROJECT)
+	set_property(DIRECTORY ${PROJECT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT mba_sub)
+endif()
+
+# Target: bb_split
+set(bb_split_SOURCES
+	cmake.toml
+	"tools/obfuscation/bb_split.cpp"
+)
+
+add_executable(bb_split)
+
+target_sources(bb_split PRIVATE ${bb_split_SOURCES})
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${bb_split_SOURCES})
+
+target_compile_features(bb_split PRIVATE
+	cxx_std_20
+)
+
+if(NOT TARGET LLVM-Wrapper)
+	message(FATAL_ERROR "Target \"LLVM-Wrapper\" referenced by \"bb_split\" does not exist!")
+endif()
+
+target_link_libraries(bb_split PRIVATE
+	LLVM-Wrapper
+)
+
+get_directory_property(CMKR_VS_STARTUP_PROJECT DIRECTORY ${PROJECT_SOURCE_DIR} DEFINITION VS_STARTUP_PROJECT)
+if(NOT CMKR_VS_STARTUP_PROJECT)
+	set_property(DIRECTORY ${PROJECT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT bb_split)
+endif()
+
+# Target: indirect_branch
+set(indirect_branch_SOURCES
+	cmake.toml
+	"tools/obfuscation/indirect_branch.cpp"
+)
+
+add_executable(indirect_branch)
+
+target_sources(indirect_branch PRIVATE ${indirect_branch_SOURCES})
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${indirect_branch_SOURCES})
+
+target_compile_features(indirect_branch PRIVATE
+	cxx_std_20
+)
+
+if(NOT TARGET LLVM-Wrapper)
+	message(FATAL_ERROR "Target \"LLVM-Wrapper\" referenced by \"indirect_branch\" does not exist!")
+endif()
+
+target_link_libraries(indirect_branch PRIVATE
+	LLVM-Wrapper
+)
+
+get_directory_property(CMKR_VS_STARTUP_PROJECT DIRECTORY ${PROJECT_SOURCE_DIR} DEFINITION VS_STARTUP_PROJECT)
+if(NOT CMKR_VS_STARTUP_PROJECT)
+	set_property(DIRECTORY ${PROJECT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT indirect_branch)
+endif()
+
+# Target: control_flow_flatten
+set(control_flow_flatten_SOURCES
+	cmake.toml
+	"tools/obfuscation/control_flow_flatten.cpp"
+)
+
+add_executable(control_flow_flatten)
+
+target_sources(control_flow_flatten PRIVATE ${control_flow_flatten_SOURCES})
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${control_flow_flatten_SOURCES})
+
+target_compile_features(control_flow_flatten PRIVATE
+	cxx_std_20
+)
+
+if(NOT TARGET LLVM-Wrapper)
+	message(FATAL_ERROR "Target \"LLVM-Wrapper\" referenced by \"control_flow_flatten\" does not exist!")
+endif()
+
+target_link_libraries(control_flow_flatten PRIVATE
+	LLVM-Wrapper
+)
+
+get_directory_property(CMKR_VS_STARTUP_PROJECT DIRECTORY ${PROJECT_SOURCE_DIR} DEFINITION VS_STARTUP_PROJECT)
+if(NOT CMKR_VS_STARTUP_PROJECT)
+	set_property(DIRECTORY ${PROJECT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT control_flow_flatten)
+endif()
+
+# Target: indirect_branch_enc
+set(indirect_branch_enc_SOURCES
+	cmake.toml
+	"tools/obfuscation/indirect_branch_enc.cpp"
+)
+
+add_executable(indirect_branch_enc)
+
+target_sources(indirect_branch_enc PRIVATE ${indirect_branch_enc_SOURCES})
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${indirect_branch_enc_SOURCES})
+
+target_compile_features(indirect_branch_enc PRIVATE
+	cxx_std_20
+)
+
+if(NOT TARGET LLVM-Wrapper)
+	message(FATAL_ERROR "Target \"LLVM-Wrapper\" referenced by \"indirect_branch_enc\" does not exist!")
+endif()
+
+target_link_libraries(indirect_branch_enc PRIVATE
+	LLVM-Wrapper
+)
+
+get_directory_property(CMKR_VS_STARTUP_PROJECT DIRECTORY ${PROJECT_SOURCE_DIR} DEFINITION VS_STARTUP_PROJECT)
+if(NOT CMKR_VS_STARTUP_PROJECT)
+	set_property(DIRECTORY ${PROJECT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT indirect_branch_enc)
+endif()
+
+# Target: string_encrypt
+set(string_encrypt_SOURCES
+	cmake.toml
+	"tools/obfuscation/string_encrypt.cpp"
+)
+
+add_executable(string_encrypt)
+
+target_sources(string_encrypt PRIVATE ${string_encrypt_SOURCES})
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${string_encrypt_SOURCES})
+
+target_compile_features(string_encrypt PRIVATE
+	cxx_std_20
+)
+
+if(NOT TARGET LLVM-Wrapper)
+	message(FATAL_ERROR "Target \"LLVM-Wrapper\" referenced by \"string_encrypt\" does not exist!")
+endif()
+
+target_link_libraries(string_encrypt PRIVATE
+	LLVM-Wrapper
+)
+
+get_directory_property(CMKR_VS_STARTUP_PROJECT DIRECTORY ${PROJECT_SOURCE_DIR} DEFINITION VS_STARTUP_PROJECT)
+if(NOT CMKR_VS_STARTUP_PROJECT)
+	set_property(DIRECTORY ${PROJECT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT string_encrypt)
+endif()

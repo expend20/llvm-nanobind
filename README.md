@@ -62,6 +62,9 @@ cmake --build build
 
 # Or use uv (recommended) - auto-rebuilds as needed
 uv sync
+
+# Offline build
+uv sync --offline --no-build-isolation --verbose
 ```
 
 ### Testing

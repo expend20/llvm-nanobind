@@ -1,0 +1,5 @@
+# Generated bitcode files
+*.bc
+
+# Keep the .ll source files
+!*.ll

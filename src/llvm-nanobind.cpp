@@ -1664,6 +1664,14 @@ struct LLVMValueWrapper {
     return LLVMTypeWrapper(LLVMGetAllocatedType(m_ref), m_context_token);
   }
 
+  LLVMTypeWrapper get_function_type() const {
+    check_valid();
+    if (!is_a_function()) {
+      throw LLVMAssertionError("Cannot get function_type from non-function");
+    }
+    return LLVMTypeWrapper(LLVMGlobalGetValueType(m_ref), m_context_token);
+  }
+
   // =========================================================================
   // Phase 5.7: Operand Bundle Support
   // =========================================================================
@@ -2159,6 +2167,7 @@ struct LLVMBasicBlockWrapper {
     return result;
   }
 
+  // TODO: not optional
   std::optional<LLVMValueWrapper> first_instruction() const {
     check_valid();
     LLVMValueRef inst = LLVMGetFirstInstruction(m_ref);
@@ -2306,6 +2315,7 @@ struct LLVMFunctionWrapper : LLVMValueWrapper {
     return LLVMBasicBlockWrapper(bb, m_context_token);
   }
 
+  // TODO: this should assert instead of returning optional
   std::optional<LLVMBasicBlockWrapper> entry_block() const {
     check_valid();
     LLVMBasicBlockRef bb = LLVMGetEntryBasicBlock(m_ref);
@@ -3619,6 +3629,12 @@ struct LLVMBuilderWrapper : NoMoveCopy {
     for (const auto &arg : args) {
       arg.check_valid();
       arg_refs.push_back(arg.m_ref);
+    }
+    if (!func_ty.is_function()) {
+      throw LLVMAssertionError("Attempting to pass non-function type to call");
+    }
+    if (func_ty.get_return_type().is_void() && !name.empty()) {
+      throw LLVMAssertionError("Cannot name call to function returning void");
     }
     return LLVMValueWrapper(
         LLVMBuildCall2(m_ref, func_ty.m_ref, func.m_ref, arg_refs.data(),
@@ -9552,6 +9568,10 @@ Prefer using erase_from_parent_ifunc() for most use cases.
                    R"(Get allocated type.
 
 <sub>C API: LLVMGetAllocatedType</sub>)")
+      .def_prop_ro("function_type", &LLVMValueWrapper::get_function_type,
+                   R"(Get function type.
+          
+<sub>C API: LLVMGlobalGetValueType</sub>)")
       .def_prop_ro("value_kind", &LLVMValueWrapper::value_kind,
                    R"(Get value kind.
 
@@ -9902,7 +9922,7 @@ Prefer using erase_from_parent_ifunc() for most use cases.
            R"(Set metadata on value.
 
 <sub>C API: LLVMSetMetadata, LLVMGlobalSetMetadata</sub>)")
-      // Builder creation for instructions
+      // Builder creation for instructions (TODO: add to module too)
       .def("create_builder", &LLVMValueWrapper::create_builder, nb::kw_only(),
            "before_dbg"_a = false, nb::rv_policy::take_ownership,
            R"(Create a Builder positioned before this Instruction.
@@ -9952,6 +9972,7 @@ Returns:
                    R"(Get terminator.
 
 <sub>C API: LLVMGetBasicBlockTerminator</sub>)")
+      // TODO: add first_none_phi
       .def_prop_ro("first_instruction",
                    &LLVMBasicBlockWrapper::first_instruction,
                    R"(First instruction.
@@ -10514,7 +10535,7 @@ Returns a BuilderManager for use with Python's 'with' statement.
 
 <sub>C API: LLVMBuildIndirectBr</sub>)")
       .def("call", &LLVMBuilderWrapper::call, "func_ty"_a, "func"_a, "args"_a,
-           "name"_a = "", R"(Build call.
+           "name"_a = "", R"(Build call. TODO: just pass func, why also type?
 
 <sub>C API: LLVMBuildCall2</sub>)")
       .def("unreachable", &LLVMBuilderWrapper::unreachable,

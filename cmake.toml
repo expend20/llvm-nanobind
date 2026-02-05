@@ -127,3 +127,34 @@ sources = ["tests/test_function_extended.cpp"]
 [target.test_symbol_size_crash]
 type = "test"
 sources = ["tests/regressions/test_symbol_size_crash.cpp"]
+
+# Obfuscation tools template
+[template.obfuscation_tool]
+type = "executable"
+compile-features = ["cxx_std_20"]
+link-libraries = ["::LLVM-Wrapper"]
+
+# Obfuscation tools
+[target.mba_sub]
+type = "obfuscation_tool"
+sources = ["tools/obfuscation/mba_sub.cpp"]
+
+[target.bb_split]
+type = "obfuscation_tool"
+sources = ["tools/obfuscation/bb_split.cpp"]
+
+[target.indirect_branch]
+type = "obfuscation_tool"
+sources = ["tools/obfuscation/indirect_branch.cpp"]
+
+[target.control_flow_flatten]
+type = "obfuscation_tool"
+sources = ["tools/obfuscation/control_flow_flatten.cpp"]
+
+[target.indirect_branch_enc]
+type = "obfuscation_tool"
+sources = ["tools/obfuscation/indirect_branch_enc.cpp"]
+
+[target.string_encrypt]
+type = "obfuscation_tool"
+sources = ["tools/obfuscation/string_encrypt.cpp"]

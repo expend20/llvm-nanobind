@@ -1,0 +1,1493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Understanding llvm-nanobind | Interactive Learning Guide</title>
+    <style>
+        :root {
+            --bg: #1a1a2e;
+            --bg-light: #16213e;
+            --bg-card: #0f3460;
+            --accent: #e94560;
+            --accent-light: #ff6b6b;
+            --text: #eaeaea;
+            --text-dim: #a0a0a0;
+            --success: #4ecca3;
+            --warning: #ffc107;
+            --code-bg: #0d1117;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.7;
+            padding: 0;
+        }
+
+        /* Navigation */
+        nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 280px;
+            height: 100vh;
+            background: var(--bg-light);
+            padding: 20px;
+            overflow-y: auto;
+            border-right: 1px solid var(--bg-card);
+            z-index: 100;
+        }
+
+        nav h2 {
+            color: var(--accent);
+            font-size: 1.1rem;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--bg-card);
+        }
+
+        nav ul {
+            list-style: none;
+        }
+
+        nav li {
+            margin: 8px 0;
+        }
+
+        nav a {
+            color: var(--text-dim);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: color 0.2s;
+            display: block;
+            padding: 5px 10px;
+            border-radius: 4px;
+        }
+
+        nav a:hover, nav a.active {
+            color: var(--accent);
+            background: rgba(233, 69, 96, 0.1);
+        }
+
+        nav .section-title {
+            color: var(--text);
+            font-weight: 600;
+            margin-top: 20px;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Progress bar */
+        .progress-container {
+            margin: 20px 0;
+            padding: 15px;
+            background: var(--bg-card);
+            border-radius: 8px;
+        }
+
+        .progress-bar {
+            height: 8px;
+            background: var(--bg);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent), var(--accent-light));
+            width: 0%;
+            transition: width 0.5s ease;
+        }
+
+        .progress-text {
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            margin-top: 8px;
+        }
+
+        /* Main content */
+        main {
+            margin-left: 280px;
+            padding: 40px 60px;
+            max-width: 1000px;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            color: var(--text);
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: var(--text-dim);
+            font-size: 1.2rem;
+            margin-bottom: 40px;
+        }
+
+        h2 {
+            font-size: 1.8rem;
+            color: var(--accent);
+            margin: 50px 0 20px;
+            padding-top: 20px;
+            border-top: 1px solid var(--bg-card);
+        }
+
+        h3 {
+            font-size: 1.3rem;
+            color: var(--text);
+            margin: 30px 0 15px;
+        }
+
+        p {
+            margin: 15px 0;
+            color: var(--text);
+        }
+
+        /* Code blocks */
+        pre {
+            background: var(--code-bg);
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 20px 0;
+            border: 1px solid var(--bg-card);
+        }
+
+        code {
+            font-family: 'Fira Code', 'Consolas', monospace;
+            font-size: 0.9rem;
+        }
+
+        pre code {
+            color: #e6e6e6;
+        }
+
+        .keyword { color: #ff79c6; }
+        .string { color: #f1fa8c; }
+        .comment { color: #6272a4; }
+        .function { color: #50fa7b; }
+        .number { color: #bd93f9; }
+        .type { color: #8be9fd; }
+
+        /* Cards */
+        .card {
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 25px;
+            margin: 25px 0;
+            border-left: 4px solid var(--accent);
+        }
+
+        .card.success {
+            border-left-color: var(--success);
+        }
+
+        .card.warning {
+            border-left-color: var(--warning);
+        }
+
+        .card h4 {
+            color: var(--accent);
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+        }
+
+        .card.success h4 { color: var(--success); }
+        .card.warning h4 { color: var(--warning); }
+
+        /* Interactive Quiz */
+        .quiz {
+            background: var(--bg-light);
+            border-radius: 12px;
+            padding: 30px;
+            margin: 30px 0;
+        }
+
+        .quiz h4 {
+            color: var(--accent);
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .quiz-question {
+            font-size: 1.1rem;
+            margin-bottom: 20px;
+        }
+
+        .quiz-options {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .quiz-option {
+            background: var(--bg-card);
+            border: 2px solid transparent;
+            border-radius: 8px;
+            padding: 15px 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .quiz-option:hover {
+            border-color: var(--accent);
+            transform: translateX(5px);
+        }
+
+        .quiz-option.selected {
+            border-color: var(--accent);
+            background: rgba(233, 69, 96, 0.2);
+        }
+
+        .quiz-option.correct {
+            border-color: var(--success);
+            background: rgba(78, 204, 163, 0.2);
+        }
+
+        .quiz-option.incorrect {
+            border-color: #e74c3c;
+            background: rgba(231, 76, 60, 0.2);
+        }
+
+        .option-letter {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: var(--bg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.85rem;
+        }
+
+        .quiz-feedback {
+            margin-top: 20px;
+            padding: 20px;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .quiz-feedback.show {
+            display: block;
+        }
+
+        .quiz-feedback.correct {
+            background: rgba(78, 204, 163, 0.15);
+            border: 1px solid var(--success);
+        }
+
+        .quiz-feedback.incorrect {
+            background: rgba(231, 76, 60, 0.15);
+            border: 1px solid #e74c3c;
+        }
+
+        /* Expandable sections */
+        .expandable {
+            background: var(--bg-light);
+            border-radius: 8px;
+            margin: 15px 0;
+            overflow: hidden;
+        }
+
+        .expandable-header {
+            padding: 15px 20px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background 0.2s;
+        }
+
+        .expandable-header:hover {
+            background: var(--bg-card);
+        }
+
+        .expandable-header h4 {
+            margin: 0;
+            color: var(--text);
+            font-size: 1rem;
+        }
+
+        .expandable-icon {
+            transition: transform 0.3s;
+            color: var(--accent);
+        }
+
+        .expandable.open .expandable-icon {
+            transform: rotate(180deg);
+        }
+
+        .expandable-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+
+        .expandable.open .expandable-content {
+            max-height: 2000px;
+        }
+
+        .expandable-inner {
+            padding: 0 20px 20px;
+        }
+
+        /* Diagram container */
+        .diagram {
+            background: var(--code-bg);
+            border-radius: 12px;
+            padding: 30px;
+            margin: 25px 0;
+            overflow-x: auto;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.85rem;
+            line-height: 1.4;
+            white-space: pre;
+        }
+
+        .diagram .highlight {
+            color: var(--accent);
+        }
+
+        .diagram .dim {
+            color: var(--text-dim);
+        }
+
+        .diagram .success {
+            color: var(--success);
+        }
+
+        /* Tabs */
+        .tabs {
+            margin: 25px 0;
+        }
+
+        .tab-buttons {
+            display: flex;
+            gap: 5px;
+            border-bottom: 2px solid var(--bg-card);
+            padding-bottom: 0;
+        }
+
+        .tab-button {
+            background: none;
+            border: none;
+            color: var(--text-dim);
+            padding: 12px 24px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            transition: all 0.2s;
+            position: relative;
+            bottom: -2px;
+            border-bottom: 2px solid transparent;
+        }
+
+        .tab-button:hover {
+            color: var(--text);
+        }
+
+        .tab-button.active {
+            color: var(--accent);
+            border-bottom-color: var(--accent);
+        }
+
+        .tab-content {
+            display: none;
+            padding: 25px 0;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Table */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid var(--bg-card);
+        }
+
+        th {
+            background: var(--bg-card);
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        tr:hover {
+            background: rgba(233, 69, 96, 0.05);
+        }
+
+        /* Checklist */
+        .checklist {
+            list-style: none;
+            margin: 20px 0;
+        }
+
+        .checklist li {
+            padding: 10px 0;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .checklist input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            accent-color: var(--accent);
+            margin-top: 3px;
+        }
+
+        .checklist label {
+            cursor: pointer;
+        }
+
+        .checklist .checked {
+            color: var(--text-dim);
+            text-decoration: line-through;
+        }
+
+        /* Interactive diagram - SVG based */
+        .interactive-diagram {
+            background: var(--bg-light);
+            border-radius: 12px;
+            padding: 20px;
+            margin: 25px 0;
+        }
+
+        .interactive-diagram svg {
+            width: 100%;
+            max-width: 700px;
+            display: block;
+            margin: 0 auto;
+        }
+
+        .interactive-diagram .node {
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .interactive-diagram .node:hover rect {
+            fill: var(--accent);
+        }
+
+        .interactive-diagram .node:hover text {
+            fill: white;
+        }
+
+        .diagram-tooltip {
+            position: absolute;
+            background: var(--bg-card);
+            color: var(--text);
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            max-width: 300px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+            z-index: 1000;
+        }
+
+        .diagram-tooltip.show {
+            opacity: 1;
+        }
+
+        /* Score display */
+        .score-display {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--bg-card);
+            padding: 15px 25px;
+            border-radius: 12px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+            z-index: 100;
+        }
+
+        .score-display .label {
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            text-transform: uppercase;
+        }
+
+        .score-display .score {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--accent);
+        }
+
+        /* Mobile responsive */
+        @media (max-width: 900px) {
+            nav {
+                width: 100%;
+                height: auto;
+                position: relative;
+            }
+
+            main {
+                margin-left: 0;
+                padding: 20px;
+            }
+
+            .score-display {
+                position: static;
+                margin-bottom: 20px;
+            }
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .animate-in {
+            animation: fadeIn 0.4s ease forwards;
+        }
+
+        /* Print styles */
+        @media print {
+            nav, .score-display { display: none; }
+            main { margin-left: 0; }
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <h2>Learning Guide</h2>
+
+        <div class="progress-container">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress-fill"></div>
+            </div>
+            <div class="progress-text"><span id="progress-text">0%</span> complete</div>
+        </div>
+
+        <ul>
+            <li class="section-title">Foundations</li>
+            <li><a href="#intro">Introduction</a></li>
+            <li><a href="#problem">The Problem</a></li>
+            <li><a href="#llvm-ir">LLVM IR Basics</a></li>
+
+            <li class="section-title">The Bindings</li>
+            <li><a href="#architecture">Architecture</a></li>
+            <li><a href="#api-design">API Design</a></li>
+            <li><a href="#quirks">Quirks & Gotchas</a></li>
+
+            <li class="section-title">Transformations</li>
+            <li><a href="#pattern">The Pattern</a></li>
+            <li><a href="#mba">MBA Substitution</a></li>
+            <li><a href="#cff">Control Flow Flattening</a></li>
+
+            <li class="section-title">Critique</li>
+            <li><a href="#evaluation">Critical Evaluation</a></li>
+            <li><a href="#improvements">Improvements</a></li>
+            <li><a href="#final-quiz">Final Assessment</a></li>
+        </ul>
+    </nav>
+
+    <div class="score-display">
+        <div class="label">Quiz Score</div>
+        <div class="score"><span id="score">0</span>/<span id="total">0</span></div>
+    </div>
+
+    <main>
+        <h1>Understanding llvm-nanobind</h1>
+        <p class="subtitle">An interactive guide to the transformation API</p>
+
+        <!-- Introduction -->
+        <section id="intro">
+            <h2>Why This Guide Exists</h2>
+
+            <div class="card">
+                <h4>The Core Insight</h4>
+                <p>"Human review as the bottleneck for AI work" suggests an education problem. If you understand deeply, you can review quickly and contribute better ideas.</p>
+            </div>
+
+            <p>This guide aims to take you from "I can read the diff" to "I can critique the design and suggest improvements." It's structured as a journey, not a reference.</p>
+
+            <h3>What You'll Learn</h3>
+            <ul class="checklist">
+                <li><input type="checkbox" id="c1"><label for="c1">What LLVM IR is and how it's structured</label></li>
+                <li><input type="checkbox" id="c2"><label for="c2">How the Python bindings work</label></li>
+                <li><input type="checkbox" id="c3"><label for="c3">The transformation pattern all passes follow</label></li>
+                <li><input type="checkbox" id="c4"><label for="c4">MBA and CFF obfuscation techniques</label></li>
+                <li><input type="checkbox" id="c5"><label for="c5">How to critically evaluate API design</label></li>
+            </ul>
+        </section>
+
+        <!-- The Problem -->
+        <section id="problem">
+            <h2>The Problem We're Solving</h2>
+
+            <p><strong>LLVM</strong> is a compiler infrastructure. It represents programs in a language-agnostic form called IR (Intermediate Representation):</p>
+
+            <div class="diagram">
+<span class="dim">Source Code</span>          <span class="dim">LLVM IR</span>           <span class="dim">Machine Code</span>
+    │                      │                    │
+    ▼                      ▼                    ▼
+┌─────────┐          ┌─────────┐          ┌─────────┐
+│  C/C++  │          │         │          │  x86    │
+│  Rust   │ ──────▶  │   IR    │ ──────▶  │  ARM    │
+│  Swift  │          │         │          │  WASM   │
+└─────────┘          └─────────┘          └─────────┘
+  <span class="highlight">Front-end</span>           <span class="highlight">Middle-end</span>           <span class="highlight">Back-end</span></div>
+
+            <div class="card success">
+                <h4>The Key Insight</h4>
+                <p>If you can <em>modify</em> the IR, you can transform programs: optimize them, obfuscate them, instrument them, or translate them to different targets.</p>
+            </div>
+
+            <h3>The Traditional Pain</h3>
+            <p>LLVM's API is C++. To write transformations, you need:</p>
+            <ul>
+                <li>C++ expertise and build system complexity</li>
+                <li>Long compile times</li>
+                <li>Manual memory management</li>
+            </ul>
+
+            <p><strong>The solution:</strong> Python bindings let you write transformations in a high-level language. Faster iteration, easier experimentation.</p>
+
+            <div class="quiz" data-correct="2">
+                <h4>🧠 Quick Check</h4>
+                <p class="quiz-question">Why might someone <em>not</em> want to use Python for LLVM work?</p>
+                <div class="quiz-options">
+                    <div class="quiz-option" data-index="0">
+                        <span class="option-letter">A</span>
+                        <span>Python doesn't support compiler concepts</span>
+                    </div>
+                    <div class="quiz-option" data-index="1">
+                        <span class="option-letter">B</span>
+                        <span>Python is ~100x slower; some APIs aren't exposed</span>
+                    </div>
+                    <div class="quiz-option" data-index="2">
+                        <span class="option-letter">C</span>
+                        <span>LLVM doesn't work on systems with Python</span>
+                    </div>
+                </div>
+                <div class="quiz-feedback">
+                    <strong>Right!</strong> Performance and completeness are the trade-offs. Python is great for prototyping, research, and one-off tools, but production compiler passes typically stay in C++.
+                </div>
+            </div>
+        </section>
+
+        <!-- LLVM IR -->
+        <section id="llvm-ir">
+            <h2>LLVM IR Basics</h2>
+
+            <p>LLVM IR is like a typed, structured assembly language. Understanding its structure is essential.</p>
+
+            <div class="tabs">
+                <div class="tab-buttons">
+                    <button class="tab-button active" data-tab="structure">Structure</button>
+                    <button class="tab-button" data-tab="ssa">SSA Form</button>
+                    <button class="tab-button" data-tab="example">Example</button>
+                </div>
+
+                <div class="tab-content active" data-tab="structure">
+                    <div class="diagram">
+<span class="highlight">MODULE</span>
+├── Target Triple, Data Layout
+├── <span class="success">GLOBALS</span> (@global_var, @string_constant)
+├── <span class="success">DECLARATIONS</span> (declare @printf, @malloc)
+└── <span class="success">DEFINITIONS</span>
+    └── define @main() {
+        ├── <span class="highlight">BASIC BLOCK</span>: entry
+        │   ├── %x = alloca i32      <span class="dim">← instruction</span>
+        │   ├── store i32 42, ptr %x <span class="dim">← instruction</span>
+        │   └── br label %loop       <span class="dim">← TERMINATOR</span>
+        │
+        └── <span class="highlight">BASIC BLOCK</span>: loop
+            ├── %i = phi i32 [...]   <span class="dim">← PHI node</span>
+            ├── ...
+            └── ret i32 0            <span class="dim">← TERMINATOR</span>
+    }</div>
+                    <p><strong>Key invariant:</strong> Every basic block ends with exactly ONE terminator instruction.</p>
+                </div>
+
+                <div class="tab-content" data-tab="ssa">
+                    <p><strong>SSA = Static Single Assignment.</strong> Every value is assigned exactly once.</p>
+
+                    <pre><code><span class="comment">; NOT valid (same variable twice):</span>
+%x = <span class="keyword">add</span> <span class="type">i32</span> <span class="number">1</span>, <span class="number">2</span>
+%x = <span class="keyword">add</span> <span class="type">i32</span> %x, <span class="number">3</span>   <span class="comment">; ERROR!</span>
+
+<span class="comment">; Valid (different names):</span>
+%x = <span class="keyword">add</span> <span class="type">i32</span> <span class="number">1</span>, <span class="number">2</span>
+%y = <span class="keyword">add</span> <span class="type">i32</span> %x, <span class="number">3</span>   <span class="comment">; OK</span></code></pre>
+
+                    <div class="card warning">
+                        <h4>Why SSA Matters for You</h4>
+                        <p>You can't "change" a value. You create a <em>new</em> value and <em>replace uses</em> of the old one. This is why <code>replace_all_uses_with()</code> is fundamental.</p>
+                    </div>
+                </div>
+
+                <div class="tab-content" data-tab="example">
+                    <pre><code><span class="keyword">define</span> <span class="type">i32</span> <span class="function">@factorial</span>(<span class="type">i32</span> %n) {
+<span class="string">entry:</span>
+  %cmp = <span class="keyword">icmp</span> sle <span class="type">i32</span> %n, <span class="number">1</span>
+  <span class="keyword">br</span> <span class="type">i1</span> %cmp, <span class="keyword">label</span> %base, <span class="keyword">label</span> %recurse
+
+<span class="string">base:</span>
+  <span class="keyword">ret</span> <span class="type">i32</span> <span class="number">1</span>
+
+<span class="string">recurse:</span>
+  %sub = <span class="keyword">sub</span> <span class="type">i32</span> %n, <span class="number">1</span>
+  %call = <span class="keyword">call</span> <span class="type">i32</span> <span class="function">@factorial</span>(<span class="type">i32</span> %sub)
+  %mul = <span class="keyword">mul</span> <span class="type">i32</span> %n, %call
+  <span class="keyword">ret</span> <span class="type">i32</span> %mul
+}</code></pre>
+                    <p>Three basic blocks: <code>entry</code>, <code>base</code>, <code>recurse</code>. Each ends with a terminator (<code>br</code> or <code>ret</code>).</p>
+                </div>
+            </div>
+
+            <div class="quiz" data-correct="1">
+                <h4>🧠 Quick Check</h4>
+                <p class="quiz-question">What is a PHI node used for?</p>
+                <div class="quiz-options">
+                    <div class="quiz-option" data-index="0">
+                        <span class="option-letter">A</span>
+                        <span>Performing floating-point arithmetic</span>
+                    </div>
+                    <div class="quiz-option" data-index="1">
+                        <span class="option-letter">B</span>
+                        <span>Selecting a value based on which predecessor block we came from</span>
+                    </div>
+                    <div class="quiz-option" data-index="2">
+                        <span class="option-letter">C</span>
+                        <span>Declaring function parameters</span>
+                    </div>
+                </div>
+                <div class="quiz-feedback">
+                    <strong>Correct!</strong> PHI nodes handle control flow merges in SSA form. <code>%result = phi i32 [ %x, %block1 ], [ %y, %block2 ]</code> means: "use %x if we came from block1, %y if from block2."
+                </div>
+            </div>
+        </section>
+
+        <!-- Architecture -->
+        <section id="architecture">
+            <h2>Architecture</h2>
+
+            <p>Understanding the layers helps you know what's possible and where limitations come from.</p>
+
+            <div class="interactive-diagram">
+                <svg viewBox="0 0 600 400">
+                    <defs>
+                        <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" style="stop-color:#e94560;stop-opacity:1" />
+                            <stop offset="100%" style="stop-color:#ff6b6b;stop-opacity:1" />
+                        </linearGradient>
+                    </defs>
+
+                    <!-- Layer 1: Python Code -->
+                    <g class="node" data-tooltip="Your transformation code. Uses with statements, iterates over functions/blocks, builds new IR.">
+                        <rect x="50" y="20" width="500" height="60" rx="8" fill="#0f3460"/>
+                        <text x="300" y="55" text-anchor="middle" fill="#eaeaea" font-size="14">Your Python Code</text>
+                    </g>
+
+                    <!-- Layer 2: llvm-nanobind -->
+                    <g class="node" data-tooltip="Python classes (Module, Function, Builder), memory safety via validity tokens, context managers for lifetime.">
+                        <rect x="50" y="100" width="500" height="60" rx="8" fill="#16213e"/>
+                        <text x="300" y="135" text-anchor="middle" fill="#eaeaea" font-size="14">llvm-nanobind (This Project)</text>
+                    </g>
+
+                    <!-- Layer 3: nanobind -->
+                    <g class="node" data-tooltip="C++/Python bridge. Handles type conversions, exception translation, reference counting.">
+                        <rect x="50" y="180" width="500" height="60" rx="8" fill="#0f3460"/>
+                        <text x="300" y="215" text-anchor="middle" fill="#eaeaea" font-size="14">nanobind (C++/Python Bridge)</text>
+                    </g>
+
+                    <!-- Layer 4: LLVM C API -->
+                    <g class="node" data-tooltip="Stable C functions: LLVMBuildAdd, LLVMParseIR, etc. Some functions NOT YET BOUND (like LLVMReplaceAllUsesWith).">
+                        <rect x="50" y="260" width="500" height="60" rx="8" fill="#16213e"/>
+                        <text x="300" y="295" text-anchor="middle" fill="#eaeaea" font-size="14">LLVM C API</text>
+                        <text x="480" y="295" text-anchor="middle" fill="#e94560" font-size="10">gaps here!</text>
+                    </g>
+
+                    <!-- Layer 5: LLVM Core -->
+                    <g class="node" data-tooltip="The actual compiler infrastructure. ~3.5 million lines of C++. Optimizations, code generation, analysis.">
+                        <rect x="50" y="340" width="500" height="50" rx="8" fill="url(#grad1)"/>
+                        <text x="300" y="370" text-anchor="middle" fill="white" font-size="14" font-weight="bold">LLVM C++ Core</text>
+                    </g>
+
+                    <!-- Arrows -->
+                    <path d="M300 80 L300 100" stroke="#4ecca3" stroke-width="2" marker-end="url(#arrow)"/>
+                    <path d="M300 160 L300 180" stroke="#4ecca3" stroke-width="2"/>
+                    <path d="M300 240 L300 260" stroke="#4ecca3" stroke-width="2"/>
+                    <path d="M300 320 L300 340" stroke="#4ecca3" stroke-width="2"/>
+                </svg>
+            </div>
+            <div class="diagram-tooltip" id="diagram-tooltip"></div>
+
+            <div class="card">
+                <h4>Key Insight</h4>
+                <p>When you find a missing feature, ask: "Does the LLVM C API expose this?" If yes, we can add it. If no, we'd need a C wrapper first.</p>
+            </div>
+        </section>
+
+        <!-- API Design -->
+        <section id="api-design">
+            <h2>API Design</h2>
+
+            <p>The bindings try to be Pythonic while staying close to LLVM's model.</p>
+
+            <h3>The Good Parts</h3>
+
+            <pre><code><span class="comment"># Context managers prevent leaks</span>
+<span class="keyword">with</span> llvm.create_context() <span class="keyword">as</span> ctx:
+    <span class="keyword">with</span> ctx.parse_ir(ir_text) <span class="keyword">as</span> mod:
+        <span class="comment"># Module auto-disposed on exit</span>
+
+<span class="comment"># Pythonic iteration</span>
+<span class="keyword">for</span> func <span class="keyword">in</span> mod.functions:
+    <span class="keyword">for</span> bb <span class="keyword">in</span> func.basic_blocks:
+        <span class="keyword">for</span> inst <span class="keyword">in</span> bb.instructions:
+            ...
+
+<span class="comment"># Clean builder API</span>
+builder.add(a, b, <span class="string">"sum"</span>)   <span class="comment"># not CreateAdd</span>
+builder.br(target_bb)       <span class="comment"># not CreateBr</span></code></pre>
+
+            <h3>The Quirks</h3>
+
+            <table>
+                <tr>
+                    <th>What You Try</th>
+                    <th>What Happens</th>
+                    <th>Correct Form</th>
+                </tr>
+                <tr>
+                    <td><code>ctx.types.ptr</code></td>
+                    <td>Gets bound method, not type!</td>
+                    <td><code>ctx.types.ptr()</code></td>
+                </tr>
+                <tr>
+                    <td><code>inst.parent</code></td>
+                    <td>AttributeError</td>
+                    <td><code>inst.block</code></td>
+                </tr>
+                <tr>
+                    <td><code>for op in inst.operands:</code></td>
+                    <td>AttributeError</td>
+                    <td><code>for i in range(inst.num_operands):</code></td>
+                </tr>
+                <tr>
+                    <td><code>inst.delete_instruction()</code></td>
+                    <td>LLVM crash!</td>
+                    <td><code>inst.remove_from_parent()</code> first</td>
+                </tr>
+            </table>
+        </section>
+
+        <!-- Quirks -->
+        <section id="quirks">
+            <h2>Quirks & Gotchas</h2>
+
+            <div class="expandable">
+                <div class="expandable-header">
+                    <h4>Two-Step Instruction Deletion</h4>
+                    <span class="expandable-icon">▼</span>
+                </div>
+                <div class="expandable-content">
+                    <div class="expandable-inner">
+                        <pre><code><span class="comment"># WRONG - will crash!</span>
+inst.delete_instruction()
+
+<span class="comment"># CORRECT - unlink first, then delete</span>
+inst.remove_from_parent()
+inst.delete_instruction()
+
+<span class="comment"># The plan proposes:</span>
+inst.erase_from_parent()  <span class="comment"># Does both atomically</span></code></pre>
+                    </div>
+                </div>
+            </div>
+
+            <div class="expandable">
+                <div class="expandable-header">
+                    <h4>Manual Replace All Uses With</h4>
+                    <span class="expandable-icon">▼</span>
+                </div>
+                <div class="expandable-content">
+                    <div class="expandable-inner">
+                        <pre><code><span class="comment"># The C API has LLVMReplaceAllUsesWith</span>
+<span class="comment"># But it's NOT BOUND! Must implement manually:</span>
+
+<span class="keyword">def</span> <span class="function">replace_all_uses_with</span>(old_val, new_val):
+    uses = <span class="keyword">list</span>(old_val.uses)  <span class="comment"># snapshot!</span>
+    <span class="keyword">for</span> use <span class="keyword">in</span> uses:
+        user = use.user
+        <span class="keyword">for</span> i <span class="keyword">in</span> <span class="keyword">range</span>(user.num_operands):
+            <span class="keyword">if</span> user.get_operand(i) == old_val:
+                user.set_operand(i, new_val)</code></pre>
+                        <p>This is error-prone and slower than the native version.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="expandable">
+                <div class="expandable-header">
+                    <h4>UTF-8 String Encoding Bug</h4>
+                    <span class="expandable-icon">▼</span>
+                </div>
+                <div class="expandable-content">
+                    <div class="expandable-inner">
+                        <pre><code><span class="comment"># You want bytes [0xFF, 0x80, 0x42]</span>
+encrypted = <span class="keyword">bytes</span>([<span class="number">0xFF</span>, <span class="number">0x80</span>, <span class="number">0x42</span>]).decode(<span class="string">'latin-1'</span>)
+const = llvm.const_string(ctx, encrypted)
+
+<span class="comment"># Expected: [3 x i8]</span>
+<span class="comment"># Actual: [5 x i8] (UTF-8 encoded!)</span></code></pre>
+                        <p><strong>This blocks string encryption entirely.</strong> It's a Priority 1 issue.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="quiz" data-correct="2">
+                <h4>🧠 Quick Check</h4>
+                <p class="quiz-question">To iterate over all operands of an instruction, you use:</p>
+                <div class="quiz-options">
+                    <div class="quiz-option" data-index="0">
+                        <span class="option-letter">A</span>
+                        <span><code>for op in inst.operands:</code></span>
+                    </div>
+                    <div class="quiz-option" data-index="1">
+                        <span class="option-letter">B</span>
+                        <span><code>for op in inst:</code></span>
+                    </div>
+                    <div class="quiz-option" data-index="2">
+                        <span class="option-letter">C</span>
+                        <span><code>for i in range(inst.num_operands): op = inst.get_operand(i)</code></span>
+                    </div>
+                </div>
+                <div class="quiz-feedback">
+                    <strong>Yes!</strong> There's no <code>.operands</code> iterator. This is listed as a missing convenience in the improvement plan.
+                </div>
+            </div>
+        </section>
+
+        <!-- The Pattern -->
+        <section id="pattern">
+            <h2>The Transformation Pattern</h2>
+
+            <p>Almost every transformation follows this structure:</p>
+
+            <div class="diagram">
+┌──────────────────────────────────────────────────────────────┐
+│                     <span class="highlight">1. TRAVERSE</span>                            │
+│   <span class="dim">for bb in func.basic_blocks:</span>                           │
+│       <span class="dim">for inst in bb.instructions:</span>                       │
+└────────────────────────────┬─────────────────────────────────┘
+                             ▼
+┌──────────────────────────────────────────────────────────────┐
+│                     <span class="highlight">2. IDENTIFY</span>                            │
+│   <span class="dim">if inst.opcode == llvm.Opcode.Sub:</span>                     │
+│       <span class="dim">to_transform.append(inst)</span>                          │
+└────────────────────────────┬─────────────────────────────────┘
+                             ▼
+┌──────────────────────────────────────────────────────────────┐
+│                     <span class="highlight">3. BUILD</span>                               │
+│   <span class="dim">builder.position_before(inst)</span>                          │
+│   <span class="dim">new_val = builder.add(xor_result, mul_result)</span>         │
+└────────────────────────────┬─────────────────────────────────┘
+                             ▼
+┌──────────────────────────────────────────────────────────────┐
+│                     <span class="highlight">4. REPLACE</span>                             │
+│   <span class="dim">replace_all_uses_with(inst, new_val)</span>                   │
+└────────────────────────────┬─────────────────────────────────┘
+                             ▼
+┌──────────────────────────────────────────────────────────────┐
+│                     <span class="highlight">5. CLEAN UP</span>                            │
+│   <span class="dim">inst.remove_from_parent()</span>                              │
+│   <span class="dim">inst.delete_instruction()</span>                              │
+│   <span class="dim">assert mod.verify()</span>                                    │
+└──────────────────────────────────────────────────────────────┘</div>
+        </section>
+
+        <!-- MBA -->
+        <section id="mba">
+            <h2>MBA Substitution</h2>
+
+            <p><strong>Mixed Boolean Arithmetic</strong> uses the fact that arithmetic and bitwise operations are related.</p>
+
+            <div class="card">
+                <h4>The Identity</h4>
+                <p style="font-size: 1.3rem; font-family: monospace; text-align: center; padding: 15px;">
+                    X - Y = (X ⊕ -Y) + 2×(X ∧ -Y)
+                </p>
+            </div>
+
+            <div class="expandable open">
+                <div class="expandable-header">
+                    <h4>Proof by Example</h4>
+                    <span class="expandable-icon">▼</span>
+                </div>
+                <div class="expandable-content">
+                    <div class="expandable-inner">
+                        <pre><code>X = 7, Y = 3
+Expected: 7 - 3 = <span class="number">4</span>
+
+<span class="comment">Step 1: Compute -Y (two's complement)</span>
+-Y = -3 = <span class="number">1111_1101</span> (8-bit)
+
+<span class="comment">Step 2: X XOR -Y</span>
+  0000_0111  (7)
+⊕ 1111_1101  (-3)
+  ─────────
+  1111_1010  = <span class="number">-6</span> (signed)
+
+<span class="comment">Step 3: X AND -Y</span>
+  0000_0111  (7)
+∧ 1111_1101  (-3)
+  ─────────
+  0000_0101  = <span class="number">5</span>
+
+<span class="comment">Step 4: 2 × (X AND -Y)</span>
+2 × 5 = <span class="number">10</span>
+
+<span class="comment">Step 5: Add them</span>
+-6 + 10 = <span class="success">4</span> ✓</code></pre>
+                    </div>
+                </div>
+            </div>
+
+            <h3>Why It Works as Obfuscation</h3>
+            <p>Decompilers pattern-match <code>sub</code> to <code>-</code>. But they don't recognize <code>(x ^ neg_y) + 2*(x & neg_y)</code> as subtraction. It looks like arbitrary bitwise soup.</p>
+
+            <div class="quiz" data-correct="1">
+                <h4>🧠 Quick Check</h4>
+                <p class="quiz-question">The MBA pass randomly chooses between multiple equivalent XOR formulas. Why?</p>
+                <div class="quiz-options">
+                    <div class="quiz-option" data-index="0">
+                        <span class="option-letter">A</span>
+                        <span>To test which one is fastest</span>
+                    </div>
+                    <div class="quiz-option" data-index="1">
+                        <span class="option-letter">B</span>
+                        <span>Polymorphism defeats pattern matching</span>
+                    </div>
+                    <div class="quiz-option" data-index="2">
+                        <span class="option-letter">C</span>
+                        <span>Some formulas only work with certain inputs</span>
+                    </div>
+                </div>
+                <div class="quiz-feedback">
+                    <strong>Exactly!</strong> If all XORs became the same pattern, a reverse engineer could write a pattern matcher to undo them. Variety makes automated deobfuscation harder.
+                </div>
+            </div>
+        </section>
+
+        <!-- CFF -->
+        <section id="cff">
+            <h2>Control Flow Flattening</h2>
+
+            <p>CFF hides the program's control flow structure by introducing a state-machine dispatcher.</p>
+
+            <div class="tabs">
+                <div class="tab-buttons">
+                    <button class="tab-button active" data-tab="before">Before</button>
+                    <button class="tab-button" data-tab="after">After</button>
+                    <button class="tab-button" data-tab="how">How It Works</button>
+                </div>
+
+                <div class="tab-content active" data-tab="before">
+                    <div class="diagram">
+             ┌─────────┐
+             │  entry  │
+             └────┬────┘
+                  │ <span class="dim">if (cond)</span>
+            ┌─────┴─────┐
+            ▼           ▼
+      ┌──────────┐ ┌──────────┐
+      │ block_A  │ │ block_B  │
+      └────┬─────┘ └────┬─────┘
+           └──────┬─────┘
+                  ▼
+            ┌──────────┐
+            │   exit   │
+            └──────────┘
+
+<span class="dim">Clear if/else structure visible to analysis</span></div>
+                </div>
+
+                <div class="tab-content" data-tab="after">
+                    <div class="diagram">
+             ┌─────────┐
+             │  entry  │
+             │<span class="highlight">state = A</span>│
+             └────┬────┘
+                  ▼
+           ┌─────────────┐◄──────────────┐
+           │ <span class="highlight">dispatcher</span>  │               │
+           │switch(state)│               │
+           └──────┬──────┘               │
+      ┌───────────┼───────────┐          │
+      ▼           ▼           ▼          │
+┌──────────┐ ┌──────────┐ ┌───────┐      │
+│ block_A  │ │ block_B  │ │ exit  │      │
+│<span class="highlight">state = ?</span>│ │<span class="highlight">state = ?</span>│ │ ret   │      │
+└────┬─────┘ └────┬─────┘ └───────┘      │
+     └────────────┴──────────────────────┘
+
+<span class="dim">All paths go through dispatcher</span></div>
+                </div>
+
+                <div class="tab-content" data-tab="how">
+                    <ol style="margin-left: 20px;">
+                        <li><strong>Demote PHI nodes</strong> to stack variables (PHIs encode predecessor info, lost after flattening)</li>
+                        <li><strong>Create state variable</strong> in entry block</li>
+                        <li><strong>Assign random state values</strong> to each block</li>
+                        <li><strong>Create dispatcher</strong> that branches based on state</li>
+                        <li><strong>Rewrite terminators</strong> to update state + jump to dispatcher</li>
+                    </ol>
+
+                    <div class="card warning">
+                        <h4>PHI Demotion is Critical</h4>
+                        <p>PHI nodes say "if we came from block1, use %x". After flattening, we always come from the dispatcher! So we convert PHIs to explicit memory (alloca → store → load).</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Evaluation -->
+        <section id="evaluation">
+            <h2>Critical Evaluation Framework</h2>
+
+            <p>Use these lenses to critique the work:</p>
+
+            <div class="card">
+                <h4>Lens 1: Consistency</h4>
+                <p>Can you predict the name of something you haven't used? If not, there's an inconsistency.</p>
+                <table>
+                    <tr><th>Expected</th><th>Actual</th><th>Consistent?</th></tr>
+                    <tr><td><code>.parent</code></td><td><code>.block</code></td><td>❌</td></tr>
+                    <tr><td><code>.operands</code></td><td>(doesn't exist)</td><td>❌</td></tr>
+                    <tr><td><code>.ptr</code></td><td><code>.ptr()</code></td><td>❌</td></tr>
+                </table>
+            </div>
+
+            <div class="card success">
+                <h4>Lens 2: Pit of Success</h4>
+                <p>Does the easy path lead to correct code? Or does it lead to crashes?</p>
+                <p>Example: <code>inst.delete_instruction()</code> looks natural but crashes. The API should make the safe path obvious.</p>
+            </div>
+
+            <div class="card warning">
+                <h4>Lens 3: Completeness</h4>
+                <p>Can you do everything you need? The porting guide rates: "7/10 for code generation, 5/10 for transforms."</p>
+                <p>Transforms need RAUW, block splitting, instruction movement—mostly missing.</p>
+            </div>
+        </section>
+
+        <!-- Improvements -->
+        <section id="improvements">
+            <h2>Planned Improvements</h2>
+
+            <div class="tabs">
+                <div class="tab-buttons">
+                    <button class="tab-button active" data-tab="p1">P1: Critical</button>
+                    <button class="tab-button" data-tab="p2">P2: Consistency</button>
+                    <button class="tab-button" data-tab="p3">P3: Convenience</button>
+                </div>
+
+                <div class="tab-content active" data-tab="p1">
+                    <p>These <strong>block use cases entirely</strong>:</p>
+                    <ul class="checklist">
+                        <li><input type="checkbox"><label>Raw bytes support (blocks string encryption)</label></li>
+                        <li><input type="checkbox"><label>Bind <code>LLVMReplaceAllUsesWith</code> (core SSA operation)</label></li>
+                        <li><input type="checkbox"><label>Add <code>split_basic_block</code> (blocks some transforms)</label></li>
+                        <li><input type="checkbox"><label>Add <code>erase_from_parent</code> (error-prone two-step)</label></li>
+                    </ul>
+                </div>
+
+                <div class="tab-content" data-tab="p2">
+                    <p>These cause <strong>confusion and bugs</strong>:</p>
+                    <ul class="checklist">
+                        <li><input type="checkbox"><label>Make <code>ptr</code> a property (like <code>i32</code>)</label></li>
+                        <li><input type="checkbox"><label>Consistent setter patterns</label></li>
+                        <li><input type="checkbox"><label>Add <code>.parent</code> alias for <code>.block</code></label></li>
+                        <li><input type="checkbox"><label>Rename <code>.is_terminator_inst</code> to <code>.is_terminator</code></label></li>
+                    </ul>
+                </div>
+
+                <div class="tab-content" data-tab="p3">
+                    <p>These make the API <strong>more Pythonic</strong>:</p>
+                    <ul class="checklist">
+                        <li><input type="checkbox"><label>Add <code>.operands</code> iterator</label></li>
+                        <li><input type="checkbox"><label>Add instruction movement (<code>move_before</code>, <code>move_after</code>)</label></li>
+                        <li><input type="checkbox"><label>Add <code>.clone()</code> for instructions</label></li>
+                        <li><input type="checkbox"><label>Add <code>.num_successors</code> property</label></li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- Final Quiz -->
+        <section id="final-quiz">
+            <h2>Final Assessment</h2>
+
+            <p>Test your understanding with these synthesis questions:</p>
+
+            <div class="quiz" data-correct="1">
+                <h4>Question 1</h4>
+                <p class="quiz-question">Which improvement has the HIGHEST priority?</p>
+                <div class="quiz-options">
+                    <div class="quiz-option" data-index="0">
+                        <span class="option-letter">A</span>
+                        <span>Adding an <code>.operands</code> iterator</span>
+                    </div>
+                    <div class="quiz-option" data-index="1">
+                        <span class="option-letter">B</span>
+                        <span>Binding <code>LLVMReplaceAllUsesWith</code></span>
+                    </div>
+                    <div class="quiz-option" data-index="2">
+                        <span class="option-letter">C</span>
+                        <span>Making <code>ptr</code> a property</span>
+                    </div>
+                </div>
+                <div class="quiz-feedback">
+                    <strong>Correct!</strong> RAUW is Priority 1 (Critical Blocker). The iterator is P3 (Convenience), and ptr consistency is P2 (API Consistency).
+                </div>
+            </div>
+
+            <div class="quiz" data-correct="1">
+                <h4>Question 2</h4>
+                <p class="quiz-question">Why does CFF demote PHI nodes before flattening?</p>
+                <div class="quiz-options">
+                    <div class="quiz-option" data-index="0">
+                        <span class="option-letter">A</span>
+                        <span>PHI nodes are too slow</span>
+                    </div>
+                    <div class="quiz-option" data-index="1">
+                        <span class="option-letter">B</span>
+                        <span>PHI nodes encode predecessor info that's lost after flattening</span>
+                    </div>
+                    <div class="quiz-option" data-index="2">
+                        <span class="option-letter">C</span>
+                        <span>The LLVM API doesn't support PHI nodes</span>
+                    </div>
+                </div>
+                <div class="quiz-feedback">
+                    <strong>Yes!</strong> PHI nodes say "if we came from block1, use %x". After flattening, we always come from the dispatcher—the predecessor info is meaningless. Converting to memory operations preserves semantics.
+                </div>
+            </div>
+
+            <div class="quiz" data-correct="0">
+                <h4>Question 3</h4>
+                <p class="quiz-question">What happens if you access a Module after exiting its <code>with</code> block?</p>
+                <div class="quiz-options">
+                    <div class="quiz-option" data-index="0">
+                        <span class="option-letter">A</span>
+                        <span>Clean Python exception (validity tokens)</span>
+                    </div>
+                    <div class="quiz-option" data-index="1">
+                        <span class="option-letter">B</span>
+                        <span>Segmentation fault</span>
+                    </div>
+                    <div class="quiz-option" data-index="2">
+                        <span class="option-letter">C</span>
+                        <span>Returns garbage data</span>
+                    </div>
+                </div>
+                <div class="quiz-feedback">
+                    <strong>Right!</strong> The bindings use validity tokens to track object lifetime. When the context manager exits, children are marked invalid, and accessing them raises a clean exception instead of undefined behavior.
+                </div>
+            </div>
+
+            <div id="final-score" style="display: none; margin-top: 40px;">
+                <div class="card success">
+                    <h4>Your Results</h4>
+                    <p id="final-score-text"></p>
+                </div>
+            </div>
+        </section>
+
+        <footer style="margin-top: 60px; padding: 40px 0; border-top: 1px solid var(--bg-card); color: var(--text-dim); text-align: center;">
+            <p>Built to help you understand, not just verify.</p>
+            <p style="font-size: 0.85rem; margin-top: 10px;">The goal is that you can now critique this work—and contribute better ideas.</p>
+        </footer>
+    </main>
+
+    <script>
+        // Quiz handling
+        let score = 0;
+        let total = 0;
+        let completedSections = new Set();
+
+        document.querySelectorAll('.quiz').forEach(quiz => {
+            const correct = parseInt(quiz.dataset.correct);
+            const options = quiz.querySelectorAll('.quiz-option');
+            const feedback = quiz.querySelector('.quiz-feedback');
+            let answered = false;
+
+            options.forEach((option, index) => {
+                option.addEventListener('click', () => {
+                    if (answered) return;
+                    answered = true;
+                    total++;
+
+                    options.forEach(o => o.classList.remove('selected'));
+                    option.classList.add('selected');
+
+                    if (index === correct) {
+                        option.classList.add('correct');
+                        feedback.classList.add('correct');
+                        score++;
+                    } else {
+                        option.classList.add('incorrect');
+                        options[correct].classList.add('correct');
+                        feedback.classList.add('incorrect');
+                    }
+
+                    feedback.classList.add('show');
+                    updateScore();
+                    updateProgress();
+                });
+            });
+        });
+
+        function updateScore() {
+            document.getElementById('score').textContent = score;
+            document.getElementById('total').textContent = total;
+
+            // Show final score if on last section
+            if (total >= 6) {
+                const finalScore = document.getElementById('final-score');
+                const finalText = document.getElementById('final-score-text');
+                finalScore.style.display = 'block';
+
+                const pct = Math.round((score / total) * 100);
+                let message = '';
+                if (pct >= 80) {
+                    message = `You scored ${score}/${total} (${pct}%). Excellent! You're ready to review and critique the work.`;
+                } else if (pct >= 60) {
+                    message = `You scored ${score}/${total} (${pct}%). Good foundation. Consider reviewing the sections where you missed questions.`;
+                } else {
+                    message = `You scored ${score}/${total} (${pct}%). Consider re-reading the guide before diving into code review.`;
+                }
+                finalText.textContent = message;
+            }
+        }
+
+        // Tab handling
+        document.querySelectorAll('.tab-button').forEach(button => {
+            button.addEventListener('click', () => {
+                const tabGroup = button.closest('.tabs');
+                const tabName = button.dataset.tab;
+
+                tabGroup.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
+                tabGroup.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+                button.classList.add('active');
+                tabGroup.querySelector(`.tab-content[data-tab="${tabName}"]`).classList.add('active');
+            });
+        });
+
+        // Expandable sections
+        document.querySelectorAll('.expandable-header').forEach(header => {
+            header.addEventListener('click', () => {
+                header.parentElement.classList.toggle('open');
+            });
+        });
+
+        // Progress tracking
+        function updateProgress() {
+            const sections = document.querySelectorAll('section');
+            const totalSections = sections.length;
+
+            // Track completed via checklist and quizzes
+            const checkboxes = document.querySelectorAll('.checklist input:checked').length;
+            const totalCheckboxes = document.querySelectorAll('.checklist input').length;
+            const answeredQuizzes = document.querySelectorAll('.quiz-feedback.show').length;
+            const totalQuizzes = document.querySelectorAll('.quiz').length;
+
+            const progress = Math.round(((checkboxes + answeredQuizzes) / (totalCheckboxes + totalQuizzes)) * 100);
+
+            document.getElementById('progress-fill').style.width = progress + '%';
+            document.getElementById('progress-text').textContent = progress + '%';
+        }
+
+        // Checklist persistence
+        document.querySelectorAll('.checklist input').forEach(checkbox => {
+            checkbox.addEventListener('change', () => {
+                updateProgress();
+                if (checkbox.checked) {
+                    checkbox.nextElementSibling.classList.add('checked');
+                } else {
+                    checkbox.nextElementSibling.classList.remove('checked');
+                }
+            });
+        });
+
+        // Interactive diagram tooltips
+        const tooltip = document.getElementById('diagram-tooltip');
+        document.querySelectorAll('.interactive-diagram .node').forEach(node => {
+            node.addEventListener('mouseenter', (e) => {
+                const text = node.dataset.tooltip;
+                if (text) {
+                    tooltip.textContent = text;
+                    tooltip.classList.add('show');
+                }
+            });
+
+            node.addEventListener('mousemove', (e) => {
+                tooltip.style.left = (e.pageX + 10) + 'px';
+                tooltip.style.top = (e.pageY + 10) + 'px';
+            });
+
+            node.addEventListener('mouseleave', () => {
+                tooltip.classList.remove('show');
+            });
+        });
+
+        // Smooth scroll for nav
+        document.querySelectorAll('nav a').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const target = document.querySelector(link.getAttribute('href'));
+                target.scrollIntoView({ behavior: 'smooth' });
+
+                document.querySelectorAll('nav a').forEach(l => l.classList.remove('active'));
+                link.classList.add('active');
+            });
+        });
+
+        // Highlight current section in nav
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const id = entry.target.id;
+                    document.querySelectorAll('nav a').forEach(link => {
+                        link.classList.toggle('active', link.getAttribute('href') === '#' + id);
+                    });
+                }
+            });
+        }, { threshold: 0.3 });
+
+        document.querySelectorAll('section').forEach(section => {
+            observer.observe(section);
+        });
+    </script>
+</body>
+</html>
