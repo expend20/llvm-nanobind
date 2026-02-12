@@ -78,7 +78,7 @@ def main():
             # Function 5: Function with fastcc calling convention
             fastcc_ty = ctx.types.function(i32, [i32], vararg=False)
             fastcc_fn = mod.add_function("fastcc_func", fastcc_ty)
-            fastcc_fn.calling_conv = llvm.CallConv.Fast.value
+            fastcc_fn.calling_conv = llvm.CallConv.Fast
 
             # Function 6: Will be deleted
             delete_ty = ctx.types.function(void_ty, [], vararg=False)

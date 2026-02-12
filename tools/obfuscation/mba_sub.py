@@ -24,23 +24,7 @@ Options:
 import argparse
 import random
 import sys
-from typing import Callable
-
 import llvm
-
-
-def replace_all_uses_with(old_value: llvm.Value, new_value: llvm.Value) -> None:
-    """Replace all uses of old_value with new_value."""
-    # Collect uses first to avoid modifying while iterating
-    uses_to_replace = []
-    for use in old_value.uses:
-        uses_to_replace.append((use.user, use))
-
-    # Replace each use
-    for user, use in uses_to_replace:
-        for i in range(user.num_operands):
-            if user.get_operand(i) == old_value:
-                user.set_operand(i, new_value)
 
 
 # =============================================================================
@@ -300,9 +284,8 @@ def run_on_basic_block(bb: llvm.BasicBlock) -> None:
             replacement = obfuscator(builder, a, b, inst.name)
 
             # Replace uses and remove original
-            replace_all_uses_with(inst, replacement)
-            inst.remove_from_parent()
-            inst.delete_instruction()
+            inst.replace_all_uses_with(replacement)
+            inst.erase_from_parent()
 
 
 def run_on_function(func: llvm.Function, iterations: int) -> None:

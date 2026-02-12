@@ -2,14 +2,6 @@ import argparse
 import llvm
 
 
-def first_non_phi(block: llvm.BasicBlock):
-    instr = block.first_instruction
-    while instr is not None and instr.opcode == llvm.Opcode.PHI:
-        instr = instr.next_instruction
-    assert instr is not None, "bad"
-    return instr
-
-
 def main():
     parser = argparse.ArgumentParser("bc-profile")
     parser.add_argument("ir_in", help="Input LLVM IR to profile")
@@ -40,39 +32,36 @@ def main():
 
         print(f"start.type: {start_fn.type}, function_type: {start_fn.function_type}")
 
-        with first_non_phi(main_entry).create_builder() as builder:
-            # TODO: if you pass a name here LLVM will assert (should be graceful)
-            builder.call(start_fn.function_type, start_fn, [])
+        first_inst = main_entry.first_non_phi
+        assert first_inst is not None, "empty main entry block"
+        with first_inst.create_builder() as builder:
+            builder.call(start_fn, [])
 
         for main_block in main_fn.basic_blocks:
             terminator = main_block.terminator
             if terminator.opcode == llvm.Opcode.Ret:
-                print(f"return block: '{main_block.name}'") # TODO: how do we print the number if there is no name?
-                print(main_block) # TODO: this should print the block bitcode?
+                print(f"return block: '{main_block.name}'")
+                print(main_block)
                 with terminator.create_builder() as builder:
-                    builder.call(stop_fn.function_type, stop_fn, [])
+                    builder.call(stop_fn, [])
 
         for function in mod.functions:
             if function.name == "main":
                 print("skipping main")
                 continue
-            # TODO: is_ is not a good prefix for vscode discoverability
             if function.is_declaration:
                 print(f"skipping declaration: {function.name}")
                 continue
             print(f"instrumenting function: {function.name}")
-            name_const = llvm.const_string(ctx, function.name)
-            # TODO: I guess we need to promote this to a pointer?
+            name_const = ctx.const_string(function.name)
             print(f"{name_const.value_kind=}")
-            # TODO: should this be optional at all, maybe throw instead?
             entry_block = function.entry_block
             print("instrumenting entry block")
             assert entry_block is not None, "no entry block (bad)"
-            with first_non_phi(entry_block).create_builder() as builder:
-                # TODO: varargs instead?
-                # TODO: this hard crashes
-                builder.call(enter_fn.function_type, enter_fn, [name_const])
-            
+            first_inst = entry_block.first_non_phi
+            assert first_inst is not None, "empty entry block"
+            with first_inst.create_builder() as builder:
+                builder.call(enter_fn, [name_const])
 
         with open(args.ir_out, "w", encoding="utf-8") as f:
             f.write(str(mod))

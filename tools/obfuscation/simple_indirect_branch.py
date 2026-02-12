@@ -95,14 +95,14 @@ def transform_branch(
         idx0 = builder.gep(
             array_ty, jump_table, [i32_ty.constant(0), i32_ty.constant(0)], "sibr.slot0"
         )
-        false_addr = llvm.block_address(func, false_bb)
+        false_addr = func.block_address(false_bb)
         builder.store(false_addr, idx0)
 
         # GEP to table[1] and store true target
         idx1 = builder.gep(
             array_ty, jump_table, [i32_ty.constant(0), i32_ty.constant(1)], "sibr.slot1"
         )
-        true_addr = llvm.block_address(func, true_bb)
+        true_addr = func.block_address(true_bb)
         builder.store(true_addr, idx1)
 
         # Get condition and invert it
@@ -134,7 +134,7 @@ def transform_branch(
         idx0 = builder.gep(
             array_ty, jump_table, [i32_ty.constant(0), i32_ty.constant(0)], "sibr.slot0"
         )
-        target_addr = llvm.block_address(func, target_bb)
+        target_addr = func.block_address(target_bb)
         builder.store(target_addr, idx0)
 
         # Load from table[0]
@@ -145,8 +145,7 @@ def transform_branch(
         indir_br.add_destination(target_bb)
 
     # Remove original branch
-    branch.remove_from_parent()
-    branch.delete_instruction()
+    branch.erase_from_parent()
 
     return True
 

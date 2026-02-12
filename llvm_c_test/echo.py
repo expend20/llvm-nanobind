@@ -742,8 +742,8 @@ class FunCloner:
             catch_pad = self.clone_value(src.get_operand(0))
             unwind_dest = src.unwind_dest
             unwind = self.declare_bb(unwind_dest) if unwind_dest else None
-            # Note: cleanup_ret accepts None for unwind_bb (stub is incorrect)
-            dst = builder.cleanup_ret(catch_pad, unwind)  # type: ignore[arg-type]
+            # Note: cleanup_ret accepts None for unwind_bb
+            dst = builder.cleanup_ret(catch_pad, unwind)
 
         elif op == llvm.Opcode.CatchRet:
             catch_pad = self.clone_value(src.get_operand(0))
@@ -771,8 +771,8 @@ class FunCloner:
             unwind_dest = src.unwind_dest
             unwind_bb = self.declare_bb(unwind_dest) if unwind_dest else None
             num_handlers = src.num_handlers
-            # Note: catch_switch accepts None for unwind_bb (stub is incorrect)
-            dst = builder.catch_switch(parent_pad, unwind_bb, num_handlers, name)  # type: ignore[arg-type]
+            # Note: catch_switch accepts None for unwind_bb
+            dst = builder.catch_switch(parent_pad, unwind_bb, num_handlers, name)
             if num_handlers > 0:
                 handlers = src.handlers
                 for h in handlers:

@@ -83,7 +83,6 @@ def demote_phi_to_stack(func: llvm.Function) -> None:
     4. Replace uses of PHI with the load
     5. Delete the PHI
     """
-    ctx = func.context
     entry_bb = list(func.basic_blocks)[0]
 
     # Collect all PHI nodes first
@@ -126,23 +125,10 @@ def demote_phi_to_stack(func: llvm.Function) -> None:
             load = builder.load(phi_type, alloca, phi.name)
 
         # Replace uses of PHI with the load
-        replace_all_uses_with(phi, load)
+        phi.replace_all_uses_with(load)
 
         # Delete the PHI
-        phi.remove_from_parent()
-        phi.delete_instruction()
-
-
-def replace_all_uses_with(old_value: llvm.Value, new_value: llvm.Value) -> None:
-    """Replace all uses of old_value with new_value."""
-    uses_to_replace = []
-    for use in old_value.uses:
-        uses_to_replace.append(use.user)
-
-    for user in uses_to_replace:
-        for i in range(user.num_operands):
-            if user.get_operand(i) == old_value:
-                user.set_operand(i, new_value)
+        phi.erase_from_parent()
 
 
 def flatten_function(func: llvm.Function, use_globals: bool, shuffle: bool) -> None:
@@ -160,7 +146,6 @@ def flatten_function(func: llvm.Function, use_globals: bool, shuffle: bool) -> N
 
     # Use i32 for state values (simpler and more compatible)
     int_ty = ctx.types.i32
-    i32_ty = ctx.types.i32
 
     entry_bb = blocks[0]
     original_blocks = blocks[1:]  # Blocks to flatten (excluding entry)
@@ -263,8 +248,7 @@ def flatten_function(func: llvm.Function, use_globals: bool, shuffle: bool) -> N
                             int_ty.constant(block_state_map[target]), state_var
                         )
                         builder.br(dispatch_bb)
-                    terminator.remove_from_parent()
-                    terminator.delete_instruction()
+                    terminator.erase_from_parent()
 
             elif len(successors) == 2:
                 # Conditional branch
@@ -295,8 +279,7 @@ def flatten_function(func: llvm.Function, use_globals: bool, shuffle: bool) -> N
                         builder.position_before(terminator)
                         builder.cond_br(condition, true_state_bb, false_state_bb)
 
-                    terminator.remove_from_parent()
-                    terminator.delete_instruction()
+                    terminator.erase_from_parent()
 
 
 def main():

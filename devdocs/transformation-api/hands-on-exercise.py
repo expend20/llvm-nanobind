@@ -31,9 +31,9 @@ RESET = "\033[0m"
 
 def section(title: str):
     """Print a section header."""
-    print(f"\n{BOLD}{'='*60}{RESET}")
+    print(f"\n{BOLD}{'=' * 60}{RESET}")
     print(f"{BOLD}{CYAN}{title}{RESET}")
-    print(f"{BOLD}{'='*60}{RESET}\n")
+    print(f"{BOLD}{'=' * 60}{RESET}\n")
 
 
 def explain(text: str):
@@ -153,13 +153,17 @@ def exercise_2_iteration():
 
             for func in mod.functions:
                 print(f"Function: {BOLD}{func.name}{RESET}")
-                print(f"  Parameters: {func.num_params}")
+                print(f"  Parameters: {func.param_count}")
                 print(f"  Blocks: {len(list(func.basic_blocks))}")
 
                 for bb in func.basic_blocks:
                     print(f"\n  Block: {BOLD}{bb.name}{RESET}")
                     for inst in bb.instructions:
-                        op_name = inst.opcode.name if hasattr(inst.opcode, 'name') else str(inst.opcode)
+                        op_name = (
+                            inst.opcode.name
+                            if hasattr(inst.opcode, "name")
+                            else str(inst.opcode)
+                        )
                         is_term = " (TERMINATOR)" if inst.is_terminator_inst else ""
                         print(f"    {op_name}: {inst}{is_term}")
 
@@ -224,7 +228,10 @@ def exercise_3_simple_transform():
                                 op1 = inst.get_operand(1)
                                 # Try to detect if it's a constant integer
                                 # (This is a simplified check)
-                                if hasattr(op1, 'type') and op1.type.kind == llvm.TypeKind.Integer:
+                                if (
+                                    hasattr(op1, "type")
+                                    and op1.type.kind == llvm.TypeKind.Integer
+                                ):
                                     to_transform.append(inst)
 
                 print(f"{CYAN}Found {len(to_transform)} add instructions{RESET}")
@@ -580,9 +587,9 @@ def summary():
 
 def main():
     print(f"""
-{BOLD}{'='*60}
+{BOLD}{"=" * 60}
     LLVM-NANOBIND HANDS-ON LEARNING EXERCISES
-{'='*60}{RESET}
+{"=" * 60}{RESET}
 
 This interactive exercise will walk you through:
 
