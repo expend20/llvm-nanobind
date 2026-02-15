@@ -86,11 +86,10 @@ class TypeCloner:
         elif kind == llvm.TypeKind.Array:
             return self.clone(src.element_type).array(src.array_length)
         elif kind == llvm.TypeKind.Pointer:
-            if src.is_opaque_pointer:
-                return types.ptr(src.pointer_address_space)
-            else:
-                # Legacy typed pointer (shouldn't happen with opaque pointers)
-                return types.ptr(src.pointer_address_space)
+            addrspace = src.pointer_address_space
+            if addrspace == 0:
+                return types.ptr
+            return types.addrspace_ptr(addrspace)
         elif kind == llvm.TypeKind.Vector:
             return self.clone(src.element_type).vector(src.vector_size)
         elif kind == llvm.TypeKind.ScalableVector:

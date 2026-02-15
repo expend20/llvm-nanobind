@@ -113,7 +113,7 @@ def main():
             print(f";   name: {foo.name}")
             print(f";   param count: {foo.param_count}")
             print(f";   linkage: {linkage_name(foo.linkage)}")
-            print(f";   calling conv: {foo.calling_conv} (C=0)")
+            print(f";   calling conv: {foo.calling_conv.value} (C=0)")
 
             # bar info
             print(";")
@@ -141,7 +141,7 @@ def main():
             # fastcc info
             print(";")
             print("; Function 'fastcc_func':")
-            print(f";   calling conv: {fastcc_fn.calling_conv} (FastCall=8)")
+            print(f";   calling conv: {fastcc_fn.calling_conv.value} (FastCall=8)")
 
             # Function counts
             print(";")
