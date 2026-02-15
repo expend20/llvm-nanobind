@@ -95,7 +95,7 @@ def main():
 
             # Get intrinsic declaration
             if memcpy_id != 0:
-                ptr = ctx.types.ptr()
+                ptr = ctx.types.ptr
                 memcpy_decl = mod.get_intrinsic_declaration(memcpy_id, [ptr, ptr, i64])
                 memcpy_decl_id = memcpy_decl.intrinsic_id
                 print(

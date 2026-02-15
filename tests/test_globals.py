@@ -43,7 +43,7 @@ def main():
             i32 = ctx.types.i32
             i64 = ctx.types.i64
             f64 = ctx.types.f64
-            ptr = ctx.types.ptr()
+            ptr = ctx.types.ptr
 
             # ==========================================
             # Basic global variable

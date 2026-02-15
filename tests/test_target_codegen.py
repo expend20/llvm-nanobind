@@ -109,7 +109,7 @@ def main():
         i64 = ctx.types.i64
         f32 = ctx.types.f32
         f64 = ctx.types.f64
-        ptr = ctx.types.ptr()
+        ptr = ctx.types.ptr
 
         print(";")
         print("; Type sizes and alignments:")

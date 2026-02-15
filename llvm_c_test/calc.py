@@ -88,7 +88,7 @@ def handle_line(tokens):
         with ctx.create_module(name) as mod:
             # Create function type: i64(i64*)
             i64_ty = ctx.types.i64
-            i64_ptr_ty = ctx.types.ptr()
+            i64_ptr_ty = ctx.types.ptr
             func_ty = ctx.types.function(i64_ty, [i64_ptr_ty], vararg=False)
 
             # Add function

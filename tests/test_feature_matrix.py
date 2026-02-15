@@ -55,7 +55,7 @@ def test_core_intrinsic_get_type():
         assert memcpy_id != 0
 
         # Get the type for this intrinsic with specific parameter types
-        ptr_ty = ctx.types.ptr()
+        ptr_ty = ctx.types.ptr
         i64 = ctx.types.i64
         i1 = ctx.types.i1
 

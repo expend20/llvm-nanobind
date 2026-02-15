@@ -130,18 +130,17 @@ LLVM_IR_BASICS = [
 
 BINDING_API = [
     {
-        "question": "Why does ctx.types.ptr() require parentheses but ctx.types.i32 doesn't?",
+        "question": "How do you get the opaque pointer type for address space 0 in the bindings?",
         "options": [
-            "Because ptr is more complex",
-            "It's an API inconsistency that should be fixed",
-            "Because ptr takes an address space argument",
-            "Because i32 is a constant, ptr is computed",
+            "ctx.types.ptr()",
+            "ctx.types.ptr",
+            "ctx.types.pointer(0)",
+            "ctx.types.addrspace_ptr(0)",
         ],
         "correct": 2,
-        "explanation": "This is documented as an API inconsistency! The current behavior makes "
-        "sense because ptr() can take an optional address space argument, but the "
-        "inconsistency is confusing. The plan proposes making ptr a property that "
-        "returns the default pointer type, with ptr(addrspace) as an optional method.",
+        "explanation": "ctx.types.ptr is a property that returns the opaque pointer type in "
+        "address space 0, consistent with other type properties like ctx.types.i32. "
+        "For non-default address spaces, use ctx.types.addrspace_ptr(address_space).",
     },
     {
         "question": "To delete an instruction, you must:",

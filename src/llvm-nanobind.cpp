@@ -834,13 +834,23 @@ struct LLVMTypeFactoryWrapper {
   }
 
   // =========================================================================
-  // Parameterized types (methods)
+  // Pointer type (property for default AS 0, method for custom AS)
   // =========================================================================
-  LLVMTypeWrapper ptr(unsigned address_space = 0) const {
+  LLVMTypeWrapper ptr_default() const {
+    check_valid();
+    return LLVMTypeWrapper(LLVMPointerTypeInContext(m_ctx_ref, 0),
+                           m_context_token);
+  }
+
+  LLVMTypeWrapper addrspace_ptr(unsigned address_space) const {
     check_valid();
     return LLVMTypeWrapper(LLVMPointerTypeInContext(m_ctx_ref, address_space),
                            m_context_token);
   }
+
+  // =========================================================================
+  // Parameterized types (methods)
+  // =========================================================================
 
   LLVMTypeWrapper int_n(unsigned bits) const {
     check_valid();
@@ -1379,9 +1389,15 @@ struct LLVMValueWrapper {
 
   LLVMValueWrapper get_operand(unsigned index) const {
     check_valid();
+    unsigned num_ops = static_cast<unsigned>(LLVMGetNumOperands(m_ref));
+    if (index >= num_ops)
+      throw LLVMAssertionError("Operand index " + std::to_string(index) +
+                               " out of range (num_operands=" +
+                               std::to_string(num_ops) + ")");
     LLVMValueRef op = LLVMGetOperand(m_ref, index);
     if (!op)
-      throw LLVMAssertionError("Invalid operand index");
+      throw LLVMAssertionError("Operand at index " + std::to_string(index) +
+                               " is null");
     return LLVMValueWrapper(op, m_context_token);
   }
 
@@ -1970,6 +1986,16 @@ struct LLVMValueWrapper {
     return LLVMValueWrapper(LLVMGetCalledValue(m_ref), m_context_token);
   }
 
+  void set_called_operand(const LLVMValueWrapper &val) {
+    check_valid();
+    val.check_valid();
+    // In LLVM's CallBase, the callee is the last operand
+    unsigned num_ops = static_cast<unsigned>(LLVMGetNumOperands(m_ref));
+    if (num_ops == 0)
+      throw LLVMAssertionError("Cannot set called operand on value with no operands");
+    LLVMSetOperand(m_ref, num_ops - 1, val.m_ref);
+  }
+
   // Branch condition
   bool is_conditional() const {
     check_valid();
@@ -2164,6 +2190,15 @@ struct LLVMValueWrapper {
     check_valid();
     LLVMInstructionEraseFromParent(m_ref);
     m_ref = nullptr;
+  }
+
+  // Clone an instruction. The clone has no parent and no name.
+  LLVMValueWrapper instruction_clone() const {
+    check_valid();
+    LLVMValueRef cloned = LLVMInstructionClone(m_ref);
+    if (!cloned)
+      throw LLVMAssertionError("Failed to clone instruction");
+    return LLVMValueWrapper(cloned, m_context_token);
   }
 
   // Replace all uses of this value with another value.
@@ -2381,6 +2416,138 @@ struct LLVMBasicBlockWrapper {
   // Get the context this basic block belongs to (derived via function ->
   // module)
   LLVMContextWrapper *context() const;
+
+  // =========================================================================
+  // Split this basic block at the given instruction.
+  // All instructions from split_before to end are moved to a new block.
+  // An unconditional branch from this block to the new block is inserted.
+  // PHI nodes in successor blocks are updated to reference the new block.
+  // Returns the new basic block.
+  // =========================================================================
+  LLVMBasicBlockWrapper split_basic_block(const LLVMValueWrapper &split_before,
+                                          const std::string &name = "") const {
+    check_valid();
+    split_before.check_valid();
+
+    LLVMValueRef func = LLVMGetBasicBlockParent(m_ref);
+    LLVMModuleRef mod = LLVMGetGlobalParent(func);
+    LLVMContextRef ctx = LLVMGetModuleContext(mod);
+
+    // Create a new basic block appended to the function, then move it
+    LLVMBasicBlockRef new_bb =
+        LLVMAppendBasicBlockInContext(ctx, func, name.c_str());
+    LLVMMoveBasicBlockAfter(new_bb, m_ref);
+
+    // Collect instructions to move (from split_before to end, inclusive)
+    std::vector<LLVMValueRef> to_move;
+    bool found = false;
+    for (LLVMValueRef inst = LLVMGetFirstInstruction(m_ref); inst;
+         inst = LLVMGetNextInstruction(inst)) {
+      if (inst == split_before.m_ref)
+        found = true;
+      if (found)
+        to_move.push_back(inst);
+    }
+
+    if (!found || to_move.empty())
+      throw LLVMAssertionError(
+          "split_before instruction not found in this block");
+
+    // Move each instruction to the new block using a builder
+    LLVMBuilderRef builder = LLVMCreateBuilderInContext(ctx);
+    LLVMPositionBuilderAtEnd(builder, new_bb);
+    for (LLVMValueRef inst : to_move) {
+      LLVMInstructionRemoveFromParent(inst);
+      LLVMInsertIntoBuilder(builder, inst);
+    }
+    LLVMDisposeBuilder(builder);
+
+    // Add an unconditional branch from old block to new block
+    LLVMBuilderRef br_builder = LLVMCreateBuilderInContext(ctx);
+    LLVMPositionBuilderAtEnd(br_builder, m_ref);
+    LLVMBuildBr(br_builder, new_bb);
+    LLVMDisposeBuilder(br_builder);
+
+    // Update PHI nodes in successor blocks: replace references to old block
+    // with new block. Since the C API has no LLVMSetIncomingBlock, we rebuild
+    // each affected PHI node.
+    LLVMValueRef new_term = LLVMGetBasicBlockTerminator(new_bb);
+    if (new_term) {
+      unsigned num_succ = LLVMGetNumSuccessors(new_term);
+      for (unsigned si = 0; si < num_succ; ++si) {
+        LLVMBasicBlockRef succ = LLVMGetSuccessor(new_term, si);
+
+        // Collect all PHI nodes in this successor
+        std::vector<LLVMValueRef> phis;
+        for (LLVMValueRef inst = LLVMGetFirstInstruction(succ); inst;
+             inst = LLVMGetNextInstruction(inst)) {
+          if (LLVMGetInstructionOpcode(inst) != LLVMPHI)
+            break;
+          phis.push_back(inst);
+        }
+
+        for (LLVMValueRef phi : phis) {
+          unsigned num_inc = LLVMCountIncoming(phi);
+          bool needs_update = false;
+
+          // Check if any incoming block references old block
+          for (unsigned i = 0; i < num_inc; ++i) {
+            if (LLVMGetIncomingBlock(phi, i) == m_ref) {
+              needs_update = true;
+              break;
+            }
+          }
+
+          if (!needs_update)
+            continue;
+
+          // Collect all incoming (value, block) pairs
+          std::vector<LLVMValueRef> values(num_inc);
+          std::vector<LLVMBasicBlockRef> blocks(num_inc);
+          for (unsigned i = 0; i < num_inc; ++i) {
+            values[i] = LLVMGetIncomingValue(phi, i);
+            blocks[i] = LLVMGetIncomingBlock(phi, i);
+            // Replace old block with new block
+            if (blocks[i] == m_ref)
+              blocks[i] = new_bb;
+          }
+
+          // Build a new PHI node with updated incoming blocks
+          LLVMBuilderRef phi_builder = LLVMCreateBuilderInContext(ctx);
+          // Position before the first non-PHI instruction in successor
+          LLVMValueRef first_non_phi = nullptr;
+          for (LLVMValueRef inst = LLVMGetFirstInstruction(succ); inst;
+               inst = LLVMGetNextInstruction(inst)) {
+            if (LLVMGetInstructionOpcode(inst) != LLVMPHI) {
+              first_non_phi = inst;
+              break;
+            }
+          }
+          if (first_non_phi)
+            LLVMPositionBuilderBefore(phi_builder, first_non_phi);
+          else
+            LLVMPositionBuilderAtEnd(phi_builder, succ);
+
+          LLVMValueRef new_phi =
+              LLVMBuildPhi(phi_builder, LLVMTypeOf(phi), "");
+          LLVMAddIncoming(new_phi, values.data(), blocks.data(), num_inc);
+
+          // Copy the name from old PHI
+          const char *phi_name = LLVMGetValueName(phi);
+          if (phi_name && phi_name[0] != '\0')
+            LLVMSetValueName(new_phi, phi_name);
+
+          // Replace all uses and erase old PHI
+          LLVMReplaceAllUsesWith(phi, new_phi);
+          LLVMInstructionEraseFromParent(phi);
+
+          LLVMDisposeBuilder(phi_builder);
+        }
+      }
+    }
+
+    return LLVMBasicBlockWrapper(new_bb, m_context_token);
+  }
 
   void move_before(const LLVMBasicBlockWrapper &other) {
     check_valid();
@@ -10246,6 +10413,12 @@ Prefer using erase_from_parent_ifunc() for most use cases.
                    R"(Get called value.
 
 <sub>C API: LLVMGetCalledValue</sub>)")
+      .def("set_called_operand", &LLVMValueWrapper::set_called_operand,
+           "val"_a,
+           R"(Set the called operand (callee) of a call/invoke instruction.
+The callee is the last operand of a CallBase instruction.
+
+<sub>C API: LLVMSetOperand</sub>)")
       // Landing pad properties
       .def_prop_ro("num_clauses", &LLVMValueWrapper::get_num_clauses,
                    R"(Get number of clauses.
@@ -10429,6 +10602,10 @@ Prefer using erase_from_parent_ifunc() for most use cases.
 Combines remove_from_parent() + delete_instruction() atomically.
 
 <sub>C API: LLVMInstructionEraseFromParent</sub>)")
+      .def("instruction_clone", &LLVMValueWrapper::instruction_clone,
+           R"(Clone an instruction. The clone has no parent and no name.
+
+<sub>C API: LLVMInstructionClone</sub>)")
       .def("replace_all_uses_with",
            &LLVMValueWrapper::replace_all_uses_with, "new_value"_a,
            R"(Replace all uses of this value with another value.
@@ -10552,6 +10729,18 @@ Returns:
                    R"(Predecessor blocks.
 
 <sub>C API: LLVMGetNumPredecessors</sub>)")
+      .def("split_basic_block", &LLVMBasicBlockWrapper::split_basic_block,
+           "split_before"_a, "name"_a = "",
+           R"(Split this basic block at the given instruction.
+
+All instructions from split_before to the end of the block are moved
+to a new basic block. An unconditional branch from this block to the
+new block is inserted. PHI nodes in successor blocks are updated to
+reference the new block as their predecessor.
+
+Returns the new basic block.
+
+<sub>C++ API: BasicBlock::splitBasicBlock</sub>)")
       .def("move_before", &LLVMBasicBlockWrapper::move_before, "other"_a,
            R"(Move before block.
 
@@ -11759,9 +11948,13 @@ Use with 'with' statement:
                    R"(X86 AMX type.
 
 <sub>C API: LLVMX86AMXTypeInContext</sub>)")
-      // Parameterized types
-      .def("ptr", &LLVMTypeFactoryWrapper::ptr, "address_space"_a = 0,
-           R"(Pointer type.
+      // Pointer type (property for default, method for custom address space)
+      .def_prop_ro("ptr", &LLVMTypeFactoryWrapper::ptr_default,
+                   R"(Opaque pointer type (address space 0).
+
+<sub>C API: LLVMPointerTypeInContext</sub>)")
+      .def("addrspace_ptr", &LLVMTypeFactoryWrapper::addrspace_ptr, "address_space"_a,
+           R"(Pointer type in a specific address space.
 
 <sub>C API: LLVMPointerTypeInContext</sub>)")
       .def("int_n", &LLVMTypeFactoryWrapper::int_n, "bits"_a,

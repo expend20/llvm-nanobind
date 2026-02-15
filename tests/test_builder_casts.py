@@ -19,7 +19,7 @@ def main():
             i64 = ctx.types.i64
             f32 = ctx.types.f32
             f64 = ctx.types.f64
-            ptr = ctx.types.ptr()
+            ptr = ctx.types.ptr
             void_ty = ctx.types.void
 
             assert i8 == ctx.types.int_n(8), "oh nein"

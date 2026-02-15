@@ -69,7 +69,7 @@ def test_syncscope_clone():
 
                 # Clone the function type using the destination module's context
                 # (This is what TypeCloner does in echo.py)
-                ptr_ty = dst_ctx.types.ptr()
+                ptr_ty = dst_ctx.types.ptr
                 void_ty = dst_ctx.types.void
                 func_ty = dst_ctx.types.function(void_ty, [ptr_ty], False)
 

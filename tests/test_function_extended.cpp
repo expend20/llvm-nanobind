@@ -111,8 +111,7 @@ int main() {
   printf(";\n; Test 4: Personality function\n");
 
   // Create a personality function (like __gxx_personality_v0)
-  LLVMTypeRef personality_params[] = {};
-  LLVMTypeRef personality_ty = LLVMFunctionType(i32, personality_params, 0, 1);
+  LLVMTypeRef personality_ty = LLVMFunctionType(i32, NULL, 0, 1);
   LLVMValueRef personality_fn = LLVMAddFunction(mod, "__gxx_personality_v0", personality_ty);
 
   // Create a function that uses the personality

@@ -44,7 +44,7 @@ def main():
             i32 = ctx.types.i32
             i64 = ctx.types.i64
             void_ty = ctx.types.void
-            ptr = ctx.types.ptr()
+            ptr = ctx.types.ptr
 
             # Function 1: void foo()
             foo_ty = ctx.types.function(void_ty, [], vararg=False)
