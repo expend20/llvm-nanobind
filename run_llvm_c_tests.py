@@ -162,6 +162,29 @@ def build_llvm_c_test_cmd(
         return exe_path, extra_env
 
 
+def prefer_windows_git_bash(env: dict[str, str]) -> str | None:
+    """Prefer Git Bash over WSL bash stubs on Windows for lit shell tests."""
+    if sys.platform != "win32":
+        return None
+
+    candidates = [
+        Path(r"C:\Program Files\Git\bin\bash.exe"),
+        Path(r"C:\Program Files\Git\usr\bin\bash.exe"),
+    ]
+    for bash_exe in candidates:
+        if not bash_exe.exists():
+            continue
+
+        bash_dir = str(bash_exe.parent)
+        path_entries = env.get("PATH", "").split(os.pathsep)
+        # Prepend and deduplicate (case-insensitive on Windows).
+        filtered = [p for p in path_entries if p.lower() != bash_dir.lower()]
+        env["PATH"] = os.pathsep.join([bash_dir] + filtered)
+        return str(bash_exe)
+
+    return None
+
+
 def main():
     # Parse our custom arguments
     llvm_prefix_arg, use_python, lit_args_extra = parse_args(sys.argv[1:])
@@ -228,6 +251,7 @@ def main():
     env["LLVM_TOOLS_DIR"] = str(llvm_tools_dir)
     env["LLVM_C_TEST_CMD"] = llvm_c_test_cmd
     env.update(extra_env)
+    preferred_bash = prefer_windows_git_bash(env)
 
     # Use build directory for test outputs to keep source tree clean
     lit_exec_root = build_dir / "llvm-c-test-output"
@@ -257,6 +281,8 @@ def main():
     print(f"  Test directory: {test_dir}")
     print(f"  llvm-c-test:    {llvm_c_test_cmd}")
     print(f"  LLVM tools:     {llvm_tools_dir}")
+    if preferred_bash:
+        print(f"  Preferred bash: {preferred_bash}")
     if use_python:
         print("  Mode:           Python implementation")
     else:
