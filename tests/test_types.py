@@ -9,7 +9,7 @@ Output should match the C++ golden master test.
 LLVM APIs covered (via Python bindings):
 - Integer types: ctx.types.i1, ctx.types.i8, ctx.types.i16, ctx.types.i32, ctx.types.i64, ctx.types.i128, ctx.types.int_n()
 - Floating point: ctx.types.f16, ctx.types.bf16, ctx.types.f32, ctx.types.f64
-- Other types: ctx.types.void, ctx.types.ptr(), ctx.types.array(), ctx.types.vector(), ctx.types.function()
+- Other types: ctx.types.void, ctx.types.ptr, ctx.types.array(), ctx.types.vector(), ctx.types.function()
 - Struct types: ctx.types.struct(), ctx.types.opaque_struct(), set_body()
 - Type inspection: kind, int_width, is_sized, is_packed_struct, is_opaque_struct, struct_name
 """
@@ -63,7 +63,7 @@ def main():
             void_ty = ctx.types.void
 
             # Pointer type (opaque pointer)
-            ptr = ctx.types.ptr()
+            ptr = ctx.types.ptr
 
             # Array type
             arr_i32_10 = i32.array(10)

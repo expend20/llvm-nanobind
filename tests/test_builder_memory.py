@@ -15,7 +15,7 @@ def main():
         with ctx.create_module("test_builder_memory") as mod:
             i32 = ctx.types.i32
             i64 = ctx.types.i64
-            ptr = ctx.types.ptr()
+            ptr = ctx.types.ptr
             void_ty = ctx.types.void
 
             # Array type for array alloca test

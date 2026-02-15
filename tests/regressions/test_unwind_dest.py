@@ -14,7 +14,7 @@ def test_get_unwind_dest_returns_none_when_not_present():
         with ctx.create_module("test") as m:
             # Create a function with exception handling
             void_ty = ctx.types.void
-            i8_ptr_ty = ctx.types.ptr()
+            i8_ptr_ty = ctx.types.ptr
             token_ty = ctx.types.token
 
             # Create personality function type
@@ -84,7 +84,7 @@ def test_get_unwind_dest_returns_block_when_present():
 
                 builder.position_at_end(unwind)
                 landing = builder.landing_pad(
-                    ctx.types.struct([ctx.types.ptr(), i32_ty]), 0, "lp"
+                    ctx.types.struct([ctx.types.ptr, i32_ty]), 0, "lp"
                 )
                 landing.set_cleanup(True)
                 builder.ret_void()

@@ -15,7 +15,7 @@ def main():
         with ctx.create_module("test_struct") as mod:
             i32 = ctx.types.i32
             void_ty = ctx.types.void
-            ptr = ctx.types.ptr()
+            ptr = ctx.types.ptr
 
             # ==========================================
             # Define Point struct: { i32 x, i32 y }

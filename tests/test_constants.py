@@ -21,7 +21,7 @@ def main():
             i128 = ctx.types.i128
             f32 = ctx.types.f32
             f64 = ctx.types.f64
-            ptr = ctx.types.ptr()
+            ptr = ctx.types.ptr
 
             # ==========================================
             # Integer constants

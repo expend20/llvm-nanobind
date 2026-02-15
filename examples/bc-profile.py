@@ -15,11 +15,11 @@ def main():
         start_stop_ty = ctx.types.function(ctx.types.void, [])
         start_fn = mod.add_function("Start", start_stop_ty)
         stop_fn = mod.add_function("Stop", start_stop_ty)
-        enter_leave_ty = ctx.types.function(ctx.types.void, [ctx.types.ptr()])
+        enter_leave_ty = ctx.types.function(ctx.types.void, [ctx.types.ptr])
         enter_fn = mod.add_function("FunctionEnter", enter_leave_ty)
         leave_fn = mod.add_function("FunctionLeave", enter_leave_ty)
         block_ty = ctx.types.function(
-            ctx.types.void, [ctx.types.ptr(), ctx.types.ptr()]
+            ctx.types.void, [ctx.types.ptr, ctx.types.ptr]
         )
         block_fn = mod.add_function("FunctionBlock", block_ty)
         call_fn = mod.add_function("FunctionCall", block_ty)

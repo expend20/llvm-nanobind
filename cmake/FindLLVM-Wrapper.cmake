@@ -71,6 +71,13 @@ if(LLVM-Wrapper_FIND_REQUIRED)
     list(APPEND FIND_ARGS "REQUIRED")
 endif()
 
+# Workaround: prebuilt LLVM 21 on Windows references LibXml2::LibXml2
+# in LLVMWindowsManifest, but LibXml2 may not be installed. Create a
+# dummy imported target so cmake doesn't error during configuration.
+if(WIN32 AND NOT TARGET LibXml2::LibXml2)
+    add_library(LibXml2::LibXml2 INTERFACE IMPORTED)
+endif()
+
 # Find LLVM
 find_package(LLVM ${FIND_ARGS})
 unset(FIND_ARGS)

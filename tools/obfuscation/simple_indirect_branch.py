@@ -69,7 +69,7 @@ def transform_branch(
 
     # Create jump table type - array of 2 block address pointers
     ctx = func.context
-    ptr_ty = ctx.types.ptr()
+    ptr_ty = ctx.types.ptr
     i32_ty = ctx.types.i32
 
     # Position at function entry for alloca
