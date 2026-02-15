@@ -1,59 +1,61 @@
 # Transformation API Improvements - Progress
 
-## Status: Planning Complete
+## Status: Partially Complete (API evolved during implementation)
+
+This file tracks progress against the **original** plan in `plan.md`.
+Some completed items were shipped under different names/designs.
 
 ## Completed
 - [x] Identified all issues during obfuscation pass porting
 - [x] Documented in `devdocs/porting-guide.md`
 - [x] Created prioritized plan
 
-## In Progress
-- [ ] None yet
+### Priority 1: Critical Blockers
+- [x] 1.2 Add `Value.replace_all_uses_with()`
+- [x] 1.3 Add basic block splitting (`split_basic_block` / `split_basic_block_before`)
+- [x] 1.4 Single-step instruction deletion (`erase_from_parent`)
 
-## Not Started
+### Priority 2: API Consistency
+- [x] 2.1 Make `ptr` a property (`ctx.types.ptr`)
+- [x] 2.2 Consistent setter patterns (property path exists via `is_global_constant`)
+
+### Priority 3: Missing Conveniences
+- [x] 3.1 Add `.operands` property
+- [x] 3.3 Add instruction cloning (`instruction_clone`)
+- [x] 3.4 Add `.num_successors` property
+
+### Priority 4: Documentation
+- [x] 4.1 Document exception types (in `devdocs/porting-guide.md`)
+- [x] 4.2 Document context manager patterns (in `devdocs/porting-guide.md`)
+
+## Not Done At All (Original Plan Items Still Open)
 
 ### Priority 1: Critical Blockers
 - [ ] 1.1 Raw bytes support for constants
-- [ ] 1.2 Add `Value.replace_all_uses_with()`
-- [ ] 1.3 Add `BasicBlock.split_before()`
-- [ ] 1.4 Single-step instruction deletion (`erase_from_parent`)
 
 ### Priority 2: API Consistency
-- [ ] 2.1 Make `ptr` a property
-- [ ] 2.2 Consistent setter patterns
 - [ ] 2.3 Add `.parent` alias for instructions
-- [ ] 2.4 Rename `.is_terminator_inst` to `.is_terminator`
+- [ ] 2.4 Rename/add alias from `.is_terminator_inst` to `.is_terminator`
 
 ### Priority 3: Missing Conveniences
-- [ ] 3.1 Add `.operands` iterator
-- [ ] 3.2 Add instruction movement
-- [ ] 3.3 Add instruction cloning
-- [ ] 3.4 Add `.num_successors` property
+- [ ] 3.2 Add instruction movement methods (`inst.move_before` / `inst.move_after`)
 
 ### Priority 4: Documentation
-- [ ] 4.1 Document exception types
-- [ ] 4.2 Document context manager patterns
-- [ ] 4.3 Add API reference
+- [ ] 4.3 Add comprehensive API reference for the Python bindings
 
 ## Blocked
-- String encryption pass in `tools/obfuscation/` - blocked by 1.1
-- Full basic block splitter - blocked by 1.3
+- String encryption pass in `tools/obfuscation/` remains blocked by 1.1
 
 ## Notes
+
+### Naming/Design Evolution
+- Original `split_before()` became `split_basic_block_before()` (and `split_basic_block()`).
+- Original `clone()` concept shipped as `instruction_clone()`.
+- Setter consistency evolved to include a property path (`is_global_constant`) while keeping method compatibility.
 
 ### Discovery Process
 Issues were discovered while porting the LLVM obfuscator:
 - `mba_sub.py` - needed RAUW, instruction deletion
 - `control_flow_flattening.py` - needed PHI access, block creation
 - `simple_indirect_branch.py` - needed block address, indirect branch
-- `string_encryption.py` - **abandoned** due to UTF-8 encoding bug
-
-### Quick Verification Needed
-Before implementing, verify these don't already exist:
-- `LLVMInstructionEraseFromParent` binding
-- `LLVMReplaceAllUsesWith` binding
-- `num_successors` property
-
-### Design Decisions Needed
-- 1.1: Should `const_data_array` accept `bytes`, or add new `const_bytes` function?
-- 1.3: Block splitting may need C++ wrapper - evaluate LLVM C API coverage
+- `string_encryption.py` - blocked by UTF-8 string encoding behavior
