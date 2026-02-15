@@ -2417,41 +2417,44 @@ struct LLVMBasicBlockWrapper {
   // module)
   LLVMContextWrapper *context() const;
 
-  // =========================================================================
-  // Split this basic block at the given instruction.
-  // All instructions from split_before to end are moved to a new block.
-  // An unconditional branch from this block to the new block is inserted.
-  // PHI nodes in successor blocks are updated to reference the new block.
-  // Returns the new basic block.
-  // =========================================================================
-  LLVMBasicBlockWrapper split_basic_block(const LLVMValueWrapper &split_before,
+  // Split this block at an instruction, creating a new successor block.
+  LLVMBasicBlockWrapper split_basic_block(const LLVMValueWrapper &instruction,
                                           const std::string &name = "") const {
     check_valid();
-    split_before.check_valid();
+    instruction.check_valid();
+    if (!LLVMIsAInstruction(instruction.m_ref))
+      throw LLVMAssertionError("instruction must be an instruction");
+    if (LLVMGetInstructionParent(instruction.m_ref) != m_ref)
+      throw LLVMAssertionError("instruction not found in this block");
+    if (LLVMGetInstructionOpcode(instruction.m_ref) == LLVMPHI)
+      throw LLVMAssertionError(
+          "instruction cannot be a PHI node (would produce invalid IR)");
+    if (!LLVMGetBasicBlockTerminator(m_ref))
+      throw LLVMAssertionError(
+          "split_basic_block requires a well-formed block with a terminator");
 
     LLVMValueRef func = LLVMGetBasicBlockParent(m_ref);
     LLVMModuleRef mod = LLVMGetGlobalParent(func);
     LLVMContextRef ctx = LLVMGetModuleContext(mod);
 
-    // Create a new basic block appended to the function, then move it
-    LLVMBasicBlockRef new_bb =
-        LLVMAppendBasicBlockInContext(ctx, func, name.c_str());
-    LLVMMoveBasicBlockAfter(new_bb, m_ref);
-
-    // Collect instructions to move (from split_before to end, inclusive)
+    // Collect instructions to move (from instruction to end, inclusive)
     std::vector<LLVMValueRef> to_move;
     bool found = false;
     for (LLVMValueRef inst = LLVMGetFirstInstruction(m_ref); inst;
          inst = LLVMGetNextInstruction(inst)) {
-      if (inst == split_before.m_ref)
+      if (inst == instruction.m_ref)
         found = true;
       if (found)
         to_move.push_back(inst);
     }
 
     if (!found || to_move.empty())
-      throw LLVMAssertionError(
-          "split_before instruction not found in this block");
+      throw LLVMAssertionError("instruction not found in this block");
+
+    // Create a new basic block appended to the function, then move it
+    LLVMBasicBlockRef new_bb =
+        LLVMAppendBasicBlockInContext(ctx, func, name.c_str());
+    LLVMMoveBasicBlockAfter(new_bb, m_ref);
 
     // Move each instruction to the new block using a builder
     LLVMBuilderRef builder = LLVMCreateBuilderInContext(ctx);
@@ -2545,6 +2548,85 @@ struct LLVMBasicBlockWrapper {
         }
       }
     }
+
+    return LLVMBasicBlockWrapper(new_bb, m_context_token);
+  }
+
+  // Split this block before an instruction, creating a new predecessor block.
+  LLVMBasicBlockWrapper
+  split_basic_block_before(const LLVMValueWrapper &instruction,
+                           const std::string &name = "") const {
+    check_valid();
+    instruction.check_valid();
+    if (!LLVMIsAInstruction(instruction.m_ref))
+      throw LLVMAssertionError("instruction must be an instruction");
+    if (LLVMGetInstructionParent(instruction.m_ref) != m_ref)
+      throw LLVMAssertionError("instruction not found in this block");
+    if (LLVMGetInstructionOpcode(instruction.m_ref) == LLVMPHI)
+      throw LLVMAssertionError(
+          "instruction cannot be a PHI node");
+    if (!LLVMGetBasicBlockTerminator(m_ref))
+      throw LLVMAssertionError(
+          "split_basic_block_before requires a well-formed block with a terminator");
+
+    LLVMValueRef func = LLVMGetBasicBlockParent(m_ref);
+    LLVMModuleRef mod = LLVMGetGlobalParent(func);
+    LLVMContextRef ctx = LLVMGetModuleContext(mod);
+
+    // Collect instructions to move (from block start to instruction, exclusive)
+    std::vector<LLVMValueRef> to_move;
+    bool found = false;
+    for (LLVMValueRef inst = LLVMGetFirstInstruction(m_ref); inst;
+         inst = LLVMGetNextInstruction(inst)) {
+      if (inst == instruction.m_ref) {
+        found = true;
+        break;
+      }
+      to_move.push_back(inst);
+    }
+
+    if (!found)
+      throw LLVMAssertionError("instruction not found in this block");
+
+    // Collect predecessor terminators before mutating CFG.
+    std::vector<LLVMValueRef> predecessor_terms;
+    LLVMValueRef block_value = LLVMBasicBlockAsValue(m_ref);
+    for (LLVMUseRef use = LLVMGetFirstUse(block_value); use != nullptr;
+         use = LLVMGetNextUse(use)) {
+      LLVMValueRef user = LLVMGetUser(use);
+      if (LLVMIsATerminatorInst(user))
+        predecessor_terms.push_back(user);
+    }
+
+    // Create new predecessor block immediately before this block.
+    LLVMBasicBlockRef new_bb =
+        LLVMInsertBasicBlockInContext(ctx, m_ref, name.c_str());
+
+    // Move instructions to the new predecessor block.
+    if (!to_move.empty()) {
+      LLVMBuilderRef builder = LLVMCreateBuilderInContext(ctx);
+      LLVMPositionBuilderAtEnd(builder, new_bb);
+      for (LLVMValueRef inst : to_move) {
+        LLVMInstructionRemoveFromParent(inst);
+        LLVMInsertIntoBuilder(builder, inst);
+      }
+      LLVMDisposeBuilder(builder);
+    }
+
+    // Redirect predecessors: pred -> this becomes pred -> new_bb.
+    for (LLVMValueRef term : predecessor_terms) {
+      unsigned num_succ = LLVMGetNumSuccessors(term);
+      for (unsigned i = 0; i < num_succ; ++i) {
+        if (LLVMGetSuccessor(term, i) == m_ref)
+          LLVMSetSuccessor(term, i, new_bb);
+      }
+    }
+
+    // New predecessor now unconditionally branches to this block.
+    LLVMBuilderRef br_builder = LLVMCreateBuilderInContext(ctx);
+    LLVMPositionBuilderAtEnd(br_builder, new_bb);
+    LLVMBuildBr(br_builder, m_ref);
+    LLVMDisposeBuilder(br_builder);
 
     return LLVMBasicBlockWrapper(new_bb, m_context_token);
   }
@@ -10730,17 +10812,41 @@ Returns:
 
 <sub>C API: LLVMGetNumPredecessors</sub>)")
       .def("split_basic_block", &LLVMBasicBlockWrapper::split_basic_block,
-           "split_before"_a, "name"_a = "",
+           "instruction"_a, "name"_a = "",
            R"(Split this basic block at the given instruction.
 
-All instructions from split_before to the end of the block are moved
-to a new basic block. An unconditional branch from this block to the
-new block is inserted. PHI nodes in successor blocks are updated to
-reference the new block as their predecessor.
+The `instruction` itself is included in the moved range.
+All instructions from `instruction` through the original terminator are
+moved into a new successor block.
+
+The original block is terminated with an unconditional branch to the
+new block. PHI nodes in successor blocks are updated to reference the
+new block as predecessor where needed.
+
+Use `split_basic_block_before()` when you want a new predecessor block
+and want `instruction` to remain in the original block.
 
 Returns the new basic block.
 
 <sub>C++ API: BasicBlock::splitBasicBlock</sub>)")
+      .def("split_basic_block_before",
+           &LLVMBasicBlockWrapper::split_basic_block_before, "instruction"_a,
+           "name"_a = "",
+           R"(Split this basic block before the given instruction.
+
+The `instruction` itself stays in the original block.
+All instructions before `instruction` are moved into a new predecessor
+block.
+
+Existing predecessors are redirected to the new block, and the new
+block unconditionally branches to this block.
+
+Use `split_basic_block()` when you want `instruction` included in the
+moved range and a new successor block.
+
+Returns the new predecessor basic block.
+
+<sub>C++ API: BasicBlock::splitBasicBlockBefore</sub>)")
       .def("move_before", &LLVMBasicBlockWrapper::move_before, "other"_a,
            R"(Move before block.
 
