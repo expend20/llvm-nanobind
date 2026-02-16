@@ -3916,6 +3916,13 @@ LLVMValueWrapper::get_incoming_block(unsigned index) const {
 inline LLVMValueWrapper
 LLVMOperandBundleWrapper::get_arg_at_index(unsigned index) const {
   check_valid();
+  unsigned count = LLVMGetNumOperandBundleArgs(m_ref);
+  if (index >= count) {
+    throw LLVMAssertionError("get_arg_at_index: operand bundle arg index " +
+                             std::to_string(index) +
+                             " out of range (num_args=" +
+                             std::to_string(count) + ")");
+  }
   LLVMValueRef arg = LLVMGetOperandBundleArgAtIndex(m_ref, index);
   if (!arg)
     throw LLVMAssertionError("Invalid operand bundle argument index");
@@ -7813,6 +7820,63 @@ struct LLVMBinaryWrapper : NoMoveCopy {
     return result;
   }
 };
+
+inline const char *binary_type_name(LLVMBinaryType type) {
+  switch (type) {
+  case LLVMBinaryTypeArchive:
+    return "archive";
+  case LLVMBinaryTypeMachOUniversalBinary:
+    return "mach-o universal binary";
+  case LLVMBinaryTypeCOFFImportFile:
+    return "coff import file";
+  case LLVMBinaryTypeIR:
+    return "ir/bitcode";
+  case LLVMBinaryTypeWinRes:
+    return "windows resource";
+  case LLVMBinaryTypeCOFF:
+    return "coff object";
+  case LLVMBinaryTypeELF32L:
+    return "elf32 little-endian object";
+  case LLVMBinaryTypeELF32B:
+    return "elf32 big-endian object";
+  case LLVMBinaryTypeELF64L:
+    return "elf64 little-endian object";
+  case LLVMBinaryTypeELF64B:
+    return "elf64 big-endian object";
+  case LLVMBinaryTypeMachO32L:
+    return "mach-o32 little-endian object";
+  case LLVMBinaryTypeMachO32B:
+    return "mach-o32 big-endian object";
+  case LLVMBinaryTypeMachO64L:
+    return "mach-o64 little-endian object";
+  case LLVMBinaryTypeMachO64B:
+    return "mach-o64 big-endian object";
+  case LLVMBinaryTypeWasm:
+    return "wasm object";
+  case LLVMBinaryTypeOffload:
+    return "offload";
+  default:
+    return "unknown";
+  }
+}
+
+inline bool binary_supports_object_iterators(LLVMBinaryType type) {
+  switch (type) {
+  case LLVMBinaryTypeCOFF:
+  case LLVMBinaryTypeELF32L:
+  case LLVMBinaryTypeELF32B:
+  case LLVMBinaryTypeELF64L:
+  case LLVMBinaryTypeELF64B:
+  case LLVMBinaryTypeMachO32L:
+  case LLVMBinaryTypeMachO32B:
+  case LLVMBinaryTypeMachO64L:
+  case LLVMBinaryTypeMachO64B:
+  case LLVMBinaryTypeWasm:
+    return true;
+  default:
+    return false;
+  }
+}
 
 // Section iterator - holds validity token from binary
 struct LLVMSectionIteratorWrapper : NoMoveCopy {
@@ -13891,6 +13955,12 @@ Returns:
           "sections",
           [](LLVMBinaryWrapper &self) {
             self.check_valid();
+            LLVMBinaryType type = self.get_type();
+            if (!binary_supports_object_iterators(type)) {
+              throw LLVMAssertionError(
+                  std::string("sections requires an object-file binary (got ") +
+                  binary_type_name(type) + ")");
+            }
             LLVMSectionIteratorRef ref =
                 LLVMObjectFileCopySectionIterator(self.m_ref);
             return new LLVMSectionIteratorWrapper(ref, self.m_ref,
@@ -13904,6 +13974,12 @@ Returns:
           "symbols",
           [](LLVMBinaryWrapper &self) {
             self.check_valid();
+            LLVMBinaryType type = self.get_type();
+            if (!binary_supports_object_iterators(type)) {
+              throw LLVMAssertionError(
+                  std::string("symbols requires an object-file binary (got ") +
+                  binary_type_name(type) + ")");
+            }
             LLVMSymbolIteratorRef ref =
                 LLVMObjectFileCopySymbolIterator(self.m_ref);
             return new LLVMSymbolIteratorWrapper(ref, self.m_ref, self.m_token);

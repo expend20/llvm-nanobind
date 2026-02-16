@@ -174,6 +174,11 @@ Guard global helpers by exact category before calling LLVM-C:
    - `append_existing_basic_block` requires an unattached block.
 7. Function attribute APIs now validate index bounds:
    - valid index set is `-1` (function), `0` (return), `1..param_count`.
+8. `OperandBundle.get_arg_at_index` now validates index bounds before calling
+   LLVM-C and reports `num_args`.
+9. `Binary.sections`/`Binary.symbols` are now gated by binary type. Calling
+   object iterators on non-object binaries (e.g., IR/bitcode) now raises
+   `LLVMAssertionError` instead of hard-crashing.
 
 ## Preserve Semantics
 
@@ -327,6 +332,7 @@ Comprehensive non-`Value` guard matrices are tracked in:
 
 - `tests/regressions/test_type_guard_matrix.py`
 - `tests/regressions/test_non_value_guard_matrix.py`
+- `tests/regressions/test_full_tree_guard_matrix.py`
 
 ## Assertion Message Quality
 

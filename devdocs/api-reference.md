@@ -236,3 +236,15 @@ This section captures guard preconditions for wrapper classes other than
 ### Global helper `llvm.block_address(fn, bb)`
 
 - Requires `bb` to be owned by `fn`.
+
+### OperandBundle (`llvm.OperandBundle`)
+
+- `get_arg_at_index(index)`:
+  - requires `0 <= index < num_args`
+
+### Binary/Object Iterators (`llvm.Binary`)
+
+- `sections` and `symbols`:
+  - require object-file binary types (`COFF`, `ELF*`, `MachO*`, `Wasm`).
+  - non-object binaries (e.g., `IR`, archive, import file) raise
+    `LLVMAssertionError` with the concrete binary type in the message.
