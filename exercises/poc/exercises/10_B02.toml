@@ -1,0 +1,15 @@
+title = "Memory Roundtrip"
+track = "builder"
+level = "beginner"
+estimated_minutes = 15
+submission_mode = "function_or_script"
+allow_stdout_ir = true
+prompt = """
+Build:
+  define i32 @mem_roundtrip(i32 %x)
+Use `alloca`, `store`, `load`, then return the loaded value.
+"""
+hints = [
+  "`alloca` needs the element type.",
+  "`load` in this API requires `(type, ptr, name)`.",
+]

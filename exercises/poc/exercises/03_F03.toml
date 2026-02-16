@@ -1,0 +1,15 @@
+title = "Build A Return-42 Function"
+track = "foundations"
+level = "beginner"
+estimated_minutes = 12
+submission_mode = "function_or_script"
+allow_stdout_ir = true
+prompt = """
+Add a function:
+  define i32 @answer() { entry: ret i32 42 }
+Build it with `Builder`.
+"""
+hints = [
+  "You need a basic block before emitting `ret`.",
+  "Use `ctx.types.i32.constant(42)` for the return value.",
+]

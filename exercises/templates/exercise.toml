@@ -1,0 +1,31 @@
+title = "Exercise Title"
+track = "foundations"
+level = "beginner"
+estimated_minutes = 10
+kind = "transform_ir"
+tags = ["example"]
+submission_mode = "function_or_script"
+allow_stdout_ir = true
+
+prompt = """
+Describe the task clearly in 2-5 lines.
+"""
+
+# Convention-only sidecars (required):
+#   <stem>.input.ll
+#   <stem>.starter.py
+#   <stem>.solution.py
+# Optional:
+#   <stem>.validator.py
+
+hints = ["First hint", "Second hint"]
+pitfalls = ["Common mistake one", "Common mistake two"]
+
+[validation]
+
+[[validation.checks]]
+type = "verify_module"
+
+[[validation.checks]]
+type = "ir_equal_normalized"
+expected_file = "expected.ll"

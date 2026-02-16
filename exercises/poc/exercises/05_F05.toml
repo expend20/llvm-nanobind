@@ -1,0 +1,29 @@
+title = "Verifier Failure Inspection"
+track = "foundations"
+level = "beginner"
+estimated_minutes = 12
+submission_mode = "function_or_script"
+prompt = """
+The input IR is intentionally invalid.
+Parse it, run the verifier, and return the verifier error message string.
+Do not fix the IR; report the failure.
+"""
+hints = [
+  "Parse can succeed while verification fails.",
+  "Use `mod.get_verification_error()` for the reason text.",
+]
+
+[validation]
+
+[[validation.checks]]
+type = "no_exception"
+
+[[validation.checks]]
+type = "combined_contains"
+text = "phi"
+case_insensitive = true
+
+[[validation.checks]]
+type = "combined_contains"
+text = "predecessor"
+case_insensitive = true

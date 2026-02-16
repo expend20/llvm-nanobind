@@ -1,0 +1,24 @@
+title = "Context Lifetime Guard"
+track = "foundations"
+level = "beginner"
+estimated_minutes = 10
+submission_mode = "function_or_script"
+prompt = """
+Demonstrate the lifetime guard:
+- create a value inside a context
+- access it after context exit
+Return the exception class name you observe.
+"""
+hints = [
+  "`LLVMMemoryError` derives from `SystemExit`, not `Exception`.",
+  "Catch `BaseException` if you want to inspect it.",
+]
+
+[validation]
+
+[[validation.checks]]
+type = "any_of"
+checks = [
+  { type = "exception_type_is", name = "LLVMMemoryError" },
+  { type = "combined_contains", text = "LLVMMemoryError", case_insensitive = false },
+]

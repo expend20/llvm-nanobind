@@ -1,0 +1,37 @@
+title = "Output Exercise Title"
+track = "foundations"
+level = "beginner"
+estimated_minutes = 8
+kind = "inspect_only"
+tags = ["stdout", "diagnostics"]
+submission_mode = "function_or_script"
+
+prompt = """
+Print specific information derived from the input IR.
+This template is for output-driven checks (stdout/stderr), not IR structure checks.
+"""
+
+# Convention-only sidecars (required):
+#   <stem>.input.ll
+#   <stem>.starter.py
+#   <stem>.solution.py
+# Optional:
+#   <stem>.validator.py
+
+hints = ["Use print() for required output lines.", "Keep output deterministic."]
+pitfalls = ["Relying on object repr formatting.", "Printing nondeterministic data."]
+
+[validation]
+
+[[validation.checks]]
+type = "no_exception"
+
+[[validation.checks]]
+type = "stdout_contains"
+text = "function_count:"
+case_insensitive = true
+
+[[validation.checks]]
+type = "stdout_regex"
+pattern = "function_count:\\s*[0-9]+"
+

@@ -1,0 +1,15 @@
+title = "Arithmetic Chain"
+track = "builder"
+level = "beginner"
+estimated_minutes = 15
+submission_mode = "function_or_script"
+allow_stdout_ir = true
+prompt = """
+Build:
+  define i32 @arith(i32 %a, i32 %b, i32 %c)
+Compute `(a + b) * c` and return it.
+"""
+hints = [
+  "Fetch parameters with `fn.get_param(index)`.",
+  "Return the `mul` result, not a constant.",
+]

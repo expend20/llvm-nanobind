@@ -1,0 +1,14 @@
+title = "Parse And Print"
+track = "foundations"
+level = "beginner"
+estimated_minutes = 8
+submission_mode = "function_or_script"
+allow_stdout_ir = true
+prompt = """
+Parse the input LLVM IR with the Python API and return a canonical IR string.
+This is a warm-up for parse/round-trip workflows.
+"""
+hints = [
+  "Use `with llvm.create_context() as ctx:`.",
+  "Use `with ctx.parse_ir(input_ir) as mod:`.",
+]

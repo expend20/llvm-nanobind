@@ -1,0 +1,22 @@
+title = "Module Manager Misuse"
+track = "foundations"
+level = "beginner"
+estimated_minutes = 10
+submission_mode = "function_or_script"
+prompt = """
+Intentionally misuse module manager lifecycle by calling `dispose()`
+before entering the manager. Return the exception class name.
+"""
+hints = [
+  "`ctx.create_module(...)` returns a manager object.",
+  "Disposing before entering should fail.",
+]
+
+[validation]
+
+[[validation.checks]]
+type = "any_of"
+checks = [
+  { type = "exception_type_is", name = "LLVMMemoryError" },
+  { type = "combined_contains", text = "LLVMMemoryError", case_insensitive = false },
+]

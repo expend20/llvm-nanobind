@@ -1,0 +1,15 @@
+title = "Add A Function Declaration"
+track = "foundations"
+level = "beginner"
+estimated_minutes = 10
+submission_mode = "function_or_script"
+allow_stdout_ir = true
+prompt = """
+Add a declaration to the module:
+  declare i32 @sum2(i32, i32)
+Return the updated module IR.
+"""
+hints = [
+  "Use `ctx.types.function(return_ty, [param_tys...])`.",
+  "Declarations are functions with no basic blocks.",
+]
