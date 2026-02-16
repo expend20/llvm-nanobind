@@ -6,6 +6,7 @@
 #include <nanobind/stl/vector.h>
 
 #include <atomic>
+#include <cctype>
 #include <memory>
 #include <mutex>
 #include <stdexcept>
@@ -1078,6 +1079,316 @@ struct LLVMValueWrapper {
       throw LLVMMemoryError("Value used after context was destroyed");
   }
 
+  static const char *opcode_name(LLVMOpcode op) {
+    switch (op) {
+    case LLVMRet:
+      return "ret";
+    case LLVMBr:
+      return "br";
+    case LLVMSwitch:
+      return "switch";
+    case LLVMIndirectBr:
+      return "indirectbr";
+    case LLVMInvoke:
+      return "invoke";
+    case LLVMUnreachable:
+      return "unreachable";
+    case LLVMCallBr:
+      return "callbr";
+    case LLVMFNeg:
+      return "fneg";
+    case LLVMAdd:
+      return "add";
+    case LLVMFAdd:
+      return "fadd";
+    case LLVMSub:
+      return "sub";
+    case LLVMFSub:
+      return "fsub";
+    case LLVMMul:
+      return "mul";
+    case LLVMFMul:
+      return "fmul";
+    case LLVMUDiv:
+      return "udiv";
+    case LLVMSDiv:
+      return "sdiv";
+    case LLVMFDiv:
+      return "fdiv";
+    case LLVMURem:
+      return "urem";
+    case LLVMSRem:
+      return "srem";
+    case LLVMFRem:
+      return "frem";
+    case LLVMShl:
+      return "shl";
+    case LLVMLShr:
+      return "lshr";
+    case LLVMAShr:
+      return "ashr";
+    case LLVMAnd:
+      return "and";
+    case LLVMOr:
+      return "or";
+    case LLVMXor:
+      return "xor";
+    case LLVMAlloca:
+      return "alloca";
+    case LLVMLoad:
+      return "load";
+    case LLVMStore:
+      return "store";
+    case LLVMGetElementPtr:
+      return "getelementptr";
+    case LLVMTrunc:
+      return "trunc";
+    case LLVMZExt:
+      return "zext";
+    case LLVMSExt:
+      return "sext";
+    case LLVMFPToUI:
+      return "fptoui";
+    case LLVMFPToSI:
+      return "fptosi";
+    case LLVMUIToFP:
+      return "uitofp";
+    case LLVMSIToFP:
+      return "sitofp";
+    case LLVMFPTrunc:
+      return "fptrunc";
+    case LLVMFPExt:
+      return "fpext";
+    case LLVMPtrToInt:
+      return "ptrtoint";
+    case LLVMIntToPtr:
+      return "inttoptr";
+    case LLVMBitCast:
+      return "bitcast";
+    case LLVMAddrSpaceCast:
+      return "addrspacecast";
+    case LLVMICmp:
+      return "icmp";
+    case LLVMFCmp:
+      return "fcmp";
+    case LLVMPHI:
+      return "phi";
+    case LLVMCall:
+      return "call";
+    case LLVMSelect:
+      return "select";
+    case LLVMUserOp1:
+      return "userop1";
+    case LLVMUserOp2:
+      return "userop2";
+    case LLVMVAArg:
+      return "va_arg";
+    case LLVMExtractElement:
+      return "extractelement";
+    case LLVMInsertElement:
+      return "insertelement";
+    case LLVMShuffleVector:
+      return "shufflevector";
+    case LLVMExtractValue:
+      return "extractvalue";
+    case LLVMInsertValue:
+      return "insertvalue";
+    case LLVMFreeze:
+      return "freeze";
+    case LLVMFence:
+      return "fence";
+    case LLVMAtomicCmpXchg:
+      return "cmpxchg";
+    case LLVMAtomicRMW:
+      return "atomicrmw";
+    case LLVMResume:
+      return "resume";
+    case LLVMLandingPad:
+      return "landingpad";
+    case LLVMCleanupRet:
+      return "cleanupret";
+    case LLVMCatchRet:
+      return "catchret";
+    case LLVMCatchPad:
+      return "catchpad";
+    case LLVMCleanupPad:
+      return "cleanuppad";
+    case LLVMCatchSwitch:
+      return "catchswitch";
+    default:
+      return "unknown";
+    }
+  }
+
+  template <LLVMOpcode... AllowedOps>
+  static std::string expected_opcode_list() {
+    static_assert(sizeof...(AllowedOps) > 0,
+                  "At least one opcode must be provided");
+    const char *names[] = {opcode_name(AllowedOps)...};
+    constexpr size_t count = sizeof...(AllowedOps);
+
+    std::string result;
+    for (size_t i = 0; i < count; ++i) {
+      if (i > 0) {
+        if (i + 1 == count) {
+          result += (count == 2) ? " or " : ", or ";
+        } else {
+          result += ", ";
+        }
+      }
+      result += names[i];
+    }
+    return result;
+  }
+
+  static std::string with_indefinite_article(const char *name) {
+    if (!name || !name[0])
+      return "an instruction";
+    char c = static_cast<char>(std::tolower(static_cast<unsigned char>(name[0])));
+    const bool starts_with_vowel =
+        (c == 'a' || c == 'e' || c == 'i' || c == 'o' || c == 'u');
+    return std::string(starts_with_vowel ? "an " : "a ") + name;
+  }
+
+  template <LLVMOpcode... AllowedOps>
+  static std::string expected_opcode_phrase() {
+    constexpr size_t count = sizeof...(AllowedOps);
+    if constexpr (count == 1) {
+      const LLVMOpcode opcodes[] = {AllowedOps...};
+      return with_indefinite_article(opcode_name(opcodes[0]));
+    } else {
+      return expected_opcode_list<AllowedOps...>();
+    }
+  }
+
+  void require_instruction_value(const char *api_name) const {
+    if (!LLVMIsAInstruction(m_ref)) {
+      throw LLVMAssertionError(std::string(api_name) +
+                               " requires an instruction value");
+    }
+  }
+
+  template <LLVMOpcode... AllowedOps>
+  void require_instruction_opcodes(const char *api_name,
+                                   const char *custom_expected = nullptr) const {
+    const std::string expected =
+        custom_expected ? custom_expected : expected_opcode_phrase<AllowedOps...>();
+
+    if (!LLVMIsAInstruction(m_ref)) {
+      throw LLVMAssertionError(std::string(api_name) + " requires " + expected +
+                               " instruction (got non-instruction value)");
+    }
+
+    LLVMOpcode op = LLVMGetInstructionOpcode(m_ref);
+    bool matches_opcode = ((op == AllowedOps) || ...);
+    if (matches_opcode)
+      return;
+
+    throw LLVMAssertionError(std::string(api_name) + " requires " + expected +
+                             " instruction (got " + opcode_name(op) + ")");
+  }
+
+  void require_global_variable(const char *api_name) const {
+    if (!LLVMIsAGlobalVariable(m_ref)) {
+      throw LLVMAssertionError(std::string(api_name) +
+                               " requires a global variable");
+    }
+  }
+
+  void require_global_value(const char *api_name) const {
+    if (!LLVMIsAGlobalValue(m_ref)) {
+      throw LLVMAssertionError(std::string(api_name) +
+                               " requires a global value");
+    }
+  }
+
+  void require_global_object(const char *api_name) const {
+    if (!LLVMIsAGlobalObject(m_ref)) {
+      throw LLVMAssertionError(std::string(api_name) +
+                               " requires a global object");
+    }
+  }
+
+  void require_global_alias(const char *api_name) const {
+    if (!LLVMIsAGlobalAlias(m_ref)) {
+      throw LLVMAssertionError(std::string(api_name) +
+                               " requires a global alias");
+    }
+  }
+
+  void require_global_ifunc(const char *api_name) const {
+    if (LLVMGetValueKind(m_ref) != LLVMGlobalIFuncValueKind) {
+      throw LLVMAssertionError(std::string(api_name) +
+                               " requires a global ifunc value");
+    }
+  }
+
+  void require_function_value(const char *api_name) const {
+    if (!LLVMIsAFunction(m_ref)) {
+      throw LLVMAssertionError(std::string(api_name) +
+                               " requires a function value");
+    }
+  }
+
+  void require_argument_value(const char *api_name) const {
+    if (!LLVMIsAArgument(m_ref)) {
+      throw LLVMAssertionError(std::string(api_name) +
+                               " requires a function argument value");
+    }
+  }
+
+  void require_phi_instruction(const char *api_name) const {
+    require_instruction_opcodes<LLVMPHI>(api_name);
+  }
+
+  void require_call_like_instruction(const char *api_name) const {
+    require_instruction_opcodes<LLVMCall, LLVMInvoke, LLVMCallBr>(api_name);
+  }
+
+  void require_arg_operands_instruction(const char *api_name) const {
+    require_instruction_opcodes<LLVMCall, LLVMInvoke, LLVMCallBr,
+                                LLVMCatchPad, LLVMCleanupPad>(api_name);
+  }
+
+  void require_invoke_instruction(const char *api_name) const {
+    require_instruction_opcodes<LLVMInvoke>(api_name);
+  }
+
+  void require_callbr_instruction(const char *api_name) const {
+    require_instruction_opcodes<LLVMCallBr>(api_name);
+  }
+
+  void require_terminator_instruction(const char *api_name) const {
+    if (!LLVMIsAInstruction(m_ref)) {
+      throw LLVMAssertionError(std::string(api_name) +
+                               " requires a terminator instruction (got "
+                               "non-instruction value)");
+    }
+    if (!LLVMIsATerminatorInst(m_ref)) {
+      throw LLVMAssertionError(std::string(api_name) +
+                               " requires a terminator instruction (got " +
+                               opcode_name(LLVMGetInstructionOpcode(m_ref)) +
+                               ")");
+    }
+  }
+
+  void require_landingpad_instruction(const char *api_name) const {
+    require_instruction_opcodes<LLVMLandingPad>(api_name);
+  }
+
+  void require_catchpad_instruction(const char *api_name) const {
+    require_instruction_opcodes<LLVMCatchPad>(api_name);
+  }
+
+  void require_catchswitch_instruction(const char *api_name) const {
+    require_instruction_opcodes<LLVMCatchSwitch>(api_name);
+  }
+
+  void require_shufflevector_instruction(const char *api_name) const {
+    require_instruction_opcodes<LLVMShuffleVector>(api_name,
+                                                   "a shufflevector");
+  }
+
   LLVMTypeWrapper type() const {
     check_valid();
     return LLVMTypeWrapper(LLVMTypeOf(m_ref), m_context_token);
@@ -1153,6 +1464,7 @@ struct LLVMValueWrapper {
 
   std::optional<LLVMValueWrapper> next_global() const {
     check_valid();
+    require_global_variable("next_global");
     LLVMValueRef next = LLVMGetNextGlobal(m_ref);
     if (!next)
       return std::nullopt;
@@ -1161,6 +1473,7 @@ struct LLVMValueWrapper {
 
   std::optional<LLVMValueWrapper> prev_global() const {
     check_valid();
+    require_global_variable("prev_global");
     LLVMValueRef prev = LLVMGetPreviousGlobal(m_ref);
     if (!prev)
       return std::nullopt;
@@ -1170,6 +1483,7 @@ struct LLVMValueWrapper {
   // Global alias iteration for echo command
   std::optional<LLVMValueWrapper> next_global_alias() const {
     check_valid();
+    require_global_alias("next_global_alias");
     LLVMValueRef next = LLVMGetNextGlobalAlias(m_ref);
     if (!next)
       return std::nullopt;
@@ -1178,6 +1492,7 @@ struct LLVMValueWrapper {
 
   std::optional<LLVMValueWrapper> prev_global_alias() const {
     check_valid();
+    require_global_alias("prev_global_alias");
     LLVMValueRef prev = LLVMGetPreviousGlobalAlias(m_ref);
     if (!prev)
       return std::nullopt;
@@ -1186,6 +1501,7 @@ struct LLVMValueWrapper {
 
   std::optional<LLVMValueWrapper> alias_get_aliasee() const {
     check_valid();
+    require_global_alias("aliasee");
     LLVMValueRef aliasee = LLVMAliasGetAliasee(m_ref);
     if (!aliasee)
       return std::nullopt;
@@ -1194,6 +1510,7 @@ struct LLVMValueWrapper {
 
   void alias_set_aliasee(const LLVMValueWrapper &aliasee) {
     check_valid();
+    require_global_alias("alias_set_aliasee");
     aliasee.check_valid();
     LLVMAliasSetAliasee(m_ref, aliasee.m_ref);
   }
@@ -1201,6 +1518,7 @@ struct LLVMValueWrapper {
   // Global IFunc iteration for echo command
   std::optional<LLVMValueWrapper> next_global_ifunc() const {
     check_valid();
+    require_global_ifunc("next_global_ifunc");
     LLVMValueRef next = LLVMGetNextGlobalIFunc(m_ref);
     if (!next)
       return std::nullopt;
@@ -1209,6 +1527,7 @@ struct LLVMValueWrapper {
 
   std::optional<LLVMValueWrapper> prev_global_ifunc() const {
     check_valid();
+    require_global_ifunc("prev_global_ifunc");
     LLVMValueRef prev = LLVMGetPreviousGlobalIFunc(m_ref);
     if (!prev)
       return std::nullopt;
@@ -1217,6 +1536,7 @@ struct LLVMValueWrapper {
 
   std::optional<LLVMValueWrapper> get_global_ifunc_resolver() const {
     check_valid();
+    require_global_ifunc("global_ifunc_resolver");
     LLVMValueRef resolver = LLVMGetGlobalIFuncResolver(m_ref);
     if (!resolver)
       return std::nullopt;
@@ -1225,6 +1545,7 @@ struct LLVMValueWrapper {
 
   void set_global_ifunc_resolver(const LLVMValueWrapper &resolver) {
     check_valid();
+    require_global_ifunc("set_global_ifunc_resolver");
     resolver.check_valid();
     LLVMSetGlobalIFuncResolver(m_ref, resolver.m_ref);
   }
@@ -1232,6 +1553,7 @@ struct LLVMValueWrapper {
   // Erase global IFunc from parent module and delete it
   void erase_from_parent_ifunc() {
     check_valid();
+    require_global_ifunc("erase_from_parent_ifunc");
     LLVMEraseGlobalIFunc(m_ref);
     m_ref = nullptr; // IFunc is now deleted
   }
@@ -1239,6 +1561,7 @@ struct LLVMValueWrapper {
   // Remove global IFunc from parent module but keep it alive
   void remove_from_parent_ifunc() {
     check_valid();
+    require_global_ifunc("remove_from_parent_ifunc");
     LLVMRemoveGlobalIFunc(m_ref);
     // IFunc is still alive, just unlinked from module
   }
@@ -1246,26 +1569,31 @@ struct LLVMValueWrapper {
   // Global properties for echo command
   LLVMTypeWrapper global_get_value_type() const {
     check_valid();
+    require_global_value("global_value_type");
     return LLVMTypeWrapper(LLVMGlobalGetValueType(m_ref), m_context_token);
   }
 
   LLVMUnnamedAddr get_unnamed_address() const {
     check_valid();
+    require_global_value("unnamed_address");
     return LLVMGetUnnamedAddress(m_ref);
   }
 
   void set_unnamed_address(LLVMUnnamedAddr unnamed_addr) {
     check_valid();
+    require_global_value("set_unnamed_address");
     LLVMSetUnnamedAddress(m_ref, unnamed_addr);
   }
 
   bool has_personality_fn() const {
     check_valid();
+    require_function_value("has_personality_fn");
     return LLVMHasPersonalityFn(m_ref);
   }
 
   std::optional<LLVMValueWrapper> get_personality_fn() const {
     check_valid();
+    require_function_value("personality_fn");
     LLVMValueRef fn = LLVMGetPersonalityFn(m_ref);
     if (!fn)
       return std::nullopt;
@@ -1274,17 +1602,20 @@ struct LLVMValueWrapper {
 
   void set_personality_fn(const LLVMValueWrapper &fn) {
     check_valid();
+    require_function_value("set_personality_fn");
     fn.check_valid();
     LLVMSetPersonalityFn(m_ref, fn.m_ref);
   }
 
   bool has_prefix_data() const {
     check_valid();
+    require_function_value("has_prefix_data");
     return LLVMHasPrefixData(m_ref);
   }
 
   std::optional<LLVMValueWrapper> get_prefix_data() const {
     check_valid();
+    require_function_value("prefix_data");
     LLVMValueRef data = LLVMGetPrefixData(m_ref);
     if (!data)
       return std::nullopt;
@@ -1293,17 +1624,20 @@ struct LLVMValueWrapper {
 
   void set_prefix_data(const LLVMValueWrapper &data) {
     check_valid();
+    require_function_value("set_prefix_data");
     data.check_valid();
     LLVMSetPrefixData(m_ref, data.m_ref);
   }
 
   bool has_prologue_data() const {
     check_valid();
+    require_function_value("has_prologue_data");
     return LLVMHasPrologueData(m_ref);
   }
 
   std::optional<LLVMValueWrapper> get_prologue_data() const {
     check_valid();
+    require_function_value("prologue_data");
     LLVMValueRef data = LLVMGetPrologueData(m_ref);
     if (!data)
       return std::nullopt;
@@ -1312,6 +1646,7 @@ struct LLVMValueWrapper {
 
   void set_prologue_data(const LLVMValueWrapper &data) {
     check_valid();
+    require_function_value("set_prologue_data");
     data.check_valid();
     LLVMSetPrologueData(m_ref, data.m_ref);
   }
@@ -1319,6 +1654,7 @@ struct LLVMValueWrapper {
   // Global/Instruction metadata copying for echo command
   LLVMValueMetadataEntriesWrapper global_copy_all_metadata() const {
     check_valid();
+    require_global_value("global_copy_all_metadata");
     size_t num_entries = 0;
     LLVMValueMetadataEntry *entries =
         LLVMGlobalCopyAllMetadata(m_ref, &num_entries);
@@ -1329,6 +1665,7 @@ struct LLVMValueWrapper {
   LLVMValueMetadataEntriesWrapper
   instruction_get_all_metadata_other_than_debug_loc() const {
     check_valid();
+    require_instruction_value("instruction_get_all_metadata_other_than_debug_loc");
     size_t num_entries = 0;
     LLVMValueMetadataEntry *entries =
         LLVMInstructionGetAllMetadataOtherThanDebugLoc(m_ref, &num_entries);
@@ -1339,6 +1676,7 @@ struct LLVMValueWrapper {
   // Instruction iteration
   std::optional<LLVMValueWrapper> next_instruction() const {
     check_valid();
+    require_instruction_value("next_instruction");
     LLVMValueRef next = LLVMGetNextInstruction(m_ref);
     if (!next)
       return std::nullopt;
@@ -1347,6 +1685,7 @@ struct LLVMValueWrapper {
 
   std::optional<LLVMValueWrapper> prev_instruction() const {
     check_valid();
+    require_instruction_value("prev_instruction");
     LLVMValueRef prev = LLVMGetPreviousInstruction(m_ref);
     if (!prev)
       return std::nullopt;
@@ -1356,6 +1695,7 @@ struct LLVMValueWrapper {
   // Parameter iteration for echo command
   std::optional<LLVMValueWrapper> next_param() const {
     check_valid();
+    require_argument_value("next_param");
     LLVMValueRef next = LLVMGetNextParam(m_ref);
     if (!next)
       return std::nullopt;
@@ -1364,6 +1704,7 @@ struct LLVMValueWrapper {
 
   std::optional<LLVMValueWrapper> prev_param() const {
     check_valid();
+    require_argument_value("prev_param");
     LLVMValueRef prev = LLVMGetPreviousParam(m_ref);
     if (!prev)
       return std::nullopt;
@@ -1553,6 +1894,13 @@ struct LLVMValueWrapper {
 
   LLVMValueWrapper get_aggregate_element(unsigned index) const {
     check_valid();
+    if (!LLVMIsAConstantStruct(m_ref) && !LLVMIsAConstantArray(m_ref) &&
+        !LLVMIsAConstantVector(m_ref) && !LLVMIsAConstantDataArray(m_ref) &&
+        !LLVMIsAConstantDataVector(m_ref) &&
+        !LLVMIsAConstantAggregateZero(m_ref)) {
+      throw LLVMAssertionError(
+          "get_aggregate_element requires a constant aggregate value");
+    }
     LLVMValueRef elem = LLVMGetAggregateElement(m_ref, index);
     if (!elem)
       throw LLVMAssertionError("Invalid aggregate element index");
@@ -1569,16 +1917,51 @@ struct LLVMValueWrapper {
 
   LLVMTypeWrapper get_gep_source_element_type() const {
     check_valid();
-    return LLVMTypeWrapper(LLVMGetGEPSourceElementType(m_ref), m_context_token);
+    bool is_gep_instruction =
+        LLVMIsAInstruction(m_ref) &&
+        LLVMGetInstructionOpcode(m_ref) == LLVMGetElementPtr;
+    bool is_gep_const_expr =
+        LLVMIsAConstantExpr(m_ref) &&
+        LLVMGetConstOpcode(m_ref) == LLVMGetElementPtr;
+    if (!is_gep_instruction && !is_gep_const_expr) {
+      throw LLVMAssertionError("gep_source_element_type requires a GEP value");
+    }
+    LLVMTypeRef ty = LLVMGetGEPSourceElementType(m_ref);
+    if (!ty)
+      throw LLVMAssertionError("GEP source element type is null");
+    return LLVMTypeWrapper(ty, m_context_token);
   }
 
   unsigned get_num_indices() const {
     check_valid();
+    bool is_indexed_instruction =
+        LLVMIsAInstruction(m_ref) &&
+        (LLVMGetInstructionOpcode(m_ref) == LLVMGetElementPtr ||
+         LLVMGetInstructionOpcode(m_ref) == LLVMExtractValue ||
+         LLVMGetInstructionOpcode(m_ref) == LLVMInsertValue);
+    bool is_indexed_const_expr =
+        LLVMIsAConstantExpr(m_ref) &&
+        (LLVMGetConstOpcode(m_ref) == LLVMGetElementPtr ||
+         LLVMGetConstOpcode(m_ref) == LLVMExtractValue ||
+         LLVMGetConstOpcode(m_ref) == LLVMInsertValue);
+    if (!is_indexed_instruction && !is_indexed_const_expr) {
+      throw LLVMAssertionError(
+          "num_indices requires getelementptr, extractvalue, or insertvalue");
+    }
     return LLVMGetNumIndices(m_ref);
   }
 
   unsigned get_gep_no_wrap_flags() const {
     check_valid();
+    bool is_gep_instruction =
+        LLVMIsAInstruction(m_ref) &&
+        LLVMGetInstructionOpcode(m_ref) == LLVMGetElementPtr;
+    bool is_gep_const_expr =
+        LLVMIsAConstantExpr(m_ref) &&
+        LLVMGetConstOpcode(m_ref) == LLVMGetElementPtr;
+    if (!is_gep_instruction && !is_gep_const_expr) {
+      throw LLVMAssertionError("gep_no_wrap_flags requires a GEP value");
+    }
     return LLVMGEPGetNoWrapFlags(m_ref);
   }
 
@@ -1617,161 +2000,145 @@ struct LLVMValueWrapper {
   // Instruction properties for echo command
   LLVMOpcode get_instruction_opcode() const {
     check_valid();
+    require_instruction_value("opcode");
     return LLVMGetInstructionOpcode(m_ref);
   }
 
   // Get the mnemonic string for this instruction's opcode
   std::string get_opcode_name() const {
     check_valid();
-    LLVMOpcode op = LLVMGetInstructionOpcode(m_ref);
-    static const std::unordered_map<LLVMOpcode, const char *> names = {
-        {LLVMRet, "ret"},
-        {LLVMBr, "br"},
-        {LLVMSwitch, "switch"},
-        {LLVMIndirectBr, "indirectbr"},
-        {LLVMInvoke, "invoke"},
-        {LLVMUnreachable, "unreachable"},
-        {LLVMCallBr, "callbr"},
-        {LLVMFNeg, "fneg"},
-        {LLVMAdd, "add"},
-        {LLVMFAdd, "fadd"},
-        {LLVMSub, "sub"},
-        {LLVMFSub, "fsub"},
-        {LLVMMul, "mul"},
-        {LLVMFMul, "fmul"},
-        {LLVMUDiv, "udiv"},
-        {LLVMSDiv, "sdiv"},
-        {LLVMFDiv, "fdiv"},
-        {LLVMURem, "urem"},
-        {LLVMSRem, "srem"},
-        {LLVMFRem, "frem"},
-        {LLVMShl, "shl"},
-        {LLVMLShr, "lshr"},
-        {LLVMAShr, "ashr"},
-        {LLVMAnd, "and"},
-        {LLVMOr, "or"},
-        {LLVMXor, "xor"},
-        {LLVMAlloca, "alloca"},
-        {LLVMLoad, "load"},
-        {LLVMStore, "store"},
-        {LLVMGetElementPtr, "getelementptr"},
-        {LLVMTrunc, "trunc"},
-        {LLVMZExt, "zext"},
-        {LLVMSExt, "sext"},
-        {LLVMFPToUI, "fptoui"},
-        {LLVMFPToSI, "fptosi"},
-        {LLVMUIToFP, "uitofp"},
-        {LLVMSIToFP, "sitofp"},
-        {LLVMFPTrunc, "fptrunc"},
-        {LLVMFPExt, "fpext"},
-        {LLVMPtrToInt, "ptrtoint"},
-        {LLVMIntToPtr, "inttoptr"},
-        {LLVMBitCast, "bitcast"},
-        {LLVMAddrSpaceCast, "addrspacecast"},
-        {LLVMICmp, "icmp"},
-        {LLVMFCmp, "fcmp"},
-        {LLVMPHI, "phi"},
-        {LLVMCall, "call"},
-        {LLVMSelect, "select"},
-        {LLVMUserOp1, "userop1"},
-        {LLVMUserOp2, "userop2"},
-        {LLVMVAArg, "va_arg"},
-        {LLVMExtractElement, "extractelement"},
-        {LLVMInsertElement, "insertelement"},
-        {LLVMShuffleVector, "shufflevector"},
-        {LLVMExtractValue, "extractvalue"},
-        {LLVMInsertValue, "insertvalue"},
-        {LLVMFreeze, "freeze"},
-        {LLVMFence, "fence"},
-        {LLVMAtomicCmpXchg, "cmpxchg"},
-        {LLVMAtomicRMW, "atomicrmw"},
-        {LLVMResume, "resume"},
-        {LLVMLandingPad, "landingpad"},
-        {LLVMCleanupRet, "cleanupret"},
-        {LLVMCatchRet, "catchret"},
-        {LLVMCatchPad, "catchpad"},
-        {LLVMCleanupPad, "cleanuppad"},
-        {LLVMCatchSwitch, "catchswitch"},
-    };
-    auto it = names.find(op);
-    if (it != names.end())
-      return it->second;
-    return "unknown";
+    require_instruction_value("opcode_name");
+    return opcode_name(LLVMGetInstructionOpcode(m_ref));
   }
 
   LLVMIntPredicate get_icmp_predicate() const {
     check_valid();
+    require_instruction_opcodes<LLVMICmp>("icmp_predicate");
     return LLVMGetICmpPredicate(m_ref);
   }
 
   LLVMRealPredicate get_fcmp_predicate() const {
     check_valid();
+    require_instruction_opcodes<LLVMFCmp>("fcmp_predicate");
     return LLVMGetFCmpPredicate(m_ref);
   }
 
   // Instruction flags
   bool get_nsw() const {
     check_valid();
+    require_instruction_opcodes<LLVMAdd, LLVMSub, LLVMMul, LLVMShl>(
+        "nsw", "an overflowing binary operator");
     return LLVMGetNSW(m_ref);
   }
 
   bool get_nuw() const {
     check_valid();
+    require_instruction_opcodes<LLVMAdd, LLVMSub, LLVMMul, LLVMShl>(
+        "nuw", "an overflowing binary operator");
     return LLVMGetNUW(m_ref);
   }
 
   bool get_exact() const {
     check_valid();
+    require_instruction_opcodes<LLVMUDiv, LLVMSDiv, LLVMLShr, LLVMAShr>(
+        "exact", "an exact-eligible binary operator");
     return LLVMGetExact(m_ref);
   }
 
   bool get_nneg() const {
     check_valid();
+    require_instruction_opcodes<LLVMZExt>("nneg");
     return LLVMGetNNeg(m_ref);
   }
 
   // Memory access properties
   unsigned get_alignment() const {
     check_valid();
+    bool global_alignment = LLVMIsAGlobalObject(m_ref);
+    bool instruction_alignment =
+        LLVMIsAInstruction(m_ref) &&
+        (LLVMGetInstructionOpcode(m_ref) == LLVMAlloca ||
+         LLVMGetInstructionOpcode(m_ref) == LLVMLoad ||
+         LLVMGetInstructionOpcode(m_ref) == LLVMStore ||
+         LLVMGetInstructionOpcode(m_ref) == LLVMAtomicRMW ||
+         LLVMGetInstructionOpcode(m_ref) == LLVMAtomicCmpXchg);
+    if (!global_alignment && !instruction_alignment) {
+      throw LLVMAssertionError(
+          "alignment requires a global object or aligned memory instruction");
+    }
     return LLVMGetAlignment(m_ref);
   }
 
   void set_alignment(unsigned align) {
     check_valid();
+    bool global_alignment = LLVMIsAGlobalObject(m_ref);
+    bool instruction_alignment =
+        LLVMIsAInstruction(m_ref) &&
+        (LLVMGetInstructionOpcode(m_ref) == LLVMAlloca ||
+         LLVMGetInstructionOpcode(m_ref) == LLVMLoad ||
+         LLVMGetInstructionOpcode(m_ref) == LLVMStore ||
+         LLVMGetInstructionOpcode(m_ref) == LLVMAtomicRMW ||
+         LLVMGetInstructionOpcode(m_ref) == LLVMAtomicCmpXchg);
+    if (!global_alignment && !instruction_alignment) {
+      throw LLVMAssertionError(
+          "set_alignment requires a global object or aligned memory instruction");
+    }
     LLVMSetAlignment(m_ref, align);
   }
 
   bool get_volatile() const {
     check_valid();
+    require_instruction_opcodes<LLVMLoad, LLVMStore, LLVMAtomicRMW,
+                                LLVMAtomicCmpXchg>(
+        "is_volatile", "a load, store, atomicrmw, or cmpxchg");
     return LLVMGetVolatile(m_ref);
   }
 
   void set_volatile(bool is_volatile) {
     check_valid();
+    require_instruction_opcodes<LLVMLoad, LLVMStore, LLVMAtomicRMW,
+                                LLVMAtomicCmpXchg>(
+        "set_volatile", "a load, store, atomicrmw, or cmpxchg");
     LLVMSetVolatile(m_ref, is_volatile);
   }
 
   LLVMAtomicOrdering get_ordering() const {
     check_valid();
+    require_instruction_opcodes<LLVMLoad, LLVMStore, LLVMFence, LLVMAtomicRMW,
+                                LLVMAtomicCmpXchg>(
+        "ordering", "an atomic-capable memory instruction");
     return LLVMGetOrdering(m_ref);
   }
 
   // Call/invoke properties
   unsigned get_num_arg_operands() const {
     check_valid();
+    require_arg_operands_instruction("num_arg_operands");
     return LLVMGetNumArgOperands(m_ref);
   }
 
   // PHI node properties
   unsigned count_incoming() const {
     check_valid();
+    require_phi_instruction("num_incoming");
     return LLVMCountIncoming(m_ref);
   }
 
   LLVMValueWrapper get_incoming_value(unsigned index) const {
     check_valid();
-    return LLVMValueWrapper(LLVMGetIncomingValue(m_ref, index),
-                            m_context_token);
+    require_phi_instruction("get_incoming_value");
+    unsigned count = LLVMCountIncoming(m_ref);
+    if (index >= count) {
+      throw LLVMAssertionError(
+          "get_incoming_value: incoming value index " + std::to_string(index) +
+          " out of range (num_incoming=" + std::to_string(count) + ")");
+    }
+    LLVMValueRef incoming = LLVMGetIncomingValue(m_ref, index);
+    if (!incoming) {
+      throw LLVMAssertionError("get_incoming_value: incoming value at index " +
+                               std::to_string(index) + " is null");
+    }
+    return LLVMValueWrapper(incoming, m_context_token);
   }
 
   // Forward declaration - defined after LLVMBasicBlockWrapper
@@ -1780,6 +2147,7 @@ struct LLVMValueWrapper {
   // Alloca properties
   LLVMTypeWrapper get_allocated_type() const {
     check_valid();
+    require_instruction_opcodes<LLVMAlloca>("allocated_type");
     return LLVMTypeWrapper(LLVMGetAllocatedType(m_ref), m_context_token);
   }
 
@@ -1796,6 +2164,7 @@ struct LLVMValueWrapper {
   // =========================================================================
   unsigned get_num_operand_bundles() const {
     check_valid();
+    require_call_like_instruction("num_operand_bundles");
     return LLVMGetNumOperandBundles(m_ref);
   }
 
@@ -1803,6 +2172,15 @@ struct LLVMValueWrapper {
   // Note: Caller is responsible for disposing of the returned bundle
   LLVMOperandBundleRef get_operand_bundle_at_index_raw(unsigned index) const {
     check_valid();
+    require_call_like_instruction("get_operand_bundle_at_index");
+    unsigned bundle_count = LLVMGetNumOperandBundles(m_ref);
+    if (index >= bundle_count) {
+      throw LLVMAssertionError(
+          "get_operand_bundle_at_index: operand bundle index " +
+          std::to_string(index) +
+          " out of range (num_operand_bundles=" +
+          std::to_string(bundle_count) + ")");
+    }
     return LLVMGetOperandBundleAtIndex(m_ref, index);
   }
 
@@ -1875,119 +2253,155 @@ struct LLVMValueWrapper {
   // Flag setters (pairs with existing getters)
   void set_nsw(bool nsw) {
     check_valid();
+    require_instruction_opcodes<LLVMAdd, LLVMSub, LLVMMul, LLVMShl>(
+        "set_nsw", "an overflowing binary operator");
     LLVMSetNSW(m_ref, nsw);
   }
 
   void set_nuw(bool nuw) {
     check_valid();
+    require_instruction_opcodes<LLVMAdd, LLVMSub, LLVMMul, LLVMShl>(
+        "set_nuw", "an overflowing binary operator");
     LLVMSetNUW(m_ref, nuw);
   }
 
   void set_exact(bool exact) {
     check_valid();
+    require_instruction_opcodes<LLVMUDiv, LLVMSDiv, LLVMLShr, LLVMAShr>(
+        "set_exact", "an exact-eligible binary operator");
     LLVMSetExact(m_ref, exact);
   }
 
   void set_nneg(bool nneg) {
     check_valid();
+    require_instruction_opcodes<LLVMZExt>("set_nneg");
     LLVMSetNNeg(m_ref, nneg);
   }
 
   // Disjoint flag for Or instruction
   bool get_is_disjoint() const {
     check_valid();
+    require_instruction_opcodes<LLVMOr>("is_disjoint");
     return LLVMGetIsDisjoint(m_ref);
   }
 
   void set_is_disjoint(bool is_disjoint) {
     check_valid();
+    require_instruction_opcodes<LLVMOr>("set_is_disjoint");
     LLVMSetIsDisjoint(m_ref, is_disjoint);
   }
 
   // ICmp same sign flag
   bool get_icmp_same_sign() const {
     check_valid();
+    require_instruction_opcodes<LLVMICmp>("icmp_same_sign");
     return LLVMGetICmpSameSign(m_ref);
   }
 
   void set_icmp_same_sign(bool same_sign) {
     check_valid();
+    require_instruction_opcodes<LLVMICmp>("set_icmp_same_sign");
     LLVMSetICmpSameSign(m_ref, same_sign);
   }
 
   // Memory instruction setters
   void set_ordering(LLVMAtomicOrdering ordering) {
     check_valid();
+    require_instruction_opcodes<LLVMLoad, LLVMStore, LLVMFence, LLVMAtomicRMW,
+                                LLVMAtomicCmpXchg>(
+        "set_ordering", "an atomic-capable memory instruction");
     LLVMSetOrdering(m_ref, ordering);
   }
 
   // Atomic properties
   bool is_atomic() const {
     check_valid();
+    require_instruction_value("is_atomic");
     return LLVMIsAtomic(m_ref);
   }
 
   unsigned get_atomic_sync_scope_id() const {
     check_valid();
+    require_instruction_opcodes<LLVMLoad, LLVMStore, LLVMFence, LLVMAtomicRMW,
+                                LLVMAtomicCmpXchg>(
+        "atomic_sync_scope_id", "an atomic-capable memory instruction");
     return LLVMGetAtomicSyncScopeID(m_ref);
   }
 
   void set_atomic_sync_scope_id(unsigned scope_id) {
     check_valid();
+    require_instruction_opcodes<LLVMLoad, LLVMStore, LLVMFence, LLVMAtomicRMW,
+                                LLVMAtomicCmpXchg>(
+        "set_atomic_sync_scope_id", "an atomic-capable memory instruction");
     LLVMSetAtomicSyncScopeID(m_ref, scope_id);
   }
 
   LLVMAtomicRMWBinOp get_atomic_rmw_bin_op() const {
     check_valid();
+    require_instruction_opcodes<LLVMAtomicRMW>("atomic_rmw_bin_op",
+                                               "an atomicrmw");
     return LLVMGetAtomicRMWBinOp(m_ref);
   }
 
   // CmpXchg ordering
   LLVMAtomicOrdering get_cmpxchg_success_ordering() const {
     check_valid();
+    require_instruction_opcodes<LLVMAtomicCmpXchg>(
+        "cmpxchg_success_ordering", "a cmpxchg");
     return LLVMGetCmpXchgSuccessOrdering(m_ref);
   }
 
   LLVMAtomicOrdering get_cmpxchg_failure_ordering() const {
     check_valid();
+    require_instruction_opcodes<LLVMAtomicCmpXchg>(
+        "cmpxchg_failure_ordering", "a cmpxchg");
     return LLVMGetCmpXchgFailureOrdering(m_ref);
   }
 
   // CmpXchg weak flag
   bool get_weak() const {
     check_valid();
+    require_instruction_opcodes<LLVMAtomicCmpXchg>("weak");
     return LLVMGetWeak(m_ref);
   }
 
   void set_weak(bool is_weak) {
     check_valid();
+    require_instruction_opcodes<LLVMAtomicCmpXchg>("set_weak");
     LLVMSetWeak(m_ref, is_weak);
   }
 
   // Tail call kind
   LLVMTailCallKind get_tail_call_kind() const {
     check_valid();
+    require_instruction_opcodes<LLVMCall, LLVMInvoke>("tail_call_kind",
+                                                      "a call or invoke");
     return LLVMGetTailCallKind(m_ref);
   }
 
   void set_tail_call_kind(LLVMTailCallKind kind) {
     check_valid();
+    require_instruction_opcodes<LLVMCall, LLVMInvoke>("set_tail_call_kind",
+                                                      "a call or invoke");
     LLVMSetTailCallKind(m_ref, kind);
   }
 
   // Called function type and value
   LLVMTypeWrapper get_called_function_type() const {
     check_valid();
+    require_call_like_instruction("called_function_type");
     return LLVMTypeWrapper(LLVMGetCalledFunctionType(m_ref), m_context_token);
   }
 
   LLVMValueWrapper get_called_value() const {
     check_valid();
+    require_call_like_instruction("called_value");
     return LLVMValueWrapper(LLVMGetCalledValue(m_ref), m_context_token);
   }
 
   void set_called_operand(const LLVMValueWrapper &val) {
     check_valid();
+    require_call_like_instruction("set_called_operand");
     val.check_valid();
     // In LLVM's CallBase, the callee is the last operand
     unsigned num_ops = static_cast<unsigned>(LLVMGetNumOperands(m_ref));
@@ -1999,49 +2413,73 @@ struct LLVMValueWrapper {
   // Branch condition
   bool is_conditional() const {
     check_valid();
+    require_instruction_opcodes<LLVMBr>("is_conditional");
     return LLVMIsConditional(m_ref);
   }
 
   LLVMValueWrapper get_condition() const {
     check_valid();
-    return LLVMValueWrapper(LLVMGetCondition(m_ref), m_context_token);
+    require_instruction_opcodes<LLVMBr>("condition");
+    LLVMValueRef cond = LLVMGetCondition(m_ref);
+    if (!cond)
+      throw LLVMAssertionError(
+          "condition: conditional branch has no condition");
+    return LLVMValueWrapper(cond, m_context_token);
   }
 
   // Branch successors
   unsigned get_num_successors() const {
     check_valid();
+    require_terminator_instruction("num_successors");
     return LLVMGetNumSuccessors(m_ref);
   }
 
   // Landing pad properties
   unsigned get_num_clauses() const {
     check_valid();
+    require_landingpad_instruction("num_clauses");
     return LLVMGetNumClauses(m_ref);
   }
 
   LLVMValueWrapper get_clause(unsigned index) const {
     check_valid();
-    return LLVMValueWrapper(LLVMGetClause(m_ref, index), m_context_token);
+    require_landingpad_instruction("get_clause");
+    unsigned count = LLVMGetNumClauses(m_ref);
+    if (index >= count) {
+      throw LLVMAssertionError("get_clause: clause index " +
+                               std::to_string(index) +
+                               " out of range (num_clauses=" +
+                               std::to_string(count) + ")");
+    }
+    LLVMValueRef clause = LLVMGetClause(m_ref, index);
+    if (!clause)
+      throw LLVMAssertionError("get_clause: clause at index " +
+                               std::to_string(index) + " is null");
+    return LLVMValueWrapper(clause, m_context_token);
   }
 
   bool is_cleanup() const {
     check_valid();
+    require_landingpad_instruction("is_cleanup");
     return LLVMIsCleanup(m_ref);
   }
 
   void set_cleanup(bool is_cleanup_val) {
     check_valid();
+    require_landingpad_instruction("set_cleanup");
     LLVMSetCleanup(m_ref, is_cleanup_val);
   }
 
   // CatchSwitch/CatchPad properties
   LLVMValueWrapper get_parent_catch_switch() const {
     check_valid();
+    require_catchpad_instruction("parent_catch_switch");
     return LLVMValueWrapper(LLVMGetParentCatchSwitch(m_ref), m_context_token);
   }
 
   unsigned get_num_handlers() const {
     check_valid();
+    require_catchswitch_instruction("num_handlers");
     return LLVMGetNumHandlers(m_ref);
   }
 
@@ -2052,6 +2490,8 @@ struct LLVMValueWrapper {
   // Add clause to landing pad
   void add_clause(const LLVMValueWrapper &clause_val) {
     check_valid();
+    clause_val.check_valid();
+    require_landingpad_instruction("add_clause");
     LLVMAddClause(m_ref, clause_val.m_ref);
   }
 
@@ -2062,26 +2502,65 @@ struct LLVMValueWrapper {
   // Get operand bundle at index
   LLVMOperandBundleWrapper get_operand_bundle_at_index(unsigned index) const {
     check_valid();
+    require_call_like_instruction("get_operand_bundle_at_index");
+    unsigned bundle_count = LLVMGetNumOperandBundles(m_ref);
+    if (index >= bundle_count) {
+      throw LLVMAssertionError(
+          "get_operand_bundle_at_index: operand bundle index " +
+          std::to_string(index) +
+          " out of range (num_operand_bundles=" +
+          std::to_string(bundle_count) + ")");
+    }
     LLVMOperandBundleRef bundle = LLVMGetOperandBundleAtIndex(m_ref, index);
+    if (!bundle) {
+      throw LLVMAssertionError("get_operand_bundle_at_index: operand bundle at index " +
+                               std::to_string(index) + " is null");
+    }
     return LLVMOperandBundleWrapper(bundle, m_context_token);
   }
 
   // Get indices for extractvalue/insertvalue
   std::vector<unsigned> get_indices() const {
     check_valid();
+    bool is_indexed_instruction =
+        LLVMIsAInstruction(m_ref) &&
+        (LLVMGetInstructionOpcode(m_ref) == LLVMExtractValue ||
+         LLVMGetInstructionOpcode(m_ref) == LLVMInsertValue);
+    bool is_indexed_const_expr =
+        LLVMIsAConstantExpr(m_ref) &&
+        (LLVMGetConstOpcode(m_ref) == LLVMGetElementPtr ||
+         LLVMGetConstOpcode(m_ref) == LLVMExtractValue ||
+         LLVMGetConstOpcode(m_ref) == LLVMInsertValue);
+    if (!is_indexed_instruction && !is_indexed_const_expr) {
+      throw LLVMAssertionError(
+          "indices requires extractvalue, insertvalue, or constant-expression "
+          "getelementptr");
+    }
     unsigned num_indices = LLVMGetNumIndices(m_ref);
     const unsigned *indices = LLVMGetIndices(m_ref);
+    if (!indices && num_indices > 0) {
+      throw LLVMAssertionError("indices returned null pointer");
+    }
     return std::vector<unsigned>(indices, indices + num_indices);
   }
 
   // ShuffleVector mask
   unsigned get_num_mask_elements() const {
     check_valid();
+    require_shufflevector_instruction("num_mask_elements");
     return LLVMGetNumMaskElements(m_ref);
   }
 
   int get_mask_value(unsigned index) const {
     check_valid();
+    require_shufflevector_instruction("get_mask_value");
+    unsigned count = LLVMGetNumMaskElements(m_ref);
+    if (index >= count) {
+      throw LLVMAssertionError("get_mask_value: mask index " +
+                               std::to_string(index) +
+                               " out of range (num_mask_elements=" +
+                               std::to_string(count) + ")");
+    }
     return LLVMGetMaskValue(m_ref, index);
   }
 
@@ -2093,23 +2572,45 @@ struct LLVMValueWrapper {
 
   LLVMFastMathFlags get_fast_math_flags() const {
     check_valid();
+    if (!LLVMCanValueUseFastMathFlags(m_ref)) {
+      throw LLVMAssertionError(
+          "fast_math_flags requires a value that supports fast-math flags");
+    }
     return LLVMGetFastMathFlags(m_ref);
   }
 
   void set_fast_math_flags(LLVMFastMathFlags flags) {
     check_valid();
+    if (!LLVMCanValueUseFastMathFlags(m_ref)) {
+      throw LLVMAssertionError(
+          "set_fast_math_flags requires a value that supports fast-math flags");
+    }
     LLVMSetFastMathFlags(m_ref, flags);
   }
 
   // Get arg operand (for call instructions)
   LLVMValueWrapper get_arg_operand(unsigned index) const {
     check_valid();
-    return LLVMValueWrapper(LLVMGetArgOperand(m_ref, index), m_context_token);
+    require_arg_operands_instruction("get_arg_operand");
+    unsigned count = LLVMGetNumArgOperands(m_ref);
+    if (index >= count) {
+      throw LLVMAssertionError("get_arg_operand: arg operand index " +
+                               std::to_string(index) +
+                               " out of range (num_arg_operands=" +
+                               std::to_string(count) + ")");
+    }
+    LLVMValueRef arg = LLVMGetArgOperand(m_ref, index);
+    if (!arg) {
+      throw LLVMAssertionError("get_arg_operand: arg operand at index " +
+                               std::to_string(index) + " is null");
+    }
+    return LLVMValueWrapper(arg, m_context_token);
   }
 
   // Instruction manipulation
   void remove_from_parent() {
     check_valid();
+    require_instruction_value("remove_from_parent");
     LLVMInstructionRemoveFromParent(m_ref);
   }
 
@@ -2331,13 +2832,23 @@ struct LLVMValueWrapper {
   LLVMValueWrapper const_bitcast(const LLVMTypeWrapper &ty) const {
     check_valid();
     ty.check_valid();
+    if (!LLVMIsConstant(m_ref))
+      throw LLVMAssertionError("const_bitcast requires a constant value");
     return LLVMValueWrapper(LLVMConstBitCast(m_ref, ty.m_ref), m_context_token);
   }
 
   // Delete an instruction from its parent basic block
   void delete_instruction() {
     check_valid();
-    LLVMDeleteInstruction(m_ref);
+    require_instruction_value("delete_instruction");
+    // LLVMDeleteInstruction can be fragile for parented instructions on some
+    // builds. Prefer erase-from-parent when attached to a block.
+    LLVMBasicBlockRef parent = LLVMGetInstructionParent(m_ref);
+    if (parent) {
+      LLVMInstructionEraseFromParent(m_ref);
+    } else {
+      LLVMDeleteInstruction(m_ref);
+    }
     m_ref = nullptr; // Invalidate after deletion
   }
 
@@ -2346,6 +2857,7 @@ struct LLVMValueWrapper {
   // Instruction::eraseFromParent().
   void erase_from_parent() {
     check_valid();
+    require_instruction_value("erase_from_parent");
     LLVMInstructionEraseFromParent(m_ref);
     m_ref = nullptr;
   }
@@ -2353,6 +2865,7 @@ struct LLVMValueWrapper {
   // Clone an instruction. The clone has no parent and no name.
   LLVMValueWrapper instruction_clone() const {
     check_valid();
+    require_instruction_value("instruction_clone");
     LLVMValueRef cloned = LLVMInstructionClone(m_ref);
     if (!cloned)
       throw LLVMAssertionError("Failed to clone instruction");
@@ -2364,6 +2877,16 @@ struct LLVMValueWrapper {
   void replace_all_uses_with(const LLVMValueWrapper &new_value) {
     check_valid();
     new_value.check_valid();
+    if (m_context_token != new_value.m_context_token) {
+      throw LLVMAssertionError(
+          "replace_all_uses_with requires values from the same context");
+    }
+    LLVMTypeRef self_ty = LLVMTypeOf(m_ref);
+    LLVMTypeRef other_ty = LLVMTypeOf(new_value.m_ref);
+    if (self_ty != other_ty) {
+      throw LLVMAssertionError(
+          "replace_all_uses_with requires replacement value of identical type");
+    }
     LLVMReplaceAllUsesWith(m_ref, new_value.m_ref);
   }
 
@@ -2374,12 +2897,22 @@ struct LLVMValueWrapper {
   // Callsite attribute methods (for call/invoke instructions)
   unsigned get_callsite_attribute_count(int idx) const {
     check_valid();
+    require_call_like_instruction("get_callsite_attribute_count");
+    if (idx < -1) {
+      throw LLVMAssertionError(
+          "get_callsite_attribute_count requires idx >= -1");
+    }
     return LLVMGetCallSiteAttributeCount(m_ref, static_cast<unsigned>(idx));
   }
 
   std::optional<LLVMAttributeWrapper>
   get_callsite_enum_attribute(int idx, unsigned kind_id) const {
     check_valid();
+    require_call_like_instruction("get_callsite_enum_attribute");
+    if (idx < -1) {
+      throw LLVMAssertionError(
+          "get_callsite_enum_attribute requires idx >= -1");
+    }
     LLVMAttributeRef ref = LLVMGetCallSiteEnumAttribute(
         m_ref, static_cast<unsigned>(idx), kind_id);
     if (!ref)
@@ -2390,6 +2923,10 @@ struct LLVMValueWrapper {
   void add_callsite_attribute(int idx, const LLVMAttributeWrapper &attr) {
     check_valid();
     attr.check_valid();
+    require_call_like_instruction("add_callsite_attribute");
+    if (idx < -1) {
+      throw LLVMAssertionError("add_callsite_attribute requires idx >= -1");
+    }
     LLVMAddCallSiteAttribute(m_ref, static_cast<unsigned>(idx), attr.m_ref);
   }
 
@@ -3286,8 +3823,19 @@ inline LLVMFunctionWrapper LLVMBasicBlockWrapper::function() const {
 inline LLVMBasicBlockWrapper
 LLVMValueWrapper::get_incoming_block(unsigned index) const {
   check_valid();
-  return LLVMBasicBlockWrapper(LLVMGetIncomingBlock(m_ref, index),
-                               m_context_token);
+  require_phi_instruction("get_incoming_block");
+  unsigned count = LLVMCountIncoming(m_ref);
+  if (index >= count) {
+    throw LLVMAssertionError(
+        "get_incoming_block: incoming block index " + std::to_string(index) +
+        " out of range (num_incoming=" + std::to_string(count) + ")");
+  }
+  LLVMBasicBlockRef bb = LLVMGetIncomingBlock(m_ref, index);
+  if (!bb) {
+    throw LLVMAssertionError("get_incoming_block: incoming block at index " +
+                             std::to_string(index) + " is null");
+  }
+  return LLVMBasicBlockWrapper(bb, m_context_token);
 }
 
 // Implementation of LLVMOperandBundleWrapper::get_arg_at_index - needs
@@ -3318,6 +3866,7 @@ inline LLVMBasicBlockWrapper LLVMValueWrapper::block() const {
 
 inline LLVMBasicBlockWrapper LLVMValueWrapper::get_normal_dest() const {
   check_valid();
+  require_invoke_instruction("normal_dest");
   LLVMBasicBlockRef bb = LLVMGetNormalDest(m_ref);
   if (!bb)
     throw LLVMAssertionError("Invoke instruction has no normal dest");
@@ -3327,6 +3876,7 @@ inline LLVMBasicBlockWrapper LLVMValueWrapper::get_normal_dest() const {
 inline std::optional<LLVMBasicBlockWrapper>
 LLVMValueWrapper::get_unwind_dest() const {
   check_valid();
+  require_terminator_instruction("unwind_dest");
   LLVMBasicBlockRef bb = LLVMGetUnwindDest(m_ref);
   // Unwind dest can be null for cleanupret and catchswitch
   if (!bb)
@@ -3337,6 +3887,7 @@ LLVMValueWrapper::get_unwind_dest() const {
 inline LLVMBasicBlockWrapper
 LLVMValueWrapper::get_successor(unsigned index) const {
   check_valid();
+  require_terminator_instruction("get_successor");
   LLVMBasicBlockRef bb = LLVMGetSuccessor(m_ref, index);
   if (!bb)
     throw LLVMAssertionError("Invalid successor index");
@@ -3345,6 +3896,7 @@ LLVMValueWrapper::get_successor(unsigned index) const {
 
 inline std::vector<LLVMBasicBlockWrapper> LLVMValueWrapper::successors() const {
   check_valid();
+  require_terminator_instruction("successors");
   unsigned num = LLVMGetNumSuccessors(m_ref);
   std::vector<LLVMBasicBlockWrapper> result;
   result.reserve(num);
@@ -3356,6 +3908,7 @@ inline std::vector<LLVMBasicBlockWrapper> LLVMValueWrapper::successors() const {
 
 inline LLVMBasicBlockWrapper LLVMValueWrapper::get_callbr_default_dest() const {
   check_valid();
+  require_callbr_instruction("callbr_default_dest");
   LLVMBasicBlockRef bb = LLVMGetCallBrDefaultDest(m_ref);
   if (!bb)
     throw LLVMAssertionError("CallBr has no default dest");
@@ -3364,12 +3917,14 @@ inline LLVMBasicBlockWrapper LLVMValueWrapper::get_callbr_default_dest() const {
 
 inline unsigned LLVMValueWrapper::get_callbr_num_indirect_dests() const {
   check_valid();
+  require_callbr_instruction("callbr_num_indirect_dests");
   return LLVMGetCallBrNumIndirectDests(m_ref);
 }
 
 inline LLVMBasicBlockWrapper
 LLVMValueWrapper::get_callbr_indirect_dest(unsigned index) const {
   check_valid();
+  require_callbr_instruction("get_callbr_indirect_dest");
   LLVMBasicBlockRef bb = LLVMGetCallBrIndirectDest(m_ref, index);
   if (!bb)
     throw LLVMAssertionError("Invalid callbr indirect dest index");
@@ -3387,6 +3942,7 @@ inline LLVMBasicBlockWrapper LLVMValueWrapper::value_as_basic_block() const {
 inline std::vector<LLVMBasicBlockWrapper>
 LLVMValueWrapper::get_handlers() const {
   check_valid();
+  require_catchswitch_instruction("handlers");
   unsigned num_handlers = LLVMGetNumHandlers(m_ref);
   std::vector<LLVMBasicBlockRef> handlers(num_handlers);
   if (num_handlers > 0) {
@@ -3403,6 +3959,8 @@ LLVMValueWrapper::get_handlers() const {
 inline void
 LLVMValueWrapper::add_handler(const LLVMBasicBlockWrapper &handler) {
   check_valid();
+  handler.check_valid();
+  require_catchswitch_instruction("add_handler");
   LLVMAddHandler(m_ref, handler.m_ref);
 }
 
@@ -6293,16 +6851,19 @@ void global_set_initializer(LLVMValueWrapper &global,
                             const LLVMValueWrapper &init) {
   global.check_valid();
   init.check_valid();
+  global.require_global_variable("initializer");
   LLVMSetInitializer(global.m_ref, init.m_ref);
 }
 
 void global_set_constant(LLVMValueWrapper &global, bool is_const) {
   global.check_valid();
+  global.require_global_variable("set_constant");
   LLVMSetGlobalConstant(global.m_ref, is_const);
 }
 
 void global_set_linkage(LLVMValueWrapper &global, LLVMLinkage linkage) {
   global.check_valid();
+  global.require_global_value("linkage");
   LLVMSetLinkage(global.m_ref, linkage);
 }
 
@@ -6311,33 +6872,39 @@ void global_set_linkage(LLVMValueWrapper &global, LLVMLinkage linkage) {
 
 bool global_is_constant(const LLVMValueWrapper &global) {
   global.check_valid();
+  global.require_global_variable("is_global_constant");
   return LLVMIsGlobalConstant(global.m_ref);
 }
 
 LLVMLinkage global_get_linkage(const LLVMValueWrapper &global) {
   global.check_valid();
+  global.require_global_value("linkage");
   return LLVMGetLinkage(global.m_ref);
 }
 
 void global_set_visibility(LLVMValueWrapper &global, LLVMVisibility vis) {
   global.check_valid();
+  global.require_global_value("visibility");
   LLVMSetVisibility(global.m_ref, vis);
 }
 
 LLVMVisibility global_get_visibility(const LLVMValueWrapper &global) {
   global.check_valid();
+  global.require_global_value("visibility");
   return LLVMGetVisibility(global.m_ref);
 }
 
 LLVMDLLStorageClass
 global_get_dll_storage_class(const LLVMValueWrapper &global) {
   global.check_valid();
+  global.require_global_value("dll_storage_class");
   return LLVMGetDLLStorageClass(global.m_ref);
 }
 
 void global_set_dll_storage_class(LLVMValueWrapper &global,
                                   LLVMDLLStorageClass storage_class) {
   global.check_valid();
+  global.require_global_value("dll_storage_class");
   LLVMSetDLLStorageClass(global.m_ref, storage_class);
 }
 
@@ -6345,6 +6912,7 @@ void global_set_dll_storage_class(LLVMValueWrapper &global,
 std::optional<LLVMComdatWrapper>
 global_get_comdat(const LLVMValueWrapper &global) {
   global.check_valid();
+  global.require_global_object("comdat");
   LLVMComdatRef comdat = LLVMGetComdat(global.m_ref);
   if (!comdat)
     return std::nullopt;
@@ -6355,43 +6923,51 @@ void global_set_comdat(LLVMValueWrapper &global,
                        const LLVMComdatWrapper &comdat) {
   global.check_valid();
   comdat.check_valid();
+  global.require_global_object("set_comdat");
   LLVMSetComdat(global.m_ref, comdat.m_ref);
 }
 
 void global_set_section(LLVMValueWrapper &global, const std::string &section) {
   global.check_valid();
+  global.require_global_object("section");
   LLVMSetSection(global.m_ref, section.c_str());
 }
 
 std::string global_get_section(const LLVMValueWrapper &global) {
   global.check_valid();
+  global.require_global_object("section");
   const char *section = LLVMGetSection(global.m_ref);
   return section ? std::string(section) : "";
 }
 
 void global_set_thread_local(LLVMValueWrapper &global, bool is_tls) {
   global.check_valid();
+  global.require_global_variable("set_thread_local");
   LLVMSetThreadLocal(global.m_ref, is_tls);
 }
 
 bool global_is_thread_local(const LLVMValueWrapper &global) {
   global.check_valid();
+  global.require_global_variable("is_thread_local");
   return LLVMIsThreadLocal(global.m_ref);
 }
 
 void global_set_externally_initialized(LLVMValueWrapper &global, bool is_ext) {
   global.check_valid();
+  global.require_global_variable("set_externally_initialized");
   LLVMSetExternallyInitialized(global.m_ref, is_ext);
 }
 
 bool global_is_externally_initialized(const LLVMValueWrapper &global) {
   global.check_valid();
+  global.require_global_variable("is_externally_initialized");
   return LLVMIsExternallyInitialized(global.m_ref);
 }
 
 std::optional<LLVMValueWrapper>
 global_get_initializer(const LLVMValueWrapper &global) {
   global.check_valid();
+  global.require_global_variable("initializer");
   LLVMValueRef init = LLVMGetInitializer(global.m_ref);
   if (!init)
     return std::nullopt;
@@ -6400,6 +6976,7 @@ global_get_initializer(const LLVMValueWrapper &global) {
 
 void global_delete(LLVMValueWrapper &global) {
   global.check_valid();
+  global.require_global_variable("delete_global");
   LLVMDeleteGlobal(global.m_ref);
   global.m_ref = nullptr;
 }
@@ -6411,8 +6988,19 @@ void global_delete(LLVMValueWrapper &global) {
 LLVMBasicBlockWrapper phi_get_incoming_block(const LLVMValueWrapper &phi,
                                              unsigned index) {
   phi.check_valid();
-  return LLVMBasicBlockWrapper(LLVMGetIncomingBlock(phi.m_ref, index),
-                               phi.m_context_token);
+  phi.require_phi_instruction("get_incoming_block");
+  unsigned count = LLVMCountIncoming(phi.m_ref);
+  if (index >= count) {
+    throw LLVMAssertionError(
+        "get_incoming_block: incoming block index " + std::to_string(index) +
+        " out of range (num_incoming=" + std::to_string(count) + ")");
+  }
+  LLVMBasicBlockRef bb = LLVMGetIncomingBlock(phi.m_ref, index);
+  if (!bb) {
+    throw LLVMAssertionError("get_incoming_block: incoming block at index " +
+                             std::to_string(index) + " is null");
+  }
+  return LLVMBasicBlockWrapper(bb, phi.m_context_token);
 }
 
 // Instruction property helpers
@@ -10138,6 +10726,7 @@ Args:
           "incoming",
           [](const LLVMValueWrapper &phi) {
             phi.check_valid();
+            phi.require_phi_instruction("incoming");
             unsigned n = LLVMCountIncoming(phi.m_ref);
             nb::list result;
             for (unsigned i = 0; i < n; ++i) {

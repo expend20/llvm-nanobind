@@ -53,6 +53,14 @@ Validate:
 Example: `get_operand(index)` must check bounds and throw, never let LLVM
 perform unchecked access.
 
+Pattern for indexed APIs:
+
+- Validate value kind/opcode first.
+- Validate index bounds with explicit `num_*` in the message.
+- Validate returned pointer/reference is non-null when the C API can return null.
+- Include API name in the error message prefix (e.g.
+  `get_incoming_value: ...`) so failures are searchable.
+
 ### 3) Cross-Context Ownership
 
 Reject cross-context operations unless explicitly supported.
@@ -96,6 +104,57 @@ For operations that may alter IR:
 6. If any step fails before mutation, throw and return.
 
 This prevents "reject + partially changed IR" bugs.
+
+## Guard Implementation Patterns (Current Repo)
+
+### Opcode-gated Accessors
+
+Use a single templated opcode gate for instruction-only APIs:
+
+- `require_instruction_opcodes<...>(api_name)`
+
+Implementation guidance:
+
+- For single-opcode APIs, auto-generate human text from opcode name
+  (`a`/`an` + opcode), do not hand-maintain per-call strings.
+- For multi-opcode APIs, format expected set once and reuse.
+- Keep message format stable:
+  - `{api_name} requires {expected} instruction (got {actual})`
+
+### Helper/Free Function Guards
+
+Do not assume member guards cover helper-bound APIs. If a method is exposed via
+a helper/free function binding, that helper must independently enforce:
+
+- kind/opcode checks
+- index bounds
+- null-return checks
+
+Example fixed during this audit: PHI incoming block helper.
+
+### Global Kind Guards
+
+Guard global helpers by exact category before calling LLVM-C:
+
+- global variable only: initializer, thread-local/external-init flags, delete
+- global value: linkage/visibility/dll storage
+- global object: comdat, section
+
+## Audit Findings (2026-02-16)
+
+1. `LLVMGetIndices` on a GEP instruction can corrupt/crash in practice.
+   - Safe contract now: `indices` accepts extractvalue/insertvalue instructions
+     and constant-expression GEP/extractvalue/insertvalue.
+   - GEP instruction users should use `num_indices` and other GEP accessors,
+     not `indices`.
+2. Several opcode-specific accessors previously relied on LLVM internals
+   (potential assertions/crashes):
+   - predicates/flags (`icmp_predicate`, `fcmp_predicate`, `nsw/nuw/exact/nneg`,
+     disjoint, icmp_same_sign)
+   - atomic/cmpxchg/tail-call accessors
+   - callsite attribute APIs
+3. Callsite attribute index now validates `idx >= -1` before cast to unsigned,
+   preventing accidental wraparound misuse.
 
 ## Preserve Semantics
 
@@ -235,6 +294,13 @@ paths.
 See:
 
 - `tests/regressions/test_const_bytes.py`
+
+### Value Accessor Guard Coverage
+
+Value kind/opcode guard coverage and crash repros are tracked in:
+
+- `tests/regressions/test_value_kind_guards.py`
+- `tests/regressions/test_memory_delete_instruction.py`
 
 ## Assertion Message Quality
 
