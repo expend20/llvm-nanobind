@@ -121,6 +121,21 @@ Implementation guidance:
 - Keep message format stable:
   - `{api_name} requires {expected} instruction (got {actual})`
 
+### Branch Successor vs Operand Ordering
+
+LLVM `BranchInst` has a non-obvious layout for conditional branches:
+
+- successor order (`get_successor` / `successors`) is `[true, false]`
+- raw operand order (`get_operand`) is `[cond, false, true]`
+
+Implications for bindings/tests:
+
+- Never assume successor index `i` maps to operand index `i + 1`.
+- For conditional `br`:
+  - successor `0` maps to operand `2`
+  - successor `1` maps to operand `1`
+- Document this in user-facing API docs and examples to avoid CFG edge bugs.
+
 ### Helper/Free Function Guards
 
 Do not assume member guards cover helper-bound APIs. If a method is exposed via

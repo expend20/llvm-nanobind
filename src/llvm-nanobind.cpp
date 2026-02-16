@@ -10972,9 +10972,17 @@ Args:
       .def("get_successor", &LLVMValueWrapper::get_successor, "index"_a,
            R"(Get successor at index.
 
+For conditional `br` instructions, successor indexing does not match raw
+operand indexing:
+  - `get_successor(0)` is the true destination, matching `get_operand(2)`
+  - `get_successor(1)` is the false destination, matching `get_operand(1)`
+
 <sub>C API: LLVMGetSuccessor</sub>)")
       .def_prop_ro("successors", &LLVMValueWrapper::successors,
                    R"(Get all successors.
+
+For conditional `br`, this list is `[true_dest, false_dest]`, while raw branch
+operands are `[cond, false_dest, true_dest]`.
 
 <sub>C API: LLVMGetNumSuccessors, LLVMGetSuccessor</sub>)")
       // Load/Store helpers
@@ -11025,7 +11033,15 @@ Args:
 <sub>C API: LLVMIsDeclaration</sub>)")
       // Operand access
       .def_prop_ro("operands", &LLVMValueWrapper::operands,
-                   R"(Get all operands as a list.)")
+                   R"(Get all raw operands as a list.
+
+Warning:
+  - Raw operand order is instruction-specific and may differ from printed IR.
+  - Prefer semantic accessors when available (e.g. `condition`,
+    `get_successor`/`successors`, `called_value`, `get_arg_operand`,
+    `incoming`, `handlers`).
+  - See `devdocs/operands.md` for known layouts and gotchas.
+)")
       .def_prop_ro("has_uses", &LLVMValueWrapper::has_uses,
                    R"(Check if this value has any uses.)")
       .def_prop_ro("num_operands", &LLVMValueWrapper::get_num_operands,
@@ -11033,15 +11049,30 @@ Args:
 
 <sub>C API: LLVMGetNumOperands</sub>)")
       .def("get_operand", &LLVMValueWrapper::get_operand, "index"_a,
-           R"(Get operand at index.
+           R"(Get raw operand at index.
+
+Warning:
+  - Raw operand indices are instruction-specific implementation details.
+  - Prefer semantic accessors when available.
+  - See `devdocs/operands.md` for layout details and gotchas.
 
 <sub>C API: LLVMGetOperand</sub>)")
       .def("set_operand", &LLVMValueWrapper::set_operand, "index"_a, "val"_a,
-           R"(Set the operand at the given index.
+           R"(Set a raw operand at the given index.
+
+Warning:
+  - Raw operand indices are instruction-specific and easy to misuse.
+  - Prefer semantic mutators/accessors when available.
+  - See `devdocs/operands.md` for layout details and gotchas.
 
 <sub>C API: LLVMSetOperand</sub>)")
       .def("get_operand_use", &LLVMValueWrapper::get_operand_use, "index"_a,
-           R"(Get the Use object for an operand at the given index.
+           R"(Get the Use object for a raw operand index.
+
+Warning:
+  - Raw operand indices are instruction-specific implementation details.
+  - Prefer semantic accessors when available.
+  - See `devdocs/operands.md` for layout details and gotchas.
 
 <sub>C API: LLVMGetOperandUse</sub>)")
       // Constant type checking
@@ -11625,10 +11656,6 @@ Alias for `.block`.
                    R"(Get unwind destination.
 
 <sub>C API: LLVMGetUnwindDest</sub>)")
-      .def("get_successor", &LLVMValueWrapper::get_successor, "index"_a,
-           R"(Get successor at index.
-
-<sub>C API: LLVMGetSuccessor</sub>)")
       .def_prop_ro("callbr_default_dest",
                    &LLVMValueWrapper::get_callbr_default_dest,
                    R"(Get callbr default dest.

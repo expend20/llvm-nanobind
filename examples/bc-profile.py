@@ -28,7 +28,7 @@ def main():
         assert main_fn is not None, "expected main function"
         assert not main_fn.is_declaration, "main needs a body"
         main_entry = main_fn.entry_block
-        assert main_entry is not None, "TODO: needs fixing"
+        assert main_entry is not None, "TODO: needs fixing (better API design to raise instead of None)"
 
         print(f"start.type: {start_fn.type}, function_type: {start_fn.function_type}")
 

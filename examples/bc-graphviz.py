@@ -24,13 +24,20 @@ def main():
                         print("branch")
                         if terminator.is_conditional:
                             succ_true = terminator.get_successor(0)
-                            dest_true = terminator.get_operand(1).value_as_basic_block()
-                            # assert succ_true == dest_true  # TODO: this should work
                             succ_false = terminator.get_successor(1)
+                            # LLVM BranchInst gotcha:
+                            #   - successor order: [true, false]
+                            #   - raw operand order: [cond, false, true]
+                            # so successor[0] maps to operand[2], successor[1]
+                            # maps to operand[1].
                             dest_false = terminator.get_operand(
+                                1
+                            ).value_as_basic_block()
+                            dest_true = terminator.get_operand(
                                 2
                             ).value_as_basic_block()
-                            # assert succ_false == dest_false
+                            assert succ_true == dest_true
+                            assert succ_false == dest_false
                             graph.append(
                                 f"  '{block.name}' -> '{dest_true.name}' [label='true'];"
                             )

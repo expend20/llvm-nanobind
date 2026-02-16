@@ -50,6 +50,9 @@ calls should raise `llvm.LLVMAssertionError` (not crash).
 - Use/operand graph:
   - `uses`, `users`, `has_uses`, `num_operands`, `operands`, `get_operand`,
     `set_operand`, `get_operand_use`
+  - Prefer semantic accessors over raw operand indexing whenever available.
+    Raw operand layout is instruction-specific and can differ from printed IR;
+    see `devdocs/operands.md`.
 - Type predicates:
   - `is_*` predicate properties (function/global/constant/etc.)
 
@@ -91,6 +94,11 @@ calls should raise `llvm.LLVMAssertionError` (not crash).
   - `is_conditional`, `condition` require `br`
 - Terminator:
   - `num_successors`, `get_successor`, `successors`, `unwind_dest`
+  - BranchInst gotcha (conditional `br`):
+    - successor order is `[true, false]`
+    - raw operand order is `[cond, false, true]`
+    - mapping: `get_successor(0) == get_operand(2).value_as_basic_block()`
+      and `get_successor(1) == get_operand(1).value_as_basic_block()`
 - PHI:
   - `num_incoming`, `get_incoming_value`, `get_incoming_block`, `incoming`
 - LandingPad:
