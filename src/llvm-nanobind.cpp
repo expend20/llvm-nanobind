@@ -528,6 +528,13 @@ struct LLVMTypeWrapper {
     check_valid();
     if (!is_struct())
       throw LLVMAssertionError("Type is not a struct type");
+    unsigned count = LLVMCountStructElementTypes(m_ref);
+    if (index >= count) {
+      throw LLVMAssertionError("get_struct_element_type: struct element index " +
+                               std::to_string(index) +
+                               " out of range (struct_element_count=" +
+                               std::to_string(count) + ")");
+    }
     return LLVMTypeWrapper(LLVMStructGetTypeAtIndex(m_ref, index),
                            m_context_token);
   }
@@ -633,6 +640,13 @@ struct LLVMTypeWrapper {
     check_valid();
     if (kind() != LLVMTargetExtTypeKind)
       throw LLVMAssertionError("Type is not a target extension type");
+    unsigned count = LLVMGetTargetExtTypeNumTypeParams(m_ref);
+    if (index >= count) {
+      throw LLVMAssertionError(
+          "get_target_ext_type_type_param: type parameter index " +
+          std::to_string(index) + " out of range (num_type_params=" +
+          std::to_string(count) + ")");
+    }
     return LLVMTypeWrapper(LLVMGetTargetExtTypeTypeParam(m_ref, index),
                            m_context_token);
   }
@@ -641,6 +655,13 @@ struct LLVMTypeWrapper {
     check_valid();
     if (kind() != LLVMTargetExtTypeKind)
       throw LLVMAssertionError("Type is not a target extension type");
+    unsigned count = LLVMGetTargetExtTypeNumIntParams(m_ref);
+    if (index >= count) {
+      throw LLVMAssertionError(
+          "get_target_ext_type_int_param: int parameter index " +
+          std::to_string(index) + " out of range (num_int_params=" +
+          std::to_string(count) + ")");
+    }
     return LLVMGetTargetExtTypeIntParam(m_ref, index);
   }
 
@@ -2902,6 +2923,14 @@ struct LLVMValueWrapper {
       throw LLVMAssertionError(
           "get_callsite_attribute_count requires idx >= -1");
     }
+    unsigned num_args = LLVMGetNumArgOperands(m_ref);
+    if (idx > static_cast<int>(num_args)) {
+      throw LLVMAssertionError(
+          "get_callsite_attribute_count: idx " + std::to_string(idx) +
+          " out of range for callsite (valid: -1..num_arg_operands, "
+          "num_arg_operands=" +
+          std::to_string(num_args) + ")");
+    }
     return LLVMGetCallSiteAttributeCount(m_ref, static_cast<unsigned>(idx));
   }
 
@@ -2912,6 +2941,14 @@ struct LLVMValueWrapper {
     if (idx < -1) {
       throw LLVMAssertionError(
           "get_callsite_enum_attribute requires idx >= -1");
+    }
+    unsigned num_args = LLVMGetNumArgOperands(m_ref);
+    if (idx > static_cast<int>(num_args)) {
+      throw LLVMAssertionError(
+          "get_callsite_enum_attribute: idx " + std::to_string(idx) +
+          " out of range for callsite (valid: -1..num_arg_operands, "
+          "num_arg_operands=" +
+          std::to_string(num_args) + ")");
     }
     LLVMAttributeRef ref = LLVMGetCallSiteEnumAttribute(
         m_ref, static_cast<unsigned>(idx), kind_id);
@@ -2926,6 +2963,14 @@ struct LLVMValueWrapper {
     require_call_like_instruction("add_callsite_attribute");
     if (idx < -1) {
       throw LLVMAssertionError("add_callsite_attribute requires idx >= -1");
+    }
+    unsigned num_args = LLVMGetNumArgOperands(m_ref);
+    if (idx > static_cast<int>(num_args)) {
+      throw LLVMAssertionError(
+          "add_callsite_attribute: idx " + std::to_string(idx) +
+          " out of range for callsite (valid: -1..num_arg_operands, "
+          "num_arg_operands=" +
+          std::to_string(num_args) + ")");
     }
     LLVMAddCallSiteAttribute(m_ref, static_cast<unsigned>(idx), attr.m_ref);
   }
@@ -3486,6 +3531,10 @@ struct LLVMFunctionWrapper : LLVMValueWrapper {
   void append_existing_basic_block(const LLVMBasicBlockWrapper &bb) {
     check_valid();
     bb.check_valid();
+    if (LLVMGetBasicBlockParent(bb.m_ref) != nullptr) {
+      throw LLVMAssertionError(
+          "append_existing_basic_block requires an unattached basic block");
+    }
     LLVMAppendExistingBasicBlock(m_ref, bb.m_ref);
   }
 
@@ -3530,16 +3579,31 @@ struct LLVMFunctionWrapper : LLVMValueWrapper {
   }
 
   // Attribute methods (moved from global functions)
+  unsigned normalize_attribute_index(const char *api_name, int idx) const {
+    if (idx < -1) {
+      throw LLVMAssertionError(std::string(api_name) + " requires idx >= -1");
+    }
+    int max_idx = static_cast<int>(LLVMCountParams(m_ref));
+    if (idx > max_idx) {
+      throw LLVMAssertionError(
+          std::string(api_name) + ": idx " + std::to_string(idx) +
+          " out of range (valid: -1..param_count, param_count=" +
+          std::to_string(max_idx) + ")");
+    }
+    return static_cast<unsigned>(idx);
+  }
+
   unsigned get_attribute_count(int idx) const {
     check_valid();
-    return LLVMGetAttributeCountAtIndex(m_ref, static_cast<unsigned>(idx));
+    unsigned attr_idx = normalize_attribute_index("get_attribute_count", idx);
+    return LLVMGetAttributeCountAtIndex(m_ref, attr_idx);
   }
 
   std::optional<LLVMAttributeWrapper>
   get_enum_attribute(int idx, unsigned kind_id) const {
     check_valid();
-    LLVMAttributeRef ref =
-        LLVMGetEnumAttributeAtIndex(m_ref, static_cast<unsigned>(idx), kind_id);
+    unsigned attr_idx = normalize_attribute_index("get_enum_attribute", idx);
+    LLVMAttributeRef ref = LLVMGetEnumAttributeAtIndex(m_ref, attr_idx, kind_id);
     if (!ref)
       return std::nullopt;
     return LLVMAttributeWrapper(ref, m_context_token);
@@ -3548,17 +3612,18 @@ struct LLVMFunctionWrapper : LLVMValueWrapper {
   void add_attribute(int idx, const LLVMAttributeWrapper &attr) {
     check_valid();
     attr.check_valid();
-    LLVMAddAttributeAtIndex(m_ref, static_cast<unsigned>(idx), attr.m_ref);
+    unsigned attr_idx = normalize_attribute_index("add_attribute", idx);
+    LLVMAddAttributeAtIndex(m_ref, attr_idx, attr.m_ref);
   }
 
   std::vector<LLVMAttributeWrapper> get_attributes(int idx) const {
     check_valid();
-    unsigned count =
-        LLVMGetAttributeCountAtIndex(m_ref, static_cast<unsigned>(idx));
+    unsigned attr_idx = normalize_attribute_index("get_attributes", idx);
+    unsigned count = LLVMGetAttributeCountAtIndex(m_ref, attr_idx);
     if (count == 0)
       return {};
     std::vector<LLVMAttributeRef> refs(count);
-    LLVMGetAttributesAtIndex(m_ref, static_cast<unsigned>(idx), refs.data());
+    LLVMGetAttributesAtIndex(m_ref, attr_idx, refs.data());
     std::vector<LLVMAttributeWrapper> result;
     result.reserve(count);
     for (auto ref : refs) {
@@ -3570,8 +3635,9 @@ struct LLVMFunctionWrapper : LLVMValueWrapper {
   std::optional<LLVMAttributeWrapper>
   get_string_attribute(int idx, const std::string &key) const {
     check_valid();
+    unsigned attr_idx = normalize_attribute_index("get_string_attribute", idx);
     LLVMAttributeRef ref = LLVMGetStringAttributeAtIndex(
-        m_ref, static_cast<unsigned>(idx), key.c_str(), key.size());
+        m_ref, attr_idx, key.c_str(), key.size());
     if (!ref)
       return std::nullopt;
     return LLVMAttributeWrapper(ref, m_context_token);
@@ -3579,13 +3645,16 @@ struct LLVMFunctionWrapper : LLVMValueWrapper {
 
   void remove_enum_attribute(int idx, unsigned kind_id) {
     check_valid();
-    LLVMRemoveEnumAttributeAtIndex(m_ref, static_cast<unsigned>(idx), kind_id);
+    unsigned attr_idx =
+        normalize_attribute_index("remove_enum_attribute", idx);
+    LLVMRemoveEnumAttributeAtIndex(m_ref, attr_idx, kind_id);
   }
 
   void remove_string_attribute(int idx, const std::string &key) {
     check_valid();
-    LLVMRemoveStringAttributeAtIndex(m_ref, static_cast<unsigned>(idx),
-                                     key.c_str(), key.size());
+    unsigned attr_idx =
+        normalize_attribute_index("remove_string_attribute", idx);
+    LLVMRemoveStringAttributeAtIndex(m_ref, attr_idx, key.c_str(), key.size());
   }
 
   void add_target_attribute(const std::string &key, const std::string &value) {
@@ -3692,6 +3761,10 @@ struct LLVMFunctionWrapper : LLVMValueWrapper {
   LLVMValueWrapper block_address(const LLVMBasicBlockWrapper &bb) const {
     check_valid();
     bb.check_valid();
+    if (LLVMGetBasicBlockParent(bb.m_ref) != m_ref) {
+      throw LLVMAssertionError(
+          "block_address requires a basic block owned by this function");
+    }
     return LLVMValueWrapper(LLVMBlockAddress(m_ref, bb.m_ref),
                             m_context_token);
   }
@@ -3989,6 +4062,11 @@ struct LLVMBuilderWrapper : NoMoveCopy {
                      LLVMValueRef inst, bool before_dbg)
       : m_context_token(std::move(context_token)),
         m_token(std::make_shared<ValidityToken>()) {
+    if (!LLVMIsAInstruction(inst))
+      throw LLVMAssertionError("Builder position requires an instruction");
+    if (!LLVMGetInstructionParent(inst))
+      throw LLVMAssertionError(
+          "Builder position instruction must belong to a basic block");
     m_ref = LLVMCreateBuilderInContext(ctx);
     if (before_dbg) {
       // Position before instruction and its debug records
@@ -4040,6 +4118,11 @@ struct LLVMBuilderWrapper : NoMoveCopy {
   void position_before(const LLVMValueWrapper &inst, bool before_dbg) {
     check_valid();
     inst.check_valid();
+    if (!inst.is_a_instruction())
+      throw LLVMAssertionError("position_before requires an instruction value");
+    if (!LLVMGetInstructionParent(inst.m_ref))
+      throw LLVMAssertionError(
+          "position_before requires an instruction in a basic block");
     if (before_dbg) {
       LLVMPositionBuilderBeforeInstrAndDbgRecords(m_ref, inst.m_ref);
     } else {
@@ -4060,6 +4143,12 @@ struct LLVMBuilderWrapper : NoMoveCopy {
     check_valid();
     bb.check_valid();
     inst.check_valid();
+    if (!inst.is_a_instruction())
+      throw LLVMAssertionError("position_at requires an instruction value");
+    if (LLVMGetInstructionParent(inst.m_ref) != bb.m_ref) {
+      throw LLVMAssertionError(
+          "position_at requires inst to belong to the provided basic block");
+    }
     LLVMPositionBuilder(m_ref, bb.m_ref, inst.m_ref);
   }
 
@@ -5239,6 +5328,10 @@ struct LLVMBuilderWrapper : NoMoveCopy {
                                      const std::string &name) {
     check_valid();
     instr.check_valid();
+    if (!instr.is_a_instruction()) {
+      throw LLVMAssertionError(
+          "insert_into_builder_with_name requires an instruction value");
+    }
     LLVMInsertIntoBuilderWithName(m_ref, instr.m_ref, name.c_str());
   }
 
@@ -5246,6 +5339,8 @@ struct LLVMBuilderWrapper : NoMoveCopy {
   void add_metadata_to_inst(const LLVMValueWrapper &instr) {
     check_valid();
     instr.check_valid();
+    if (!instr.is_a_instruction())
+      throw LLVMAssertionError("add_metadata_to_inst requires an instruction");
     LLVMAddMetadataToInst(m_ref, instr.m_ref);
   }
 };
@@ -6386,6 +6481,11 @@ LLVMContextWrapper::create_builder(const LLVMValueWrapper &inst,
                                    bool before_dbg) {
   check_valid();
   inst.check_valid();
+  if (!inst.is_a_instruction())
+    throw LLVMAssertionError("create_builder requires an instruction value");
+  if (!LLVMGetInstructionParent(inst.m_ref))
+    throw LLVMAssertionError(
+        "create_builder requires an instruction in a basic block");
   auto manager = new LLVMBuilderManager(this);
   manager->m_initial_inst = inst.m_ref;
   manager->m_before_dbg = before_dbg;
@@ -6410,6 +6510,11 @@ LLVMBuilderManager *LLVMBasicBlockWrapper::create_builder() const {
 
 LLVMBuilderManager *LLVMValueWrapper::create_builder(bool before_dbg) const {
   check_valid();
+  if (!is_a_instruction())
+    throw LLVMAssertionError("create_builder requires an instruction value");
+  if (!LLVMGetInstructionParent(m_ref))
+    throw LLVMAssertionError(
+        "create_builder requires an instruction in a basic block");
   // Get the context for this value
   LLVMContextWrapper *ctx = get_context();
   auto manager = new LLVMBuilderManager(ctx);
@@ -6688,6 +6793,10 @@ LLVMValueWrapper block_address(LLVMFunctionWrapper &fn,
                                LLVMBasicBlockWrapper &bb) {
   fn.check_valid();
   bb.check_valid();
+  if (LLVMGetBasicBlockParent(bb.m_ref) != fn.m_ref) {
+    throw LLVMAssertionError(
+        "block_address requires a basic block owned by the function");
+  }
   return LLVMValueWrapper(LLVMBlockAddress(fn.m_ref, bb.m_ref),
                           fn.m_context_token);
 }
@@ -7008,6 +7117,8 @@ LLVMBasicBlockWrapper phi_get_incoming_block(const LLVMValueWrapper &phi,
 // Type helpers
 unsigned type_count_struct_element_types(const LLVMTypeWrapper &ty) {
   ty.check_valid();
+  if (!ty.is_struct())
+    throw LLVMAssertionError("struct_element_count requires a struct type");
   return LLVMCountStructElementTypes(ty.m_ref);
 }
 
@@ -7016,6 +7127,15 @@ void struct_set_body(LLVMTypeWrapper &struct_ty,
                      const std::vector<LLVMTypeWrapper> &elem_types,
                      bool packed) {
   struct_ty.check_valid();
+  if (!struct_ty.is_struct())
+    throw LLVMAssertionError("set_body requires a struct type");
+  if (struct_ty.is_literal_struct()) {
+    throw LLVMAssertionError(
+        "set_body requires an identified (named) struct type");
+  }
+  if (!struct_ty.is_opaque_struct()) {
+    throw LLVMAssertionError("set_body requires an opaque struct type");
+  }
   std::vector<LLVMTypeRef> elems;
   elems.reserve(elem_types.size());
   for (const auto &e : elem_types) {

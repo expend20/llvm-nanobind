@@ -784,6 +784,23 @@ def test_value_accessor_guard_matrix_negative():
                     ),
                     "idx >= -1",
                 ),
+                (
+                    "get_callsite_attribute_count",
+                    lambda: refs["call_plain_inst"].get_callsite_attribute_count(1),
+                    "out of range for callsite",
+                ),
+                (
+                    "get_callsite_enum_attribute",
+                    lambda: refs["call_plain_inst"].get_callsite_enum_attribute(1, 1),
+                    "out of range for callsite",
+                ),
+                (
+                    "add_callsite_attribute",
+                    lambda: refs["call_plain_inst"].add_callsite_attribute(
+                        1, ctx.create_string_attribute("k3", "v3")
+                    ),
+                    "out of range for callsite",
+                ),
                 ("initializer", lambda: bad.initializer, "global variable"),
                 (
                     "initializer",

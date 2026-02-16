@@ -126,7 +126,7 @@ calls should raise `llvm.LLVMAssertionError` (not crash).
   - `get_callsite_attribute_count`
   - `get_callsite_enum_attribute`
   - `add_callsite_attribute`
-  - Requires call-like instruction and `idx >= -1`.
+  - Requires call-like instruction and `-1 <= idx <= num_arg_operands`.
 
 ### Atomic/Memory Families
 
@@ -162,3 +162,77 @@ calls should raise `llvm.LLVMAssertionError` (not crash).
 - Fast-math:
   - `fast_math_flags`, `set_fast_math_flags` require
     `can_use_fast_math_flags == True`
+
+## Non-Value API Validity Matrix
+
+This section captures guard preconditions for wrapper classes other than
+`llvm.Value`.
+
+### Type (`llvm.Type`)
+
+- Struct-only:
+  - `is_packed_struct`, `is_opaque_struct`, `is_literal_struct`
+  - `struct_name`, `struct_element_count`, `get_struct_element_type`
+- Function-only:
+  - `is_vararg`, `return_type`, `param_count`, `param_types`
+- Pointer-only:
+  - `is_opaque_pointer`, `pointer_address_space`
+- Array-only:
+  - `array_length`
+- Vector-only:
+  - `vector_size`
+- Target-extension-only:
+  - `target_ext_type_name`, `target_ext_type_num_type_params`,
+    `target_ext_type_num_int_params`,
+    `get_target_ext_type_type_param`, `get_target_ext_type_int_param`
+  - target-ext parameter accessors require in-range indices.
+- Element-type family:
+  - `element_type` requires pointer/vector/array type.
+- Constant constructors:
+  - `constant`, `constant_from_string` require integer type.
+  - `real_constant`, `real_constant_from_string` require floating type.
+  - `constant_from_string` additionally requires `2 <= radix <= 36`.
+- Struct body mutation:
+  - `set_body` requires identified opaque struct type (not literal, not already
+    non-opaque).
+
+### BasicBlock (`llvm.BasicBlock`)
+
+- `terminator` requires the block to have a terminator.
+- Parent navigation:
+  - `function` requires block attached to a function.
+  - `module`/`context` require function parent and module parent.
+- Split helpers:
+  - `split_basic_block` / `split_basic_block_before` require:
+    - instruction operand is an instruction in this block,
+    - not a PHI split point,
+    - source block already has a terminator.
+
+### Function (`llvm.Function`)
+
+- `append_basic_block` requires function parent module and module context.
+- `append_existing_basic_block` requires an unattached block.
+- Attribute index APIs:
+  - `get_attribute_count`, `get_enum_attribute`, `add_attribute`,
+    `get_attributes`, `get_string_attribute`,
+    `remove_enum_attribute`, `remove_string_attribute`
+  - valid index range: `-1` (function), `0` (return), `1..param_count`.
+- `block_address` requires block ownership by that function.
+- Parent navigation:
+  - `module`/`context` require function has a parent module.
+
+### Builder (`llvm.Builder`)
+
+- Builder creation from instruction:
+  - `Context.create_builder(inst)` and `Value.create_builder()` require
+    instruction values attached to a basic block.
+- Positioning:
+  - `position_before(inst)` requires an instruction attached to a block.
+  - `position_at(bb, inst)` requires `inst` to be an instruction in `bb`.
+- Instruction-only insertion helpers:
+  - `insert_into_builder_with_name(instr)` requires instruction value.
+  - `add_metadata_to_inst(instr)` requires instruction value.
+
+### Global helper `llvm.block_address(fn, bb)`
+
+- Requires `bb` to be owned by `fn`.

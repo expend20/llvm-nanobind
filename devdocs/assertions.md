@@ -153,8 +153,27 @@ Guard global helpers by exact category before calling LLVM-C:
      disjoint, icmp_same_sign)
    - atomic/cmpxchg/tail-call accessors
    - callsite attribute APIs
-3. Callsite attribute index now validates `idx >= -1` before cast to unsigned,
-   preventing accidental wraparound misuse.
+3. Callsite attribute index now validates full range:
+   - lower bound: `idx >= -1`
+   - upper bound: `idx <= num_arg_operands`
+   This prevents both unsigned wraparound and out-of-range callsite attribute
+   queries.
+4. Non-`Value` Type APIs had missing structural/index guards:
+   - `struct_element_count` now requires struct type.
+   - `set_body` now requires identified opaque struct type.
+   - `get_struct_element_type` now validates element index bounds.
+   - target extension type param/int-param accessors now validate index bounds.
+5. Builder placement APIs now enforce instruction preconditions before calling
+   LLVM-C:
+   - `create_builder(inst)` and `value.create_builder()` require instruction
+     values attached to a basic block.
+   - `position_before`, `position_at`, `insert_into_builder_with_name`,
+     `add_metadata_to_inst` now reject non-instruction values explicitly.
+6. Function/block ownership checks were added:
+   - `block_address` requires block ownership by the given function.
+   - `append_existing_basic_block` requires an unattached block.
+7. Function attribute APIs now validate index bounds:
+   - valid index set is `-1` (function), `0` (return), `1..param_count`.
 
 ## Preserve Semantics
 
@@ -301,6 +320,13 @@ Value kind/opcode guard coverage and crash repros are tracked in:
 
 - `tests/regressions/test_value_kind_guards.py`
 - `tests/regressions/test_memory_delete_instruction.py`
+
+### Non-Value Guard Coverage
+
+Comprehensive non-`Value` guard matrices are tracked in:
+
+- `tests/regressions/test_type_guard_matrix.py`
+- `tests/regressions/test_non_value_guard_matrix.py`
 
 ## Assertion Message Quality
 
