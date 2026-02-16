@@ -2113,6 +2113,164 @@ struct LLVMValueWrapper {
     LLVMInstructionRemoveFromParent(m_ref);
   }
 
+  // Validate whether this instruction can be inserted at (dest_bb, insert_before).
+  // insert_before == nullptr means insertion at end of dest_bb.
+  void validate_instruction_move_insertion(LLVMBasicBlockRef dest_bb,
+                                           LLVMValueRef insert_before) const {
+    if (!dest_bb)
+      throw LLVMAssertionError("Move destination basic block is null");
+    if (insert_before && LLVMGetInstructionParent(insert_before) != dest_bb)
+      throw LLVMAssertionError(
+          "Move insertion point does not belong to destination basic block");
+
+    LLVMOpcode moving_op = LLVMGetInstructionOpcode(m_ref);
+    bool moving_phi = (moving_op == LLVMPHI);
+    bool moving_landingpad = (moving_op == LLVMLandingPad);
+    bool moving_terminator = (LLVMIsATerminatorInst(m_ref) != nullptr);
+
+    // Find the first non-PHI instruction in destination block.
+    LLVMValueRef first_non_phi = LLVMGetFirstInstruction(dest_bb);
+    while (first_non_phi &&
+           LLVMGetInstructionOpcode(first_non_phi) == LLVMPHI) {
+      first_non_phi = LLVMGetNextInstruction(first_non_phi);
+    }
+
+    // PHI placement constraints: PHIs must stay in the PHI prefix.
+    if (moving_phi) {
+      if (!insert_before)
+        throw LLVMAssertionError("Cannot insert PHI node at end of basic block");
+      if (insert_before != first_non_phi &&
+          LLVMGetInstructionOpcode(insert_before) != LLVMPHI) {
+        throw LLVMAssertionError(
+            "PHI nodes must be inserted in the PHI prefix of the basic block");
+      }
+    } else {
+      if (insert_before && LLVMGetInstructionOpcode(insert_before) == LLVMPHI) {
+        throw LLVMAssertionError("Cannot insert non-PHI instruction before PHI "
+                                 "nodes in a basic block");
+      }
+    }
+
+    // LandingPad must be the first non-PHI instruction.
+    if (moving_landingpad && insert_before != first_non_phi) {
+      throw LLVMAssertionError(
+          "LandingPad must be inserted as the first non-PHI instruction");
+    }
+
+    // Terminator placement constraints.
+    LLVMValueRef current_term = LLVMGetBasicBlockTerminator(dest_bb);
+    if (moving_terminator) {
+      if (insert_before)
+        throw LLVMAssertionError(
+            "Terminator instructions can only be moved to the end of a basic "
+            "block");
+      if (current_term && current_term != m_ref) {
+        throw LLVMAssertionError(
+            "Destination basic block already has a different terminator");
+      }
+    } else {
+      if (!insert_before && current_term && current_term != m_ref) {
+        throw LLVMAssertionError(
+            "Cannot insert non-terminator instruction after block terminator");
+      }
+    }
+  }
+
+  // Move this instruction before another instruction.
+  void move_before(const LLVMValueWrapper &other, bool preserve = false) {
+    check_valid();
+    other.check_valid();
+    if (m_context_token != other.m_context_token)
+      throw LLVMAssertionError(
+          "Cannot move instructions across different contexts");
+    if (!LLVMIsAInstruction(m_ref))
+      throw LLVMAssertionError("move_before requires an instruction");
+    if (!LLVMIsAInstruction(other.m_ref))
+      throw LLVMAssertionError("move_before target must be an instruction");
+    if (m_ref == other.m_ref)
+      return;
+
+    LLVMBasicBlockRef other_parent = LLVMGetInstructionParent(other.m_ref);
+    if (!other_parent)
+      throw LLVMAssertionError(
+          "move_before target instruction has no parent block");
+
+    LLVMValueRef fn = LLVMGetBasicBlockParent(other_parent);
+    LLVMModuleRef mod = fn ? LLVMGetGlobalParent(fn) : nullptr;
+    if (!mod)
+      throw LLVMAssertionError(
+          "move_before target instruction has no parent module");
+    LLVMContextRef ctx = LLVMGetModuleContext(mod);
+
+    validate_instruction_move_insertion(other_parent, other.m_ref);
+
+    LLVMBasicBlockRef this_parent = LLVMGetInstructionParent(m_ref);
+    if (this_parent)
+      LLVMInstructionRemoveFromParent(m_ref);
+
+    LLVMBuilderRef builder = LLVMCreateBuilderInContext(ctx);
+    if (preserve)
+      LLVMPositionBuilderBeforeInstrAndDbgRecords(builder, other.m_ref);
+    else
+      LLVMPositionBuilderBefore(builder, other.m_ref);
+    LLVMInsertIntoBuilder(builder, m_ref);
+    LLVMDisposeBuilder(builder);
+  }
+
+  // Move this instruction after another instruction.
+  void move_after(const LLVMValueWrapper &other, bool preserve = false) {
+    check_valid();
+    other.check_valid();
+    if (m_context_token != other.m_context_token)
+      throw LLVMAssertionError(
+          "Cannot move instructions across different contexts");
+    if (!LLVMIsAInstruction(m_ref))
+      throw LLVMAssertionError("move_after requires an instruction");
+    if (!LLVMIsAInstruction(other.m_ref))
+      throw LLVMAssertionError("move_after target must be an instruction");
+    if (m_ref == other.m_ref)
+      return;
+    if (LLVMIsATerminatorInst(other.m_ref))
+      throw LLVMAssertionError("Cannot move instruction after a terminator");
+
+    LLVMBasicBlockRef other_parent = LLVMGetInstructionParent(other.m_ref);
+    if (!other_parent)
+      throw LLVMAssertionError(
+          "move_after target instruction has no parent block");
+
+    LLVMValueRef fn = LLVMGetBasicBlockParent(other_parent);
+    LLVMModuleRef mod = fn ? LLVMGetGlobalParent(fn) : nullptr;
+    if (!mod)
+      throw LLVMAssertionError(
+          "move_after target instruction has no parent module");
+    LLVMContextRef ctx = LLVMGetModuleContext(mod);
+
+    LLVMBasicBlockRef this_parent = LLVMGetInstructionParent(m_ref);
+
+    // Compute insertion point in the destination block *after* conceptual
+    // unlinking of self, but validate before mutating anything.
+    LLVMValueRef next = LLVMGetNextInstruction(other.m_ref);
+    if (this_parent == other_parent && next == m_ref) {
+      next = LLVMGetNextInstruction(m_ref);
+    }
+    validate_instruction_move_insertion(other_parent, next);
+
+    if (this_parent)
+      LLVMInstructionRemoveFromParent(m_ref);
+
+    LLVMBuilderRef builder = LLVMCreateBuilderInContext(ctx);
+    if (next) {
+      if (preserve)
+        LLVMPositionBuilderBeforeInstrAndDbgRecords(builder, next);
+      else
+        LLVMPositionBuilderBefore(builder, next);
+    }
+    else
+      LLVMPositionBuilderAtEnd(builder, other_parent);
+    LLVMInsertIntoBuilder(builder, m_ref);
+    LLVMDisposeBuilder(builder);
+  }
+
   bool is_a_instruction() const {
     check_valid();
     return LLVMIsAInstruction(m_ref) != nullptr;
@@ -5453,6 +5611,16 @@ struct LLVMContextWrapper : NoMoveCopy {
         m_token);
   }
 
+  // Create a raw bytes constant in this context without UTF-8 encoding.
+  LLVMValueWrapper const_string(const nb::bytes &data,
+                                bool dont_null_terminate = false) {
+    check_valid();
+    return LLVMValueWrapper(
+        LLVMConstStringInContext2(m_ref, data.c_str(), data.size(),
+                                  dont_null_terminate),
+        m_token);
+  }
+
   // Metadata creation methods - declared here, implemented after
   // LLVMMetadataWrapper
   LLVMMetadataWrapper md_string(const std::string &str);
@@ -5918,6 +6086,15 @@ LLVMValueWrapper const_string(LLVMContextWrapper *ctx, const std::string &str,
                           ctx->m_token);
 }
 
+LLVMValueWrapper const_string(LLVMContextWrapper *ctx, const nb::bytes &data,
+                              bool dont_null_terminate = false) {
+  ctx->check_valid();
+  return LLVMValueWrapper(LLVMConstStringInContext2(ctx->m_ref, data.c_str(),
+                                                    data.size(),
+                                                    dont_null_terminate),
+                          ctx->m_token);
+}
+
 LLVMValueWrapper const_pointer_null(const LLVMTypeWrapper &ty) {
   ty.check_valid();
   return LLVMValueWrapper(LLVMConstPointerNull(ty.m_ref), ty.m_context_token);
@@ -5960,6 +6137,14 @@ LLVMValueWrapper block_address(LLVMFunctionWrapper &fn,
 // Constant creation functions for echo command
 LLVMValueWrapper const_data_array(const LLVMTypeWrapper &elem_ty,
                                   const std::string &data) {
+  elem_ty.check_valid();
+  return LLVMValueWrapper(
+      LLVMConstDataArray(elem_ty.m_ref, data.c_str(), data.size()),
+      elem_ty.m_context_token);
+}
+
+LLVMValueWrapper const_data_array(const LLVMTypeWrapper &elem_ty,
+                                  const nb::bytes &data) {
   elem_ty.check_valid();
   return LLVMValueWrapper(
       LLVMConstDataArray(elem_ty.m_ref, data.c_str(), data.size()),
@@ -6926,6 +7111,9 @@ struct LLVMSectionIteratorWrapper : NoMoveCopy {
   LLVMSectionIteratorRef m_ref = nullptr;
   LLVMBinaryRef m_binary_ref = nullptr; // For is_at_end check
   std::shared_ptr<ValidityToken> m_binary_token;
+  // Python iterator state: __next__ returns current item, advances on
+  // subsequent calls. This avoids exposing end-iterator data to Python code.
+  bool m_python_iter_started = false;
 
   LLVMSectionIteratorWrapper() = default;
   LLVMSectionIteratorWrapper(LLVMSectionIteratorRef ref,
@@ -7006,6 +7194,7 @@ struct LLVMSymbolIteratorWrapper : NoMoveCopy {
   LLVMSymbolIteratorRef m_ref = nullptr;
   LLVMBinaryRef m_binary_ref = nullptr;
   std::shared_ptr<ValidityToken> m_binary_token;
+  bool m_python_iter_started = false;
 
   LLVMSymbolIteratorWrapper() = default;
   LLVMSymbolIteratorWrapper(LLVMSymbolIteratorRef ref, LLVMBinaryRef binary_ref,
@@ -7073,6 +7262,7 @@ struct LLVMRelocationIteratorWrapper : NoMoveCopy {
   LLVMRelocationIteratorRef m_ref = nullptr;
   LLVMSectionIteratorRef m_section_ref = nullptr; // For is_at_end check
   std::shared_ptr<ValidityToken> m_binary_token;
+  bool m_python_iter_started = false;
 
   LLVMRelocationIteratorWrapper() = default;
   LLVMRelocationIteratorWrapper(LLVMRelocationIteratorRef ref,
@@ -9754,7 +9944,17 @@ Args:
             LLVMConstDataArray(self.m_ref, data.data(), data.size()),
             self.m_context_token);
       }, "data"_a,
-           R"(Create a data array constant of this element type.
+           R"(Create a data array constant of this element type from a string.
+
+<sub>C API: LLVMConstDataArray</sub>)")
+      .def("const_data_array", [](const LLVMTypeWrapper &self,
+                                  const nb::bytes &data) {
+        self.check_valid();
+        return LLVMValueWrapper(
+            LLVMConstDataArray(self.m_ref, data.c_str(), data.size()),
+            self.m_context_token);
+      }, "data"_a,
+           R"(Create a data array constant of this element type from raw bytes.
 
 <sub>C API: LLVMConstDataArray</sub>)")
       // Parent navigation
@@ -10562,11 +10762,21 @@ The callee is the last operand of a CallBase instruction.
            R"(Remove instruction from parent.
 
 <sub>C API: LLVMInstructionRemoveFromParent</sub>)")
+      .def("move_before", &LLVMValueWrapper::move_before, "other"_a,
+           "preserve"_a = false,
+           R"(Move this instruction before another instruction.
+
+<sub>C API: LLVMInstructionRemoveFromParent, LLVMInsertIntoBuilder</sub>)")
+      .def("move_after", &LLVMValueWrapper::move_after, "other"_a,
+           "preserve"_a = false,
+           R"(Move this instruction after another instruction.
+
+<sub>C API: LLVMInstructionRemoveFromParent, LLVMInsertIntoBuilder</sub>)")
       .def_prop_ro("is_instruction", &LLVMValueWrapper::is_a_instruction,
                    R"(Check if instruction.
 
 <sub>C API: LLVMIsAInstruction</sub>)")
-      .def_prop_ro("is_terminator_inst",
+      .def_prop_ro("is_terminator",
                    &LLVMValueWrapper::is_a_terminator_inst,
                    R"(Check if terminator.
 
@@ -10578,6 +10788,12 @@ The callee is the last operand of a CallBase instruction.
       // Parent navigation: value -> block -> function -> module -> context
       .def_prop_ro("block", &LLVMValueWrapper::block,
                    R"(Get the basic block this instruction belongs to.
+
+<sub>C API: LLVMGetInstructionParent</sub>)")
+      .def_prop_ro("parent", &LLVMValueWrapper::block,
+                   R"(Get the parent basic block this instruction belongs to.
+
+Alias for `.block`.
 
 <sub>C API: LLVMGetInstructionParent</sub>)")
       .def_prop_ro("function", &LLVMValueWrapper::get_function,
@@ -12204,9 +12420,18 @@ Returns:
     A new type attribute.
 
 <sub>C API: LLVMCreateTypeAttribute</sub>)")
-      .def("const_string", &LLVMContextWrapper::const_string, "str"_a,
-           "dont_null_terminate"_a = false,
+      .def("const_string",
+           nb::overload_cast<const std::string &, bool>(
+               &LLVMContextWrapper::const_string),
+           "str"_a, "dont_null_terminate"_a = false,
            R"(Create a string constant in this context.
+
+<sub>C API: LLVMConstStringInContext2</sub>)")
+      .def("const_string",
+           nb::overload_cast<const nb::bytes &, bool>(
+               &LLVMContextWrapper::const_string),
+           "data"_a, "dont_null_terminate"_a = false,
+           R"(Create a raw-bytes constant in this context.
 
 <sub>C API: LLVMConstStringInContext2</sub>)")
       .def("const_struct", [](LLVMContextWrapper &self,
@@ -12314,9 +12539,21 @@ Common scope names include "singlethread" for thread-local synchronization.
         R"(Create vector constant.
 
 <sub>C API: LLVMConstVector</sub>)");
-  m.def("const_string", &const_string, "ctx"_a, "str"_a,
+  m.def("const_string",
+        static_cast<LLVMValueWrapper (*)(LLVMContextWrapper *,
+                                         const std::string &, bool)>(
+            &const_string),
+        "ctx"_a, "str"_a,
         "dont_null_terminate"_a = false,
         R"(Create string constant.
+
+<sub>C API: LLVMConstStringInContext2</sub>)");
+  m.def("const_string",
+        static_cast<LLVMValueWrapper (*)(LLVMContextWrapper *,
+                                         const nb::bytes &, bool)>(
+            &const_string),
+        "ctx"_a, "data"_a, "dont_null_terminate"_a = false,
+        R"(Create raw-bytes constant.
 
 <sub>C API: LLVMConstStringInContext2</sub>)");
   m.def("const_named_struct", &const_named_struct, "struct_ty"_a, "vals"_a,
@@ -12329,8 +12566,20 @@ Common scope names include "singlethread" for thread-local synchronization.
         R"(Arbitrary precision int.
 
 <sub>C API: LLVMConstIntOfArbitraryPrecision</sub>)");
-  m.def("const_data_array", &const_data_array, "elem_ty"_a, "data"_a,
+  m.def("const_data_array",
+        static_cast<LLVMValueWrapper (*)(const LLVMTypeWrapper &,
+                                         const std::string &)>(
+            &const_data_array),
+        "elem_ty"_a, "data"_a,
         R"(Create data array.
+
+<sub>C API: LLVMConstDataArray</sub>)");
+  m.def("const_data_array",
+        static_cast<LLVMValueWrapper (*)(const LLVMTypeWrapper &,
+                                         const nb::bytes &)>(
+            &const_data_array),
+        "elem_ty"_a, "data"_a,
+        R"(Create raw-bytes data array.
 
 <sub>C API: LLVMConstDataArray</sub>)");
   m.def("const_gep_with_no_wrap_flags", &const_gep_with_no_wrap_flags, "ty"_a,
@@ -13025,15 +13274,15 @@ Returns:
           "__next__",
           [](LLVMSectionIteratorWrapper &self) -> LLVMSectionIteratorWrapper * {
             self.check_valid();
+            if (self.m_python_iter_started) {
+              self.move_next();
+            } else {
+              self.m_python_iter_started = true;
+            }
             if (self.is_at_end()) {
               throw nb::stop_iteration();
             }
-            // Return a snapshot then advance
-            // For simplicity, we return self and advance
-            // The caller accesses properties before calling __next__ again
-            auto *result = &self;
-            self.move_next();
-            return result;
+            return &self;
           },
           nb::rv_policy::reference_internal);
 
@@ -13066,12 +13315,15 @@ Returns:
           "__next__",
           [](LLVMSymbolIteratorWrapper &self) -> LLVMSymbolIteratorWrapper * {
             self.check_valid();
+            if (self.m_python_iter_started) {
+              self.move_next();
+            } else {
+              self.m_python_iter_started = true;
+            }
             if (self.is_at_end()) {
               throw nb::stop_iteration();
             }
-            auto *result = &self;
-            self.move_next();
-            return result;
+            return &self;
           },
           nb::rv_policy::reference_internal);
 
@@ -13110,12 +13362,15 @@ Returns:
           [](LLVMRelocationIteratorWrapper &self)
               -> LLVMRelocationIteratorWrapper * {
             self.check_valid();
+            if (self.m_python_iter_started) {
+              self.move_next();
+            } else {
+              self.m_python_iter_started = true;
+            }
             if (self.is_at_end()) {
               throw nb::stop_iteration();
             }
-            auto *result = &self;
-            self.move_next();
-            return result;
+            return &self;
           },
           nb::rv_policy::reference_internal);
 

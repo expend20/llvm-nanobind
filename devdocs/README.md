@@ -30,6 +30,8 @@ Active documentation for ongoing development:
 | `DEBUGGING.md` | How to debug crashes, isolate memory issues, add safety checks |
 | `memory-model.md` | Validity token system, ownership patterns, lifetime guarantees |
 | `lit-tests.md` | Lit test infrastructure, test categories, how to run/add tests |
+| `assertions.md` | Validation/assertion design to prevent footguns and half-modified IR |
+| `api-reference.md` | Canonical Python API reference location and browsing workflow |
 
 ## Task Tracking Methodology
 

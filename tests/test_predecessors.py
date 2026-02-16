@@ -12,7 +12,7 @@ LLVM APIs covered (via Python bindings):
 - Value.uses property (list of Use objects)
 - Value.users property (list of user Values)
 - Use.user property
-- Value.is_terminator_inst property
+- Value.is_terminator property
 - Value.block property (parent basic block for instructions)
 """
 
@@ -30,7 +30,7 @@ def get_predecessors_via_uses(bb: llvm.BasicBlock) -> list[llvm.BasicBlock]:
 
     for use in block_value.uses:
         user = use.user
-        if user.is_terminator_inst:
+        if user.is_terminator:
             pred = user.block
             result.append(pred)
 
@@ -46,7 +46,7 @@ def get_predecessors_via_users(bb: llvm.BasicBlock) -> list[llvm.BasicBlock]:
     block_value = bb.as_value()
 
     for user in block_value.users:
-        if user.is_terminator_inst:
+        if user.is_terminator:
             pred = user.block
             result.append(pred)
 

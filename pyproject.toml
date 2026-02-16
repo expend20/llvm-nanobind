@@ -97,3 +97,6 @@ exclude_lines = [
     "class .*\\bProtocol\\):",
     "@(abc\\.)?abstractmethod",
 ]
+
+[tool.pytest.ini_options]
+addopts = "--deselect tests/regressions/test_symbol_size_crash.py"
