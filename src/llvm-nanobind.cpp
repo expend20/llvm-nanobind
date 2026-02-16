@@ -10547,6 +10547,10 @@ NB_MODULE(llvm, m) {
            "index"_a,
            R"(Get the element type at the given index.
 
+Valid when:
+  - this type is a struct
+  - 0 <= index < struct_element_count
+
 <sub>C API: LLVMStructGetTypeAtIndex</sub>)")
       .def_prop_ro("is_opaque_pointer", &LLVMTypeWrapper::is_opaque_pointer,
                    R"(Check if this is an opaque pointer.
@@ -10602,18 +10606,34 @@ NB_MODULE(llvm, m) {
            &LLVMTypeWrapper::get_target_ext_type_type_param, "index"_a,
            R"(Get a type parameter of this target extension type by index.
 
+Valid when:
+  - this type is a target extension type
+  - 0 <= index < target_ext_type_num_type_params
+
 <sub>C API: LLVMGetTargetExtTypeTypeParam</sub>)")
       .def("get_target_ext_type_int_param",
            &LLVMTypeWrapper::get_target_ext_type_int_param, "index"_a,
            R"(Get an integer parameter of this target extension type by index.
 
+Valid when:
+  - this type is a target extension type
+  - 0 <= index < target_ext_type_num_int_params
+
 <sub>C API: LLVMGetTargetExtTypeIntParam</sub>)")
       .def("set_body", &struct_set_body, "elem_types"_a, "packed"_a = false,
            R"(Set the body of an opaque struct.
 
+Valid when:
+  - this type is a struct
+  - this type is identified (named), not literal
+  - this type is currently opaque
+
 <sub>C API: LLVMStructSetBody</sub>)")
       .def_prop_ro("struct_element_count", &type_count_struct_element_types,
                    R"(Get number of struct elements.
+
+Valid when:
+  - this type is a struct
 
 <sub>C API: LLVMCountStructElementTypes</sub>)")
       // Phase 2: Type-based constant creation
@@ -10621,12 +10641,19 @@ NB_MODULE(llvm, m) {
            "sign_extend"_a = false,
            R"(Create an integer constant of this type.
 
+Valid when:
+  - this type is an integer type
+
 <sub>C API: LLVMConstInt</sub>)")
       .def("constant_from_string", &LLVMTypeWrapper::constant_from_string,
            "text"_a, "radix"_a = 10,
            R"(Create an integer constant from a string.
 
 Useful for large integers that don't fit in Python int.
+
+Valid when:
+  - this type is an integer type
+  - 2 <= radix <= 36
 
 Args:
     text: The number as a string (e.g., "12345678901234567890")
@@ -10636,12 +10663,18 @@ Args:
       .def("real_constant", &LLVMTypeWrapper::real_constant, "val"_a,
            R"(Create a floating-point constant of this type.
 
+Valid when:
+  - this type is a floating-point type
+
 <sub>C API: LLVMConstReal</sub>)")
       .def("real_constant_from_string",
            &LLVMTypeWrapper::real_constant_from_string, "text"_a,
            R"(Create a floating-point constant from a string.
 
 Useful for precise floating-point values.
+
+Valid when:
+  - this type is a floating-point type
 
 Args:
     text: The number as a string (e.g., "3.14159265358979323846")
@@ -11687,15 +11720,27 @@ Combines remove_from_parent() + delete_instruction() atomically.
            &LLVMValueWrapper::get_callsite_attribute_count, "idx"_a,
            R"(Get the number of attributes at a call site index.
 
+Valid when:
+  - value is a call/invoke/callbr instruction
+  - -1 <= idx <= num_arg_operands
+
 <sub>C API: LLVMGetCallSiteAttributeCount</sub>)")
       .def("get_callsite_enum_attribute",
            &LLVMValueWrapper::get_callsite_enum_attribute, "idx"_a, "kind_id"_a,
            R"(Get an enum attribute at a call site index (None if not found).
 
+Valid when:
+  - value is a call/invoke/callbr instruction
+  - -1 <= idx <= num_arg_operands
+
 <sub>C API: LLVMGetCallSiteEnumAttribute</sub>)")
       .def("add_callsite_attribute", &LLVMValueWrapper::add_callsite_attribute,
            "idx"_a, "attr"_a,
            R"(Add an attribute to a call site at the given index.
+
+Valid when:
+  - value is a call/invoke/callbr instruction
+  - -1 <= idx <= num_arg_operands
 
 <sub>C API: LLVMAddCallSiteAttribute</sub>)")
       // Unified metadata method
@@ -11709,7 +11754,9 @@ Combines remove_from_parent() + delete_instruction() atomically.
            "before_dbg"_a = false, nb::rv_policy::take_ownership,
            R"(Create a Builder positioned before this Instruction.
 
-Only valid for instructions. For other value types, this will fail.
+Valid when:
+  - this value is an instruction
+  - the instruction belongs to a basic block (is inserted)
 
 Args:
   before_dbg: If True, insert before debug records.
@@ -11909,6 +11956,9 @@ Returns a BuilderManager for use with Python's 'with' statement.
            &LLVMFunctionWrapper::append_existing_basic_block, "bb"_a,
            R"(Append existing block.
 
+Valid when:
+  - bb is unattached (has no parent function)
+
 <sub>C API: LLVMAppendExistingBasicBlock</sub>)")
       .def("erase", &LLVMFunctionWrapper::erase,
            R"(Erase function.
@@ -11940,33 +11990,61 @@ Returns a BuilderManager for use with Python's 'with' statement.
       .def("get_attribute_count", &LLVMFunctionWrapper::get_attribute_count,
            "idx"_a, R"(Attribute count.
 
+Valid when:
+  - -1 <= idx <= param_count
+  - idx=-1 is function attrs, idx=0 is return attrs, idx>=1 are parameter attrs
+
 <sub>C API: LLVMGetAttributeCountAtIndex</sub>)")
       .def("get_enum_attribute", &LLVMFunctionWrapper::get_enum_attribute,
            "idx"_a, "kind_id"_a,
            R"(Get enum attribute.
 
+Valid when:
+  - -1 <= idx <= param_count
+  - idx=-1 is function attrs, idx=0 is return attrs, idx>=1 are parameter attrs
+
 <sub>C API: LLVMGetEnumAttributeAtIndex</sub>)")
       .def("add_attribute", &LLVMFunctionWrapper::add_attribute, "idx"_a,
            "attr"_a, R"(Add attribute.
 
+Valid when:
+  - -1 <= idx <= param_count
+  - idx=-1 is function attrs, idx=0 is return attrs, idx>=1 are parameter attrs
+
 <sub>C API: LLVMAddAttributeAtIndex</sub>)")
       .def("get_attributes", &LLVMFunctionWrapper::get_attributes, "idx"_a,
            R"(Get all attributes.
+
+Valid when:
+  - -1 <= idx <= param_count
+  - idx=-1 is function attrs, idx=0 is return attrs, idx>=1 are parameter attrs
 
 <sub>C API: LLVMGetAttributesAtIndex</sub>)")
       .def("get_string_attribute", &LLVMFunctionWrapper::get_string_attribute,
            "idx"_a, "key"_a,
            R"(Get string attribute.
 
+Valid when:
+  - -1 <= idx <= param_count
+  - idx=-1 is function attrs, idx=0 is return attrs, idx>=1 are parameter attrs
+
 <sub>C API: LLVMGetStringAttributeAtIndex</sub>)")
       .def("remove_enum_attribute", &LLVMFunctionWrapper::remove_enum_attribute,
            "idx"_a, "kind_id"_a,
            R"(Remove enum attribute.
 
+Valid when:
+  - -1 <= idx <= param_count
+  - idx=-1 is function attrs, idx=0 is return attrs, idx>=1 are parameter attrs
+
 <sub>C API: LLVMRemoveEnumAttributeAtIndex</sub>)")
       .def("remove_string_attribute",
            &LLVMFunctionWrapper::remove_string_attribute, "idx"_a, "key"_a,
            R"(Remove string attribute.
+
+Valid when:
+  - -1 <= idx <= param_count
+  - idx=-1 is function attrs, idx=0 is return attrs, idx>=1 are parameter attrs
 
 <sub>C API: LLVMRemoveStringAttributeAtIndex</sub>)")
       .def("add_target_attribute", &LLVMFunctionWrapper::add_target_attribute,
@@ -12051,6 +12129,9 @@ Returns a BuilderManager for use with Python's 'with' statement.
            R"(Create a BlockAddress constant for a basic block in this function.
 Used for computed goto (indirect branch) support.
 
+Valid when:
+  - bb is owned by this function
+
 <sub>C API: LLVMBlockAddress</sub>)");
 
   // Builder wrapper
@@ -12064,9 +12145,17 @@ Used for computed goto (indirect branch) support.
            nb::kw_only(), "before_dbg"_a = false,
            R"(Position before instruction.
 
+Valid when:
+  - inst is an instruction value
+  - inst belongs to a basic block
+
 <sub>C API: LLVMPositionBuilderBefore</sub>)")
       .def("position_at", &LLVMBuilderWrapper::position_at, "bb"_a, "inst"_a,
            R"(Position at instruction.
+
+Valid when:
+  - inst is an instruction value
+  - inst belongs to bb
 
 <sub>C API: LLVMPositionBuilder</sub>)")
       .def("clear_insertion_position",
@@ -12488,10 +12577,16 @@ Args:
            "name"_a,
            R"(Insert instruction.
 
+Valid when:
+  - instr is an instruction value
+
 <sub>C API: LLVMInsertIntoBuilderWithName</sub>)")
       .def("add_metadata_to_inst", &LLVMBuilderWrapper::add_metadata_to_inst,
            "instr"_a,
            R"(Add metadata to instruction.
+
+Valid when:
+  - instr is an instruction value
 
 <sub>C API: LLVMAddMetadataToInst</sub>)")
       // Missing builders for echo command - wrapped to convert
@@ -12577,6 +12672,9 @@ Args:
       .def("get_arg_at_index", &LLVMOperandBundleWrapper::get_arg_at_index,
            "index"_a,
            R"(Get arg at index.
+
+Valid when:
+  - 0 <= index < num_args
 
 <sub>C API: LLVMGetOperandBundleArgAtIndex</sub>)");
 
@@ -13128,6 +13226,10 @@ Returns a BuilderManager for use with Python's 'with' statement.
            nb::rv_policy::take_ownership,
            R"(Create a Builder positioned before an Instruction.
 
+Valid when:
+  - inst is an instruction value
+  - inst belongs to a basic block
+
 Returns a BuilderManager for use with Python's 'with' statement.
 
 <sub>C API: LLVMCreateBuilderInContext, LLVMPositionBuilderBefore</sub>)")
@@ -13250,29 +13352,74 @@ Common scope names include "singlethread" for thread-local synchronization.
   // Context manager
   nb::class_<LLVMContextManager>(m, "ContextManager")
       .def("__enter__", &LLVMContextManager::enter,
-           nb::rv_policy::reference_internal)
+           nb::rv_policy::reference_internal,
+           R"(Enter the context manager and create a new Context.
+
+Valid when:
+  - this manager has not already been entered
+)")
       .def("__exit__", &LLVMContextManager::exit, "exc_type"_a.none(),
-           "exc_value"_a.none(), "traceback"_a.none());
+           "exc_value"_a.none(), "traceback"_a.none(),
+           R"(Exit the context manager and dispose the Context.
+
+Valid when:
+  - this manager was previously entered
+)");
 
   // Module manager
   nb::class_<LLVMModuleManager>(m, "ModuleManager")
       .def("__enter__", &LLVMModuleManager::enter,
-           nb::rv_policy::reference_internal)
+           nb::rv_policy::reference_internal,
+           R"(Enter the manager and obtain a Module.
+
+Valid when:
+  - manager is not disposed
+  - manager has not already been entered
+)")
       .def("__exit__", &LLVMModuleManager::exit, "exc_type"_a.none(),
-           "exc_value"_a.none(), "traceback"_a.none())
+           "exc_value"_a.none(), "traceback"_a.none(),
+           R"(Exit the manager and dispose the owned Module.
+
+Valid when:
+  - manager is entered
+  - manager is not already disposed
+)")
       .def(
           "dispose", &LLVMModuleManager::dispose,
-          R"(Dispose the module without using a 'with' statement. Can only be called before __enter__.)");
+          R"(Dispose the module manager without using a 'with' statement.
+
+Valid when:
+  - manager is not already disposed
+  - manager has not been entered yet
+)");
 
   // Builder manager
   nb::class_<LLVMBuilderManager>(m, "BuilderManager")
       .def("__enter__", &LLVMBuilderManager::enter,
-           nb::rv_policy::reference_internal)
+           nb::rv_policy::reference_internal,
+           R"(Enter the manager and obtain a Builder.
+
+Valid when:
+  - manager is not disposed
+  - manager has not already been entered
+  - manager has a valid insertion position (basic block or instruction)
+)")
       .def("__exit__", &LLVMBuilderManager::exit, "exc_type"_a.none(),
-           "exc_value"_a.none(), "traceback"_a.none())
+           "exc_value"_a.none(), "traceback"_a.none(),
+           R"(Exit the manager and dispose the owned Builder.
+
+Valid when:
+  - manager is entered
+  - manager is not already disposed
+)")
       .def(
           "dispose", &LLVMBuilderManager::dispose,
-          R"(Dispose the builder without using a 'with' statement. Can only be called before __enter__.)");
+          R"(Dispose the builder manager without using a 'with' statement.
+
+Valid when:
+  - manager is not already disposed
+  - manager has not been entered yet
+)");
 
   // Module-level factory functions
   m.def(
@@ -13369,6 +13516,9 @@ Common scope names include "singlethread" for thread-local synchronization.
         R"(Create a BlockAddress constant that is the address of a basic block.
 
 This is used for computed goto (indirect branch) support.
+
+Valid when:
+  - bb is owned by fn
 
 <sub>C API: LLVMBlockAddress</sub>)");
   m.def("intrinsic_is_overloaded", &intrinsic_is_overloaded, "id"_a,
@@ -13969,6 +14119,9 @@ Returns:
           nb::rv_policy::take_ownership,
           R"(Section iterator.
 
+Valid when:
+  - binary.type is an object-file type (COFF/ELF/MachO/Wasm)
+
 <sub>C API: LLVMObjectFileCopySectionIterator</sub>)")
       .def_prop_ro(
           "symbols",
@@ -13987,6 +14140,9 @@ Returns:
           nb::rv_policy::take_ownership,
           R"(Symbol iterator.
 
+Valid when:
+  - binary.type is an object-file type (COFF/ELF/MachO/Wasm)
+
 <sub>C API: LLVMObjectFileCopySymbolIterator</sub>)")
       .def("copy_to_memory_buffer", &LLVMBinaryWrapper::copy_to_memory_buffer,
            R"(Copy the binary's contents to a memory buffer.
@@ -14003,29 +14159,57 @@ Returns:
       .def("is_at_end", &LLVMSectionIteratorWrapper::is_at_end,
            R"(Check if iterator is at end.
 
+Valid when:
+  - parent binary is still valid (not disposed)
+
 <sub>C API: LLVMObjectFileIsSectionIteratorAtEnd</sub>)")
       .def("move_next", &LLVMSectionIteratorWrapper::move_next,
            R"(Move to next section.
+
+Valid when:
+  - parent binary is still valid (not disposed)
+  - iterator is not at end (`is_at_end() == False`)
 
 <sub>C API: LLVMMoveToNextSection</sub>)")
       .def_prop_ro("name", &LLVMSectionIteratorWrapper::get_name,
                    R"(Section name.
 
+Valid when:
+  - parent binary is still valid (not disposed)
+  - iterator is not at end (`is_at_end() == False`)
+
 <sub>C API: LLVMGetSectionName</sub>)")
       .def_prop_ro("address", &LLVMSectionIteratorWrapper::get_address,
                    R"(Section address.
+
+Valid when:
+  - parent binary is still valid (not disposed)
+  - iterator is not at end (`is_at_end() == False`)
 
 <sub>C API: LLVMGetSectionAddress</sub>)")
       .def_prop_ro("size", &LLVMSectionIteratorWrapper::get_size,
                    R"(Section size.
 
+Valid when:
+  - parent binary is still valid (not disposed)
+  - iterator is not at end (`is_at_end() == False`)
+
 <sub>C API: LLVMGetSectionSize</sub>)")
       .def_prop_ro("contents", &LLVMSectionIteratorWrapper::get_contents,
                    R"(Section contents.
 
+Valid when:
+  - parent binary is still valid (not disposed)
+  - iterator is not at end (`is_at_end() == False`)
+
 <sub>C API: LLVMGetSectionContents</sub>)")
       .def("contains_symbol", &LLVMSectionIteratorWrapper::contains_symbol,
            "symbol"_a, R"(Check if section contains the given symbol.
+
+Valid when:
+  - parent binary is still valid (not disposed)
+  - section iterator is not at end (`is_at_end() == False`)
+  - symbol iterator is not at end (`symbol.is_at_end() == False`)
 
 <sub>C API: LLVMGetSectionContainsSymbol</sub>)")
       .def(
@@ -14039,6 +14223,10 @@ Returns:
           "symbol"_a,
           R"(Move to containing section.
 
+Valid when:
+  - parent binary is still valid (not disposed)
+  - symbol iterator is not at end (`symbol.is_at_end() == False`)
+
 <sub>C API: LLVMMoveToContainingSection</sub>)")
       .def_prop_ro(
           "relocations",
@@ -14050,6 +14238,10 @@ Returns:
           },
           nb::rv_policy::take_ownership,
           R"(Relocation iterator.
+
+Valid when:
+  - parent binary is still valid (not disposed)
+  - section iterator is not at end (`is_at_end() == False`)
 
 <sub>C API: LLVMGetRelocations</sub>)")
       // Python iteration support
@@ -14076,21 +14268,40 @@ Returns:
       .def("is_at_end", &LLVMSymbolIteratorWrapper::is_at_end,
            R"(Check if iterator is at end.
 
+Valid when:
+  - parent binary is still valid (not disposed)
+
 <sub>C API: LLVMObjectFileIsSymbolIteratorAtEnd</sub>)")
       .def("move_next", &LLVMSymbolIteratorWrapper::move_next,
            R"(Move to next symbol.
+
+Valid when:
+  - parent binary is still valid (not disposed)
+  - iterator is not at end (`is_at_end() == False`)
 
 <sub>C API: LLVMMoveToNextSymbol</sub>)")
       .def_prop_ro("name", &LLVMSymbolIteratorWrapper::get_name,
                    R"(Symbol name.
 
+Valid when:
+  - parent binary is still valid (not disposed)
+  - iterator is not at end (`is_at_end() == False`)
+
 <sub>C API: LLVMGetSymbolName</sub>)")
       .def_prop_ro("address", &LLVMSymbolIteratorWrapper::get_address,
                    R"(Symbol address.
 
+Valid when:
+  - parent binary is still valid (not disposed)
+  - iterator is not at end (`is_at_end() == False`)
+
 <sub>C API: LLVMGetSymbolAddress</sub>)")
       .def_prop_ro("size", &LLVMSymbolIteratorWrapper::get_size,
                    R"(Symbol size.
+
+Valid when:
+  - parent binary is still valid (not disposed)
+  - iterator is not at end (`is_at_end() == False`)
 
 <sub>C API: LLVMGetSymbolSize</sub>)")
       // Python iteration support
@@ -14117,26 +14328,49 @@ Returns:
       .def("is_at_end", &LLVMRelocationIteratorWrapper::is_at_end,
            R"(Check if iterator is at end.
 
+Valid when:
+  - parent binary is still valid (not disposed)
+
 <sub>C API: LLVMIsRelocationIteratorAtEnd</sub>)")
       .def("move_next", &LLVMRelocationIteratorWrapper::move_next,
            R"(Move to next relocation.
+
+Valid when:
+  - parent binary is still valid (not disposed)
+  - iterator is not at end (`is_at_end() == False`)
 
 <sub>C API: LLVMMoveToNextRelocation</sub>)")
       .def_prop_ro("offset", &LLVMRelocationIteratorWrapper::get_offset,
                    R"(Offset.
 
+Valid when:
+  - parent binary is still valid (not disposed)
+  - iterator is not at end (`is_at_end() == False`)
+
 <sub>C API: LLVMGetRelocationOffset</sub>)")
       .def_prop_ro("type", &LLVMRelocationIteratorWrapper::get_type,
                    R"(Type.
+
+Valid when:
+  - parent binary is still valid (not disposed)
+  - iterator is not at end (`is_at_end() == False`)
 
 <sub>C API: LLVMGetRelocationType</sub>)")
       .def_prop_ro("type_name", &LLVMRelocationIteratorWrapper::get_type_name,
                    R"(Type name.
 
+Valid when:
+  - parent binary is still valid (not disposed)
+  - iterator is not at end (`is_at_end() == False`)
+
 <sub>C API: LLVMGetRelocationTypeName</sub>)")
       .def_prop_ro("value_string",
                    &LLVMRelocationIteratorWrapper::get_value_string,
                    R"(Value string.
+
+Valid when:
+  - parent binary is still valid (not disposed)
+  - iterator is not at end (`is_at_end() == False`)
 
 <sub>C API: LLVMGetRelocationValueString</sub>)")
       // Python iteration support
@@ -14162,12 +14396,29 @@ Returns:
   // Binary manager for context manager protocol
   nb::class_<LLVMBinaryManager>(m, "BinaryManager")
       .def("__enter__", &LLVMBinaryManager::enter,
-           nb::rv_policy::reference_internal)
+           nb::rv_policy::reference_internal,
+           R"(Enter the manager and obtain a Binary.
+
+Valid when:
+  - manager is not disposed
+  - manager has not already been entered
+)")
       .def("__exit__", &LLVMBinaryManager::exit, "exc_type"_a.none(),
-           "exc_value"_a.none(), "traceback"_a.none())
+           "exc_value"_a.none(), "traceback"_a.none(),
+           R"(Exit the manager and dispose the owned Binary.
+
+Valid when:
+  - manager is entered
+  - manager is not already disposed
+)")
       .def(
           "dispose", &LLVMBinaryManager::dispose,
-          R"(Dispose the binary without using a 'with' statement. Can only be called before __enter__.)");
+          R"(Dispose the binary without using a 'with' statement.
+
+Valid when:
+  - manager is not already disposed
+  - manager has not been entered yet
+)");
 
   // Factory functions for creating binaries
   m.def("create_binary_from_bytes", &create_binary_from_bytes, "data"_a,
@@ -14685,11 +14936,29 @@ Returns:
 
   nb::class_<LLVMDIBuilderManager>(m, "DIBuilderManager")
       .def("__enter__", &LLVMDIBuilderManager::enter,
-           nb::rv_policy::reference_internal)
+           nb::rv_policy::reference_internal,
+           R"(Enter the manager and obtain a DIBuilder.
+
+Valid when:
+  - manager is not disposed
+  - manager has not already been entered
+  - backing module is still valid
+)")
       .def("__exit__", &LLVMDIBuilderManager::exit, "exc_type"_a.none(),
-           "exc_value"_a.none(), "traceback"_a.none())
+           "exc_value"_a.none(), "traceback"_a.none(),
+           R"(Exit the manager and dispose the owned DIBuilder.
+
+Valid when:
+  - manager is entered
+  - manager is not already disposed
+)")
       .def("dispose", &LLVMDIBuilderManager::dispose,
-           R"(Dispose the DIBuilder manager without using context manager.)");
+           R"(Dispose the DIBuilder manager without using context manager.
+
+Valid when:
+  - manager is not already disposed
+  - manager has not been entered yet
+)");
 
   // NOTE: create_dibuilder has been moved to Module.create_dibuilder() method
 
