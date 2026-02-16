@@ -136,6 +136,43 @@ Implications for bindings/tests:
   - successor `1` maps to operand `1`
 - Document this in user-facing API docs and examples to avoid CFG edge bugs.
 
+### Exception-First Accessors (Avoid Optional Footguns)
+
+When absence is an edge-case and a cheap predicate exists, prefer an
+exception-first accessor over `std::optional`:
+
+- Pattern:
+  - `has_*` predicate for probing
+  - accessor throws with actionable guidance when missing
+- Example checks:
+  - `is_declaration` before `entry_block`
+  - `basic_block_count > 0` before `first_basic_block` / `last_basic_block`
+  - `has_personality_fn` / `has_prefix_data` / `has_prologue_data` before
+    corresponding getters
+
+This keeps happy-path types simple and removes repetitive `is not None` checks.
+
+`std::optional` / `None` is acceptable when absence is the expected semantics:
+
+- Boundary/navigation APIs:
+  - `next_*` / `prev_*` style traversal where "no neighbor" is normal.
+- Lookup/query APIs:
+  - name-based or key-based lookup where "not found" is expected.
+- IR features that are truly optional by design:
+  - e.g. unwind destination, GC name, optional metadata links.
+- Construction-time transient states:
+  - e.g. empty basic blocks while building IR.
+
+Prefer exceptions instead when missing state usually indicates a caller mistake
+and a cheap guard predicate exists.
+
+When a semantic-optional value is still awkward in common mutation flows,
+prefer adding a convenience helper over changing semantics. Example:
+
+- `BasicBlock.first_non_phi` remains optional (empty/PHI-only blocks are valid)
+- `BasicBlock.create_builder(first_non_phi=True)` provides the ergonomic
+  insertion path (before first non-PHI, otherwise at end)
+
 ### Helper/Free Function Guards
 
 Do not assume member guards cover helper-bound APIs. If a method is exposed via

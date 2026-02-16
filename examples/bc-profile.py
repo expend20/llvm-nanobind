@@ -28,13 +28,10 @@ def main():
         assert main_fn is not None, "expected main function"
         assert not main_fn.is_declaration, "main needs a body"
         main_entry = main_fn.entry_block
-        assert main_entry is not None, "TODO: needs fixing (better API design to raise instead of None)"
 
         print(f"start.type: {start_fn.type}, function_type: {start_fn.function_type}")
 
-        first_inst = main_entry.first_non_phi
-        assert first_inst is not None, "empty main entry block"
-        with first_inst.create_builder() as builder:
+        with main_entry.create_builder(first_non_phi=True) as builder:
             builder.call(start_fn, [])
 
         for main_block in main_fn.basic_blocks:
@@ -57,10 +54,7 @@ def main():
             print(f"{name_const.value_kind=}")
             entry_block = function.entry_block
             print("instrumenting entry block")
-            assert entry_block is not None, "no entry block (bad)"
-            first_inst = entry_block.first_non_phi
-            assert first_inst is not None, "empty entry block"
-            with first_inst.create_builder() as builder:
+            with entry_block.create_builder(first_non_phi=True) as builder:
                 builder.call(enter_fn, [name_const])
 
         with open(args.ir_out, "w", encoding="utf-8") as f:

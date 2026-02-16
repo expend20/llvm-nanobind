@@ -1612,12 +1612,19 @@ struct LLVMValueWrapper {
     return LLVMHasPersonalityFn(m_ref);
   }
 
-  std::optional<LLVMValueWrapper> get_personality_fn() const {
+  LLVMValueWrapper get_personality_fn() const {
     check_valid();
     require_function_value("personality_fn");
+    if (!LLVMHasPersonalityFn(m_ref)) {
+      throw LLVMAssertionError(
+          "personality_fn requires a personality function "
+          "(check has_personality_fn first)");
+    }
     LLVMValueRef fn = LLVMGetPersonalityFn(m_ref);
-    if (!fn)
-      return std::nullopt;
+    if (!fn) {
+      throw LLVMAssertionError(
+          "personality_fn: personality function is unexpectedly null");
+    }
     return LLVMValueWrapper(fn, m_context_token);
   }
 
@@ -1634,12 +1641,17 @@ struct LLVMValueWrapper {
     return LLVMHasPrefixData(m_ref);
   }
 
-  std::optional<LLVMValueWrapper> get_prefix_data() const {
+  LLVMValueWrapper get_prefix_data() const {
     check_valid();
     require_function_value("prefix_data");
+    if (!LLVMHasPrefixData(m_ref)) {
+      throw LLVMAssertionError(
+          "prefix_data requires prefix data (check has_prefix_data first)");
+    }
     LLVMValueRef data = LLVMGetPrefixData(m_ref);
-    if (!data)
-      return std::nullopt;
+    if (!data) {
+      throw LLVMAssertionError("prefix_data: prefix data is unexpectedly null");
+    }
     return LLVMValueWrapper(data, m_context_token);
   }
 
@@ -1656,12 +1668,19 @@ struct LLVMValueWrapper {
     return LLVMHasPrologueData(m_ref);
   }
 
-  std::optional<LLVMValueWrapper> get_prologue_data() const {
+  LLVMValueWrapper get_prologue_data() const {
     check_valid();
     require_function_value("prologue_data");
+    if (!LLVMHasPrologueData(m_ref)) {
+      throw LLVMAssertionError(
+          "prologue_data requires prologue data (check has_prologue_data "
+          "first)");
+    }
     LLVMValueRef data = LLVMGetPrologueData(m_ref);
-    if (!data)
-      return std::nullopt;
+    if (!data) {
+      throw LLVMAssertionError(
+          "prologue_data: prologue data is unexpectedly null");
+    }
     return LLVMValueWrapper(data, m_context_token);
   }
 
@@ -3126,7 +3145,7 @@ struct LLVMBasicBlockWrapper {
     return result;
   }
 
-  // TODO: not optional
+  // A block can be temporarily empty while being constructed.
   std::optional<LLVMValueWrapper> first_instruction() const {
     check_valid();
     LLVMValueRef inst = LLVMGetFirstInstruction(m_ref);
@@ -3417,8 +3436,9 @@ struct LLVMBasicBlockWrapper {
     return result;
   }
 
-  // Create a builder positioned at the end of this basic block
-  LLVMBuilderManager *create_builder() const;
+  // Create a builder positioned at the end of this basic block, or before the
+  // first non-PHI instruction when requested.
+  LLVMBuilderManager *create_builder(bool first_non_phi = false) const;
 };
 
 // =============================================================================
@@ -3488,12 +3508,18 @@ struct LLVMFunctionWrapper : LLVMValueWrapper {
     return LLVMBasicBlockWrapper(bb, m_context_token);
   }
 
-  // TODO: this should assert instead of returning optional
-  std::optional<LLVMBasicBlockWrapper> entry_block() const {
+  LLVMBasicBlockWrapper entry_block() const {
     check_valid();
+    if (LLVMIsDeclaration(m_ref)) {
+      throw LLVMAssertionError(
+          "entry_block requires a function definition (check is_declaration "
+          "first)");
+    }
     LLVMBasicBlockRef bb = LLVMGetEntryBasicBlock(m_ref);
-    if (!bb)
-      return std::nullopt;
+    if (!bb) {
+      throw LLVMAssertionError(
+          "entry_block: function has no basic blocks");
+    }
     return LLVMBasicBlockWrapper(bb, m_context_token);
   }
 
@@ -3502,19 +3528,33 @@ struct LLVMFunctionWrapper : LLVMValueWrapper {
     return LLVMCountBasicBlocks(m_ref);
   }
 
-  std::optional<LLVMBasicBlockWrapper> first_basic_block() const {
+  LLVMBasicBlockWrapper first_basic_block() const {
     check_valid();
+    unsigned count = LLVMCountBasicBlocks(m_ref);
+    if (count == 0) {
+      throw LLVMAssertionError(
+          "first_basic_block requires a function with at least one basic "
+          "block (check basic_block_count > 0 or is_declaration)");
+    }
     LLVMBasicBlockRef bb = LLVMGetFirstBasicBlock(m_ref);
-    if (!bb)
-      return std::nullopt;
+    if (!bb) {
+      throw LLVMAssertionError("first_basic_block: first block is null");
+    }
     return LLVMBasicBlockWrapper(bb, m_context_token);
   }
 
-  std::optional<LLVMBasicBlockWrapper> last_basic_block() const {
+  LLVMBasicBlockWrapper last_basic_block() const {
     check_valid();
+    unsigned count = LLVMCountBasicBlocks(m_ref);
+    if (count == 0) {
+      throw LLVMAssertionError(
+          "last_basic_block requires a function with at least one basic "
+          "block (check basic_block_count > 0 or is_declaration)");
+    }
     LLVMBasicBlockRef bb = LLVMGetLastBasicBlock(m_ref);
-    if (!bb)
-      return std::nullopt;
+    if (!bb) {
+      throw LLVMAssertionError("last_basic_block: last block is null");
+    }
     return LLVMBasicBlockWrapper(bb, m_context_token);
   }
 
@@ -3724,11 +3764,19 @@ struct LLVMFunctionWrapper : LLVMValueWrapper {
   }
 
   /// Get the personality function.
-  std::optional<LLVMValueWrapper> get_personality_fn() const {
+  LLVMValueWrapper get_personality_fn() const {
     check_valid();
-    if (!has_personality_fn())
-      return std::nullopt;
-    return LLVMValueWrapper(LLVMGetPersonalityFn(m_ref), m_context_token);
+    if (!has_personality_fn()) {
+      throw LLVMAssertionError(
+          "get_personality_fn requires a personality function "
+          "(check has_personality_fn first)");
+    }
+    LLVMValueRef fn = LLVMGetPersonalityFn(m_ref);
+    if (!fn) {
+      throw LLVMAssertionError(
+          "get_personality_fn: personality function is unexpectedly null");
+    }
+    return LLVMValueWrapper(fn, m_context_token);
   }
 
   /// Set the personality function.
@@ -6503,7 +6551,8 @@ LLVMContextWrapper::create_builder(const LLVMValueWrapper &inst,
 // Convenience method implementations for BasicBlock and Value
 // =============================================================================
 
-LLVMBuilderManager *LLVMBasicBlockWrapper::create_builder() const {
+LLVMBuilderManager *LLVMBasicBlockWrapper::create_builder(
+    bool first_non_phi) const {
   check_valid();
   // Get the context for this basic block via function -> module -> context
   // Note: context() returns a new LLVMContextWrapper that we don't own
@@ -6511,7 +6560,21 @@ LLVMBuilderManager *LLVMBasicBlockWrapper::create_builder() const {
   LLVMContextWrapper *ctx =
       const_cast<LLVMBasicBlockWrapper *>(this)->context();
   auto manager = new LLVMBuilderManager(ctx);
-  manager->m_initial_bb = m_ref;
+
+  if (first_non_phi) {
+    LLVMValueRef inst = LLVMGetFirstInstruction(m_ref);
+    while (inst && LLVMGetInstructionOpcode(inst) == LLVMPHI) {
+      inst = LLVMGetNextInstruction(inst);
+    }
+    if (inst) {
+      manager->m_initial_inst = inst;
+      manager->m_before_dbg = true;
+    } else {
+      manager->m_initial_bb = m_ref;
+    }
+  } else {
+    manager->m_initial_bb = m_ref;
+  }
   return manager;
 }
 
@@ -11308,6 +11371,9 @@ Prefer using erase_from_parent_ifunc() for most use cases.
       .def_prop_ro("personality_fn", &LLVMValueWrapper::get_personality_fn,
                    R"(Get the exception handling personality function.
 
+Valid when:
+  - has_personality_fn is True
+
 <sub>C API: LLVMGetPersonalityFn</sub>)")
       .def("set_personality_fn", &LLVMValueWrapper::set_personality_fn, "fn"_a,
            R"(Set the exception handling personality function.
@@ -11321,6 +11387,9 @@ Prefer using erase_from_parent_ifunc() for most use cases.
       .def_prop_ro("prefix_data", &LLVMValueWrapper::get_prefix_data,
                    R"(Get prefix data (data before function entry).
 
+Valid when:
+  - has_prefix_data is True
+
 <sub>C API: LLVMGetPrefixData</sub>)")
       .def("set_prefix_data", &LLVMValueWrapper::set_prefix_data, "data"_a,
            R"(Set prefix data (data before function entry).
@@ -11333,6 +11402,9 @@ Prefer using erase_from_parent_ifunc() for most use cases.
 <sub>C API: LLVMHasPrologueData</sub>)")
       .def_prop_ro("prologue_data", &LLVMValueWrapper::get_prologue_data,
                    R"(Get prologue data (data at function entry).
+
+Valid when:
+  - has_prologue_data is True
 
 <sub>C API: LLVMGetPrologueData</sub>)")
       .def("set_prologue_data", &LLVMValueWrapper::set_prologue_data, "data"_a,
@@ -11837,7 +11909,9 @@ Returns:
       .def_prop_ro("users", &LLVMBasicBlockWrapper::users,
                    R"(Get all users of this basic block.)")
       .def_prop_ro("first_non_phi", &LLVMBasicBlockWrapper::first_non_phi,
-                   R"(Get the first instruction that is not a PHI node.)")
+                   R"(Get the first instruction that is not a PHI node.
+
+Returns None when the block has no non-PHI instruction.)")
       .def_prop_ro("first_instruction",
                    &LLVMBasicBlockWrapper::first_instruction,
                    R"(First instruction.
@@ -11918,9 +11992,17 @@ Returns the new predecessor basic block.
            R"(Move after block.
 
 <sub>C API: LLVMMoveBasicBlockAfter</sub>)")
-      .def("create_builder", &LLVMBasicBlockWrapper::create_builder,
-           nb::rv_policy::take_ownership,
-           R"(Create a Builder positioned at the end of this BasicBlock.
+      .def(
+          "create_builder", &LLVMBasicBlockWrapper::create_builder,
+          nb::kw_only(), "first_non_phi"_a = false,
+          nb::rv_policy::take_ownership,
+          R"(Create a Builder in this BasicBlock.
+
+By default, positions at block end.
+
+With `first_non_phi=True`, positions before the first non-PHI instruction.
+If the block has no non-PHI instruction (empty block or PHI-only block),
+the builder is positioned at the end of the block.
 
 Returns a BuilderManager for use with Python's 'with' statement.
 
@@ -11962,6 +12044,9 @@ Returns a BuilderManager for use with Python's 'with' statement.
       .def_prop_ro("entry_block", &LLVMFunctionWrapper::entry_block,
                    R"(Entry block.
 
+Valid when:
+  - is_declaration is False
+
 <sub>C API: LLVMGetEntryBasicBlock</sub>)")
       .def_prop_ro("basic_block_count", &LLVMFunctionWrapper::basic_block_count,
                    R"(Block count.
@@ -11970,9 +12055,15 @@ Returns a BuilderManager for use with Python's 'with' statement.
       .def_prop_ro("first_basic_block", &LLVMFunctionWrapper::first_basic_block,
                    R"(First block.
 
+Valid when:
+  - basic_block_count > 0
+
 <sub>C API: LLVMGetFirstBasicBlock</sub>)")
       .def_prop_ro("last_basic_block", &LLVMFunctionWrapper::last_basic_block,
                    R"(Last block.
+
+Valid when:
+  - basic_block_count > 0
 
 <sub>C API: LLVMGetLastBasicBlock</sub>)")
       .def_prop_ro("basic_blocks", &LLVMFunctionWrapper::basic_blocks,
@@ -12130,8 +12221,9 @@ Valid when:
 <sub>C API: LLVMHasPersonalityFn</sub>)")
       .def("get_personality_fn", &LLVMFunctionWrapper::get_personality_fn,
            R"(Get the personality function.
-           
-           Returns None if no personality function is set.
+
+Valid when:
+  - has_personality_fn is True
 
 <sub>C API: LLVMGetPersonalityFn</sub>)")
       .def("set_personality_fn", &LLVMFunctionWrapper::set_personality_fn,

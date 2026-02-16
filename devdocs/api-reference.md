@@ -81,6 +81,10 @@ calls should raise `llvm.LLVMAssertionError` (not crash).
   - `has_prefix_data`, `prefix_data`, `set_prefix_data`
   - `has_prologue_data`, `prologue_data`, `set_prologue_data`
   - `function_type`
+  - Accessors `personality_fn` / `prefix_data` / `prologue_data` are
+    exception-first:
+    - use `has_personality_fn` / `has_prefix_data` / `has_prologue_data`
+      before accessing when absence is possible.
 
 ### Instruction Families
 
@@ -207,6 +211,11 @@ This section captures guard preconditions for wrapper classes other than
 ### BasicBlock (`llvm.BasicBlock`)
 
 - `terminator` requires the block to have a terminator.
+- `first_non_phi` is semantic-optional:
+  - returns `None` when the block has no non-PHI instruction.
+- For insertion before first non-PHI without optional handling:
+  - use `create_builder(first_non_phi=True)`, which falls back to block-end
+    when no non-PHI instruction exists.
 - Parent navigation:
   - `function` requires block attached to a function.
   - `module`/`context` require function parent and module parent.
@@ -220,6 +229,9 @@ This section captures guard preconditions for wrapper classes other than
 
 - `append_basic_block` requires function parent module and module context.
 - `append_existing_basic_block` requires an unattached block.
+- Basic block accessors are exception-first:
+  - `entry_block` requires `is_declaration == False`.
+  - `first_basic_block` / `last_basic_block` require `basic_block_count > 0`.
 - Attribute index APIs:
   - `get_attribute_count`, `get_enum_attribute`, `add_attribute`,
     `get_attributes`, `get_string_attribute`,

@@ -380,6 +380,13 @@ if block.has_terminator:
 - Explicit opt-in for edge cases
 - Catches bugs: accessing terminator on incomplete block is likely an error
 
+Concrete exception-first examples:
+- `fn.entry_block` throws when `fn.is_declaration` is `True`.
+- `fn.first_basic_block` / `fn.last_basic_block` throw when
+  `fn.basic_block_count == 0`.
+- `fn.personality_fn`, `fn.prefix_data`, `fn.prologue_data` throw when their
+  corresponding `has_*` predicate is `False`.
+
 ### Pattern Summary
 
 | Situation | Approach |
