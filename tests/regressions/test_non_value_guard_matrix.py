@@ -198,6 +198,15 @@ def test_non_value_guard_matrix_negative():
                 "out of range for callsite",
             )
 
+            assert_llvm_assertion(
+                lambda: llvm.get_first_dbg_record(fn),
+                "instruction value",
+            )
+            assert_llvm_assertion(
+                lambda: llvm.get_last_dbg_record(fn),
+                "instruction value",
+            )
+
             # Keep the instruction alive to prevent fixture optimization.
             assert first_inst.is_instruction
 

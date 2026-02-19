@@ -15645,6 +15645,9 @@ Valid when:
       "get_first_dbg_record",
       [](const LLVMValueWrapper &instr) -> void * {
         instr.check_valid();
+        if (!instr.is_a_instruction())
+          throw LLVMAssertionError(
+              "get_first_dbg_record requires an instruction value");
         return LLVMGetFirstDbgRecord(instr.m_ref);
       },
       "instr"_a, R"(Get first debug record attached to instruction.)");
@@ -15653,6 +15656,9 @@ Valid when:
       "get_last_dbg_record",
       [](const LLVMValueWrapper &instr) -> void * {
         instr.check_valid();
+        if (!instr.is_a_instruction())
+          throw LLVMAssertionError(
+              "get_last_dbg_record requires an instruction value");
         return LLVMGetLastDbgRecord(instr.m_ref);
       },
       "instr"_a, R"(Get last debug record attached to instruction.)");
