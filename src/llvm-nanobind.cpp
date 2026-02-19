@@ -461,7 +461,9 @@ struct LLVMTypeWrapper {
   bool is_float() const {
     auto k = kind();
     return k == LLVMHalfTypeKind || k == LLVMFloatTypeKind ||
-           k == LLVMDoubleTypeKind || k == LLVMFP128TypeKind;
+           k == LLVMDoubleTypeKind || k == LLVMFP128TypeKind ||
+           k == LLVMBFloatTypeKind || k == LLVMX86_FP80TypeKind ||
+           k == LLVMPPC_FP128TypeKind;
   }
   bool is_pointer() const { return kind() == LLVMPointerTypeKind; }
   bool is_function() const { return kind() == LLVMFunctionTypeKind; }
@@ -1908,6 +1910,14 @@ struct LLVMValueWrapper {
     if (!LLVMIsAConstantInt(m_ref))
       throw LLVMAssertionError("const_sext_value requires a constant integer");
     return LLVMConstIntGetSExtValue(m_ref);
+  }
+
+  double const_real_double() const {
+    check_valid();
+    if (!LLVMIsAConstantFP(m_ref))
+      throw LLVMAssertionError("const_real_double requires a constant floating point");
+    LLVMBool loses_info = 0;
+    return LLVMConstRealGetDouble(m_ref, &loses_info);
   }
 
   // Check if value is ValueAsMetadata
@@ -7976,6 +7986,13 @@ struct LLVMSectionIteratorWrapper : NoMoveCopy {
     return LLVMObjectFileIsSectionIteratorAtEnd(m_binary_ref, m_ref);
   }
 
+  void check_not_at_end(const char *api_name) const {
+    if (is_at_end()) {
+      throw LLVMAssertionError(std::string(api_name) +
+                               " requires iterator not at end");
+    }
+  }
+
   void move_next() {
     check_valid();
     LLVMMoveToNextSection(m_ref);
@@ -7983,22 +8000,26 @@ struct LLVMSectionIteratorWrapper : NoMoveCopy {
 
   std::string get_name() const {
     check_valid();
+    check_not_at_end("SectionIterator.name");
     const char *name = LLVMGetSectionName(m_ref);
     return name ? std::string(name) : std::string();
   }
 
   uint64_t get_address() const {
     check_valid();
+    check_not_at_end("SectionIterator.address");
     return LLVMGetSectionAddress(m_ref);
   }
 
   uint64_t get_size() const {
     check_valid();
+    check_not_at_end("SectionIterator.size");
     return LLVMGetSectionSize(m_ref);
   }
 
   nb::bytes get_contents() const {
     check_valid();
+    check_not_at_end("SectionIterator.contents");
     const char *contents = LLVMGetSectionContents(m_ref);
     size_t size = LLVMGetSectionSize(m_ref);
     return nb::bytes(contents, size);
@@ -8056,6 +8077,13 @@ struct LLVMSymbolIteratorWrapper : NoMoveCopy {
     return LLVMObjectFileIsSymbolIteratorAtEnd(m_binary_ref, m_ref);
   }
 
+  void check_not_at_end(const char *api_name) const {
+    if (is_at_end()) {
+      throw LLVMAssertionError(std::string(api_name) +
+                               " requires iterator not at end");
+    }
+  }
+
   void move_next() {
     check_valid();
     LLVMMoveToNextSymbol(m_ref);
@@ -8063,17 +8091,20 @@ struct LLVMSymbolIteratorWrapper : NoMoveCopy {
 
   std::string get_name() const {
     check_valid();
+    check_not_at_end("SymbolIterator.name");
     const char *name = LLVMGetSymbolName(m_ref);
     return name ? std::string(name) : std::string();
   }
 
   uint64_t get_address() const {
     check_valid();
+    check_not_at_end("SymbolIterator.address");
     return LLVMGetSymbolAddress(m_ref);
   }
 
   uint64_t get_size() const {
     check_valid();
+    check_not_at_end("SymbolIterator.size");
     return LLVMGetSymbolSize(m_ref);
   }
 
@@ -8126,6 +8157,13 @@ struct LLVMRelocationIteratorWrapper : NoMoveCopy {
     return LLVMIsRelocationIteratorAtEnd(m_section_ref, m_ref);
   }
 
+  void check_not_at_end(const char *api_name) const {
+    if (is_at_end()) {
+      throw LLVMAssertionError(std::string(api_name) +
+                               " requires iterator not at end");
+    }
+  }
+
   void move_next() {
     check_valid();
     LLVMMoveToNextRelocation(m_ref);
@@ -8133,16 +8171,19 @@ struct LLVMRelocationIteratorWrapper : NoMoveCopy {
 
   uint64_t get_offset() const {
     check_valid();
+    check_not_at_end("RelocationIterator.offset");
     return LLVMGetRelocationOffset(m_ref);
   }
 
   uint64_t get_type() const {
     check_valid();
+    check_not_at_end("RelocationIterator.type");
     return LLVMGetRelocationType(m_ref);
   }
 
   std::string get_type_name() const {
     check_valid();
+    check_not_at_end("RelocationIterator.type_name");
     const char *name = LLVMGetRelocationTypeName(m_ref);
     std::string result = name ? std::string(name) : std::string();
     // Caller owns the string, so we need to free it
@@ -8153,6 +8194,7 @@ struct LLVMRelocationIteratorWrapper : NoMoveCopy {
 
   std::string get_value_string() const {
     check_valid();
+    check_not_at_end("RelocationIterator.value_string");
     const char *value = LLVMGetRelocationValueString(m_ref);
     std::string result = value ? std::string(value) : std::string();
     if (value)
@@ -8180,6 +8222,14 @@ bool LLVMSectionIteratorWrapper::contains_symbol(
     const LLVMSymbolIteratorWrapper &sym) const {
   check_valid();
   sym.check_valid();
+  if (is_at_end()) {
+    throw LLVMAssertionError(
+        "SectionIterator.contains_symbol requires section iterator not at end");
+  }
+  if (sym.is_at_end()) {
+    throw LLVMAssertionError(
+        "SectionIterator.contains_symbol requires symbol iterator not at end");
+  }
   return LLVMGetSectionContainsSymbol(m_ref, sym.m_ref);
 }
 
@@ -11220,6 +11270,10 @@ Warning:
                    R"(Get sign-extended value.
 
 <sub>C API: LLVMConstIntGetSExtValue</sub>)")
+      .def_prop_ro("const_real_double", &LLVMValueWrapper::const_real_double,
+                   R"(Get floating-point constant value as a double.
+
+<sub>C API: LLVMConstRealGetDouble</sub>)")
       // Value as metadata check
       .def_prop_ro("is_value_as_metadata",
                    &LLVMValueWrapper::is_value_as_metadata,
@@ -14337,6 +14391,11 @@ Valid when:
              const LLVMSymbolIteratorWrapper &sym) {
             self.check_valid();
             sym.check_valid();
+            if (sym.is_at_end()) {
+              throw LLVMAssertionError(
+                  "move_to_containing_section requires symbol iterator not at "
+                  "end");
+            }
             LLVMMoveToContainingSection(self.m_ref, sym.m_ref);
           },
           "symbol"_a,
@@ -14351,6 +14410,7 @@ Valid when:
           "relocations",
           [](LLVMSectionIteratorWrapper &self) {
             self.check_valid();
+            self.check_not_at_end("SectionIterator.relocations");
             LLVMRelocationIteratorRef ref = LLVMGetRelocations(self.m_ref);
             return new LLVMRelocationIteratorWrapper(ref, self.m_ref,
                                                      self.m_binary_token);

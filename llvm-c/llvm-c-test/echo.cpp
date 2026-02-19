@@ -25,6 +25,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <cctype>
 
 using namespace llvm;
 
@@ -380,7 +381,83 @@ static LLVMValueRef clone_constant_impl(LLVMValueRef Cst, LLVMModuleRef M) {
   // Try float literal
   if (LLVMIsAConstantFP(Cst)) {
     check_value_kind(Cst, LLVMConstantFPValueKind);
-    report_fatal_error("ConstantFP is not supported");
+    char *Printed = LLVMPrintValueToString(Cst);
+    std::string Text(Printed);
+    LLVMDisposeMessage(Printed);
+
+    size_t SpacePos = Text.find(' ');
+    if (SpacePos == std::string::npos || SpacePos + 1 >= Text.size())
+      report_fatal_error("Could not parse ConstantFP literal");
+
+    std::string Literal = Text.substr(SpacePos + 1);
+    while (!Literal.empty() && isspace(static_cast<unsigned char>(Literal.front())))
+      Literal.erase(Literal.begin());
+    while (!Literal.empty() && isspace(static_cast<unsigned char>(Literal.back())))
+      Literal.pop_back();
+    LLVMTypeRef DstTy = TypeCloner(M).Clone(Cst);
+    LLVMTypeKind DstKind = LLVMGetTypeKind(DstTy);
+
+    auto cloneFromBitPattern = [&](unsigned BitWidth, const std::string &HexDigits)
+        -> LLVMValueRef {
+      LLVMContextRef Ctx = LLVMGetModuleContext(M);
+      LLVMTypeRef IntTy = LLVMIntTypeInContext(Ctx, BitWidth);
+      LLVMValueRef Bits =
+          LLVMConstIntOfStringAndSize(IntTy, HexDigits.c_str(), HexDigits.size(), 16);
+      return LLVMConstBitCast(Bits, DstTy);
+    };
+
+    auto isPlainHex = [](const std::string &S) {
+      if (S.empty())
+        return false;
+      for (char C : S) {
+        if (!isxdigit(static_cast<unsigned char>(C)))
+          return false;
+      }
+      return true;
+    };
+
+    if (Literal.rfind("0xH", 0) == 0)
+      return cloneFromBitPattern(16, Literal.substr(3));
+    if (Literal.rfind("0xR", 0) == 0)
+      return cloneFromBitPattern(16, Literal.substr(3));
+    if (Literal.rfind("0xK", 0) == 0)
+      return cloneFromBitPattern(80, Literal.substr(3));
+    if (Literal.rfind("0xL", 0) == 0)
+      return cloneFromBitPattern(128, Literal.substr(3));
+    if (Literal.rfind("0xM", 0) == 0)
+      return cloneFromBitPattern(128, Literal.substr(3));
+
+    if (Literal.rfind("0x", 0) == 0) {
+      std::string Body = Literal.substr(2);
+      if (isPlainHex(Body)) {
+        unsigned BitWidth = 0;
+        switch (DstKind) {
+        case LLVMHalfTypeKind:
+        case LLVMBFloatTypeKind:
+          BitWidth = 16;
+          break;
+        case LLVMFloatTypeKind:
+          BitWidth = 32;
+          break;
+        case LLVMDoubleTypeKind:
+          BitWidth = 64;
+          break;
+        case LLVMX86_FP80TypeKind:
+          BitWidth = 80;
+          break;
+        case LLVMFP128TypeKind:
+        case LLVMPPC_FP128TypeKind:
+          BitWidth = 128;
+          break;
+        default:
+          break;
+        }
+        if (BitWidth != 0)
+          return cloneFromBitPattern(BitWidth, Body);
+      }
+    }
+
+    return LLVMConstRealOfStringAndSize(DstTy, Literal.c_str(), Literal.size());
   }
 
   // Try ConstantVector or ConstantDataVector
@@ -482,11 +559,45 @@ struct FunCloner {
     return TypeCloner(M).Clone(Src);
   }
 
+  LLVMValueRef CloneBlockAddressConstant(LLVMValueRef Src) {
+    check_value_kind(Src, LLVMBlockAddressValueKind);
+
+    auto i = VMap.find(Src);
+    if (i != VMap.end())
+      return i->second;
+
+    if (LLVMGetNumOperands(Src) != 1)
+      report_fatal_error("BlockAddress should have exactly one operand");
+
+    LLVMValueRef BBVal = LLVMGetOperand(Src, 0);
+    if (!LLVMValueIsBasicBlock(BBVal))
+      report_fatal_error("BlockAddress operand is not a basic block");
+
+    LLVMBasicBlockRef SrcBB = LLVMValueAsBasicBlock(BBVal);
+    LLVMValueRef SrcFn = LLVMGetBasicBlockParent(SrcBB);
+    size_t FnNameLen;
+    const char *FnName = LLVMGetValueName2(SrcFn, &FnNameLen);
+    LLVMValueRef DstFn = LLVMGetNamedFunction(M, FnName);
+    if (!DstFn)
+      report_fatal_error("Could not find function for block address");
+
+    // Current cloning flow only supports blockaddress constants that refer to
+    // the function currently being cloned.
+    if (DstFn != Fun)
+      report_fatal_error("Cross-function blockaddress is not supported");
+
+    LLVMBasicBlockRef DstBB = DeclareBB(SrcBB);
+    return VMap[Src] = LLVMBlockAddress(DstFn, DstBB);
+  }
+
   // Try to clone everything in the llvm::Value hierarchy.
   LLVMValueRef CloneValue(LLVMValueRef Src) {
     // First, the value may be constant.
-    if (LLVMIsAConstant(Src))
+    if (LLVMIsAConstant(Src)) {
+      if (LLVMGetValueKind(Src) == LLVMBlockAddressValueKind)
+        return CloneBlockAddressConstant(Src);
       return clone_constant(Src, M);
+    }
 
     // Function argument should always be in the map already.
     auto i = VMap.find(Src);
@@ -576,10 +687,32 @@ struct FunCloner {
         Dst = LLVMBuildCondBr(Builder, CloneValue(Cond), ThenBB, ElseBB);
         break;
       }
-      case LLVMSwitch:
-      case LLVMIndirectBr:
-        // TODO: we need this
+      case LLVMSwitch: {
+        LLVMValueRef Cond = CloneValue(LLVMGetOperand(Src, 0));
+        unsigned SuccCount = LLVMGetNumSuccessors(Src);
+        if (SuccCount < 1)
+          report_fatal_error("Switch: expected at least a default successor");
+
+        LLVMBasicBlockRef DefaultBB = DeclareBB(LLVMGetSuccessor(Src, 0));
+        unsigned NumCases = SuccCount - 1;
+        Dst = LLVMBuildSwitch(Builder, Cond, DefaultBB, NumCases);
+
+        // Operand layout: [cond, default_dest, case0_val, case0_dest, ...]
+        for (unsigned i = 0; i < NumCases; ++i) {
+          LLVMValueRef CaseVal = CloneValue(LLVMGetOperand(Src, 2 + i * 2));
+          LLVMBasicBlockRef CaseBB = DeclareBB(LLVMGetSuccessor(Src, i + 1));
+          LLVMAddCase(Dst, CaseVal, CaseBB);
+        }
         break;
+      }
+      case LLVMIndirectBr: {
+        LLVMValueRef Addr = CloneValue(LLVMGetOperand(Src, 0));
+        unsigned NumDests = LLVMGetNumSuccessors(Src);
+        Dst = LLVMBuildIndirectBr(Builder, Addr, NumDests);
+        for (unsigned i = 0; i < NumDests; ++i)
+          LLVMAddDestination(Dst, DeclareBB(LLVMGetSuccessor(Src, i)));
+        break;
+      }
       case LLVMInvoke: {
         SmallVector<LLVMValueRef, 8> Args;
         SmallVector<LLVMOperandBundleRef, 8> Bundles;

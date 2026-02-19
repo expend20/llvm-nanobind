@@ -231,7 +231,58 @@ def clone_constant_impl(cst: llvm.Value, m: llvm.Module) -> llvm.Value:
     # Try float literal
     if cst.is_constant_fp:
         check_value_kind(cst, llvm.ValueKind.ConstantFP)
-        raise RuntimeError("ConstantFP is not supported")
+        ty = TypeCloner(m).clone(cst)
+        cst_text = str(cst)
+        parts = cst_text.split(" ", 1)
+        if len(parts) != 2:
+            raise RuntimeError("Could not parse ConstantFP literal")
+        literal = parts[1].strip()
+
+        def clone_fp_bitpattern_from_literal(fp_ty, fp_literal):
+            bit_width = None
+            hex_digits = None
+
+            if fp_literal.startswith("0xH"):
+                bit_width = 16
+                hex_digits = fp_literal[3:]
+            elif fp_literal.startswith("0xR"):
+                bit_width = 16
+                hex_digits = fp_literal[3:]
+            elif fp_literal.startswith("0xK"):
+                bit_width = 80
+                hex_digits = fp_literal[3:]
+            elif fp_literal.startswith("0xL"):
+                bit_width = 128
+                hex_digits = fp_literal[3:]
+            elif fp_literal.startswith("0xM"):
+                bit_width = 128
+                hex_digits = fp_literal[3:]
+            elif fp_literal.startswith("0x"):
+                body = fp_literal[2:]
+                if body and all(ch in "0123456789abcdefABCDEF" for ch in body):
+                    kind_to_bits = {
+                        llvm.TypeKind.Half: 16,
+                        llvm.TypeKind.BFloat: 16,
+                        llvm.TypeKind.Float: 32,
+                        llvm.TypeKind.Double: 64,
+                        llvm.TypeKind.X86_FP80: 80,
+                        llvm.TypeKind.FP128: 128,
+                        llvm.TypeKind.PPC_FP128: 128,
+                    }
+                    bit_width = kind_to_bits.get(fp_ty.kind)
+                    hex_digits = body
+
+            if bit_width is None or hex_digits is None:
+                return None
+
+            int_ty = m.context.types.int_n(bit_width)
+            return int_ty.constant_from_string(hex_digits, 16).const_bitcast(fp_ty)
+
+        bitpattern = clone_fp_bitpattern_from_literal(ty, literal)
+        if bitpattern is not None:
+            return bitpattern
+
+        return ty.real_constant_from_string(literal)
 
     # Try ConstantVector or ConstantDataVector
     if cst.is_constant_vector or cst.is_constant_data_vector:
@@ -389,10 +440,37 @@ class FunCloner:
         """Clone a type."""
         return TypeCloner(self.module).clone(src)
 
+    def clone_block_address_constant(self, src: llvm.Value) -> llvm.Value:
+        """Clone a BlockAddress constant using the destination function/block."""
+        check_value_kind(src, llvm.ValueKind.BlockAddress)
+
+        if src in self.vmap:
+            return self.vmap[src]
+
+        if src.num_operands != 1:
+            raise RuntimeError("BlockAddress should have exactly one operand")
+
+        bb_val = src.get_operand(0)
+        if not bb_val.value_is_basic_block:
+            raise RuntimeError("BlockAddress operand is not a basic block")
+
+        src_bb = bb_val.value_as_basic_block()
+        src_fn = src_bb.function
+        dst_fn = self.module.get_function(src_fn.name)
+        if not dst_fn:
+            raise RuntimeError("Could not find function for block address")
+
+        dst_bb = self.declare_bb(src_bb)
+        dst = dst_fn.block_address(dst_bb)
+        self.vmap[src] = dst
+        return dst
+
     def clone_value(self, src: llvm.Value) -> llvm.Value:
         """Clone a value, handling constants, params, and instructions."""
         # First, the value may be constant
         if src.is_constant:
+            if src.value_kind == llvm.ValueKind.BlockAddress:
+                return self.clone_block_address_constant(src)
             return clone_constant(src, self.module)
 
         # Function argument should always be in the map
@@ -467,12 +545,27 @@ class FunCloner:
                 dst = builder.cond_br(self.clone_value(cond), then_bb, else_bb)
 
         elif op == llvm.Opcode.Switch:
-            # Not fully supported
-            pass
+            cond = self.clone_value(src.get_operand(0))
+            succ_count = src.num_successors
+            if succ_count < 1:
+                raise RuntimeError("Switch: expected at least a default successor")
+
+            default_bb = self.declare_bb(src.get_successor(0))
+            num_cases = succ_count - 1
+            dst = builder.switch_(cond, default_bb, num_cases)
+
+            # Operand layout: [cond, default_dest, case0_val, case0_dest, ...]
+            for i in range(num_cases):
+                case_val = self.clone_value(src.get_operand(2 + i * 2))
+                case_bb = self.declare_bb(src.get_successor(i + 1))
+                dst.add_case(case_val, case_bb)
 
         elif op == llvm.Opcode.IndirectBr:
-            # Not fully supported
-            pass
+            addr = self.clone_value(src.get_operand(0))
+            num_dests = src.num_successors
+            dst = builder.indirect_br(addr, num_dests)
+            for i in range(num_dests):
+                dst.add_destination(self.declare_bb(src.get_successor(i)))
 
         elif op == llvm.Opcode.Invoke:
             args = []

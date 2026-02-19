@@ -78,11 +78,14 @@ int llvm_object_list_symbols(void) {
   sect = LLVMObjectFileCopySectionIterator(O);
   sym = LLVMObjectFileCopySymbolIterator(O);
   while (sect && sym && !LLVMObjectFileIsSymbolIteratorAtEnd(O, sym)) {
+    const char *SectionName = NULL;
 
     LLVMMoveToContainingSection(sect, sym);
+    if (!LLVMObjectFileIsSectionIteratorAtEnd(O, sect))
+      SectionName = LLVMGetSectionName(sect);
     printf("%s @0x%08" PRIx64 " +%" PRIu64 " (%s)\n", LLVMGetSymbolName(sym),
            LLVMGetSymbolAddress(sym), LLVMGetSymbolSize(sym),
-           LLVMGetSectionName(sect));
+           SectionName ? SectionName : "(null)");
 
     LLVMMoveToNextSymbol(sym);
   }

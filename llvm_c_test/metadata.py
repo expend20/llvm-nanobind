@@ -75,31 +75,50 @@ def set_metadata():
 
 
 def replace_md_operand():
-    """Test replacing metadata operand (not yet fully implemented)."""
-    # This test requires LLVMMetadataRef support which is more complex
-    # For now, return success to match the test structure
-    print("replace_md_operand: Not yet fully implemented", file=sys.stderr)
-    return 0
+    """Test replacing metadata operand."""
+    try:
+        with llvm.create_context() as ctx:
+            with ctx.create_module("Mod"):
+                # Build MDNode("foo"), then replace operand 0 with MDString("bar").
+                string1_md = ctx.md_string("foo")
+                node_md = ctx.md_node([string1_md])
+                value = node_md.as_value(ctx)
+
+                string2_md = ctx.md_string("bar")
+                llvm.replace_md_node_operand_with(value, 0, string2_md)
+
+                # Verify replacement took effect.
+                operand = value.get_operand(0)
+                if operand.as_metadata() != string2_md:
+                    raise AssertionError("Metadata operand replacement did not apply")
+
+        return 0
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        return 1
 
 
 def is_a_value_as_metadata():
-    """Test checking if value is ValueAsMetadata (not yet fully implemented)."""
+    """Test checking if value is ValueAsMetadata."""
     try:
         with llvm.create_context() as ctx:
             with ctx.create_module("Mod") as mod:
-                # Create integer constant
+                # MDNode built from a Value should be ValueAsMetadata.
                 i32 = ctx.types.i32
-                val = i32.constant(0, False)
-
-                # Create metadata from value and then node
-                md = val.as_metadata()
-                md_node = ctx.md_node([md])
-
-                # Convert back to value for the test
+                val = i32.constant(0, False).as_metadata()
+                md_node = ctx.md_node([val])
                 md_val = md_node.as_value(ctx)
 
-                # Check if it's ValueAsMetadata using the value kind
-                # The test just checks this doesn't crash
+                if not md_val.is_value_as_metadata:
+                    raise AssertionError("Expected ValueAsMetadata for value-backed MD")
+
+                # MDNode built from MDString should NOT be ValueAsMetadata.
+                string_md = ctx.md_string("foo")
+                string_node = ctx.md_node([string_md])
+                string_val = string_node.as_value(ctx)
+
+                if string_val.is_value_as_metadata:
+                    raise AssertionError("Expected non-ValueAsMetadata for string-backed MD")
 
         return 0
     except Exception as e:

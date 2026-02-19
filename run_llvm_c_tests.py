@@ -142,7 +142,8 @@ def build_llvm_c_test_cmd(
             # a unique data file that can be combined later with `coverage combine`
             # Specify --data-file to write coverage to project root regardless of cwd
             coverage_file = project_root / ".coverage.llvm_c_test"
-            cmd = f"{python_exe} -m coverage run --parallel-mode --data-file={coverage_file} -m llvm_c_test"
+            coverage_file_arg = coverage_file.as_posix()
+            cmd = f"{python_exe} -m coverage run --parallel-mode --data-file={coverage_file_arg} -m llvm_c_test"
         else:
             # Direct invocation using the installed script
             cmd = f"{python_exe} -m llvm_c_test"

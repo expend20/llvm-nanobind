@@ -130,6 +130,12 @@ def test_type_guard_matrix_positive():
         assert i32.constant_from_string("123", 10).is_constant
         assert f32.real_constant(1.25).is_constant
         assert f32.real_constant_from_string("2.5").is_constant
+        assert ctx.types.bf16.real_constant(1.25).is_constant
+        assert ctx.types.bf16.real_constant_from_string("2.5").is_constant
+        assert ctx.types.x86_fp80.real_constant(1.25).is_constant
+        assert ctx.types.x86_fp80.real_constant_from_string("2.5").is_constant
+        assert ctx.types.ppc_fp128.real_constant(1.25).is_constant
+        assert ctx.types.ppc_fp128.real_constant_from_string("2.5").is_constant
 
         target_ext = None
         try:

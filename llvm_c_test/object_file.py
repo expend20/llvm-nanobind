@@ -64,7 +64,8 @@ def object_list_symbols() -> int:
                 sym_name = sym.name
                 sym_address = sym.address
                 sym_size = sym.size
-                sect_name = sect.name
+                # Some symbols have no containing section; match C tool output.
+                sect_name = "(null)" if sect.is_at_end() else sect.name
 
                 print(f"{sym_name} @0x{sym_address:08x} +{sym_size} ({sect_name})")
 
