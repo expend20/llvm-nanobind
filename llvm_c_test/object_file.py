@@ -63,9 +63,15 @@ def object_list_symbols() -> int:
 
                 sym_name = sym.name
                 sym_address = sym.address
-                sym_size = sym.size
                 # Some symbols have no containing section; match C tool output.
-                sect_name = "(null)" if sect.is_at_end() else sect.name
+                if sect.is_at_end():
+                    sect_name = "(null)"
+                    # Avoid LLVMGetSymbolSize on symbols without a containing
+                    # section (e.g. file symbols), which can assert in debug builds.
+                    sym_size = 0
+                else:
+                    sect_name = sect.name
+                    sym_size = sym.size
 
                 print(f"{sym_name} @0x{sym_address:08x} +{sym_size} ({sect_name})")
 

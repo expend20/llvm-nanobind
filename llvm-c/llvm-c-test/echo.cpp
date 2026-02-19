@@ -359,16 +359,16 @@ static LLVMValueRef clone_constant_impl(LLVMValueRef Cst, LLVMModuleRef M) {
     return LLVMConstNull(Ty);
   }
 
-  // Try undef
-  if (LLVMIsUndef(Cst)) {
-    check_value_kind(Cst, LLVMUndefValueValueKind);
-    return LLVMGetUndef(TypeCloner(M).Clone(Cst));
-  }
-
   // Try poison
   if (LLVMIsPoison(Cst)) {
     check_value_kind(Cst, LLVMPoisonValueValueKind);
     return LLVMGetPoison(TypeCloner(M).Clone(Cst));
+  }
+
+  // Try undef
+  if (LLVMIsUndef(Cst)) {
+    check_value_kind(Cst, LLVMUndefValueValueKind);
+    return LLVMGetUndef(TypeCloner(M).Clone(Cst));
   }
 
   // Try null
@@ -566,15 +566,29 @@ struct FunCloner {
     if (i != VMap.end())
       return i->second;
 
-    if (LLVMGetNumOperands(Src) != 1)
-      report_fatal_error("BlockAddress should have exactly one operand");
+    unsigned NumOps = LLVMGetNumOperands(Src);
+    if (NumOps != 1 && NumOps != 2)
+      report_fatal_error("BlockAddress should have one or two operands");
 
-    LLVMValueRef BBVal = LLVMGetOperand(Src, 0);
+    unsigned BBOpIndex = NumOps - 1;
+    LLVMValueRef BBVal = LLVMGetOperand(Src, BBOpIndex);
     if (!LLVMValueIsBasicBlock(BBVal))
       report_fatal_error("BlockAddress operand is not a basic block");
 
     LLVMBasicBlockRef SrcBB = LLVMValueAsBasicBlock(BBVal);
-    LLVMValueRef SrcFn = LLVMGetBasicBlockParent(SrcBB);
+    LLVMValueRef SrcFn = nullptr;
+    if (NumOps == 2) {
+      LLVMValueRef FnOp = LLVMGetOperand(Src, 0);
+      if (!LLVMIsAFunction(FnOp))
+        report_fatal_error("BlockAddress function operand is not a function");
+      SrcFn = FnOp;
+    } else {
+      SrcFn = LLVMGetBasicBlockParent(SrcBB);
+    }
+
+    if (LLVMGetBasicBlockParent(SrcBB) != SrcFn)
+      report_fatal_error("BlockAddress function/block mismatch");
+
     size_t FnNameLen;
     const char *FnName = LLVMGetValueName2(SrcFn, &FnNameLen);
     LLVMValueRef DstFn = LLVMGetNamedFunction(M, FnName);
@@ -592,10 +606,13 @@ struct FunCloner {
 
   // Try to clone everything in the llvm::Value hierarchy.
   LLVMValueRef CloneValue(LLVMValueRef Src) {
+    // Handle BlockAddress by value kind first. Some LLVM revisions may not
+    // classify BlockAddress as LLVMIsAConstant().
+    if (LLVMGetValueKind(Src) == LLVMBlockAddressValueKind)
+      return CloneBlockAddressConstant(Src);
+
     // First, the value may be constant.
     if (LLVMIsAConstant(Src)) {
-      if (LLVMGetValueKind(Src) == LLVMBlockAddressValueKind)
-        return CloneBlockAddressConstant(Src);
       return clone_constant(Src, M);
     }
 

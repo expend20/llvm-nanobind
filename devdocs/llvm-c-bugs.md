@@ -4,14 +4,14 @@ Last updated: February 19, 2026
 
 This document tracks issues relevant to llvm-c-test parity work.
 
-## 1. Poison Constant ValueKind Mismatch
+## 1. Poison/Undef Predicate Ordering in Echo (Historical)
 
-- Status: Reproduced in both C and Python implementations.
+- Status: Fixed in both vendored C llvm-c-test and Python implementation.
 - Scope: `--echo`
-- Symptom: `LLVMGetValueKind` reports poison as the wrong kind during cloning.
-- Error text: `LLVMGetValueKind returned incorrect type`
-- Lit coverage: `llvm-c/llvm-c-test/inputs/echo_poison_known_bug.ll`
-- Notes: This currently appears to be an upstream LLVM-C API behavior issue.
+- Root cause: `LLVMIsUndef(poison)` is true, so checking `undef` before
+  `poison` misclassifies poison constants.
+- Fix summary: check poison before undef in constant cloning.
+- Lit coverage: `llvm-c/llvm-c-test/inputs/poison.ll`
 
 ## 2. BitCast Echo Crash (Historical)
 
@@ -35,14 +35,17 @@ This document tracks issues relevant to llvm-c-test parity work.
 - Scope: `--echo`
 - Lit coverage: `llvm-c/llvm-c-test/inputs/types_extended.ll`
 
-## 5. Object Symbol Section Name Crash in C llvm-c-test
+## 5. Object Symbol Size Crash in C llvm-c-test
 
 - Status: Fixed in vendored `llvm-c-test` code.
 - Scope: `--object-list-symbols`
-- Root cause: C test code called `LLVMGetSectionName` after
-  `LLVMMoveToContainingSection` without checking section-iterator end.
-- Fix: Guard with `LLVMObjectFileIsSectionIteratorAtEnd` and print `"(null)"`
-  when no containing section exists.
+- Root cause: C test code called `LLVMGetSymbolSize` for symbols without a
+  containing section (for example file symbols), which can assert in debug
+  builds.
+- Fix:
+  - Guard section iterator end after `LLVMMoveToContainingSection`.
+  - For symbols with no containing section, print section as `"(null)"` and
+    size as `0` without calling `LLVMGetSymbolSize`.
 - Files:
   - Fix: `llvm-c/llvm-c-test/object.c`
   - Coverage: `llvm-c/llvm-c-test/inputs/object_symbols.test`
@@ -50,8 +53,8 @@ This document tracks issues relevant to llvm-c-test parity work.
 ## Upstreaming Plan
 
 1. Upstream llvm-c-test fixes that are API-call correctness issues
-   (`object.c` section-iterator end guard).
+   (`object.c` section-iterator and symbol-size guard).
 2. Keep regression lit tests for previously failing behaviors
    (`echo_constant_fp.ll`, `echo_bitcast.ll`, `object_symbols.test`).
-3. For unresolved upstream API behavior (`echo_poison_known_bug.ll`), keep a
-   negative test and reference it in upstream discussion.
+3. Keep regression lit tests for historical failures and ensure they pass on
+   both C and Python implementations (`poison.ll`).

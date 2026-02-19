@@ -23,7 +23,7 @@ define %NamedStruct @test_named_struct(%NamedStruct %s) {
   %1 = extractvalue %NamedStruct %s, 0
   %2 = extractvalue %NamedStruct %s, 1
   %3 = extractvalue %NamedStruct %s, 2
-  %4 = insertvalue %NamedStruct undef, i32 %1, 0
+  %4 = insertvalue %NamedStruct %s, i32 %1, 0
   %5 = insertvalue %NamedStruct %4, i64 %2, 1
   %6 = insertvalue %NamedStruct %5, ptr %3, 2
   ret %NamedStruct %6

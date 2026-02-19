@@ -8105,6 +8105,21 @@ struct LLVMSymbolIteratorWrapper : NoMoveCopy {
   uint64_t get_size() const {
     check_valid();
     check_not_at_end("SymbolIterator.size");
+
+    // Some symbol kinds (e.g. file symbols) have no containing section.
+    // LLVMGetSymbolSize can assert on those in debug builds.
+    LLVMSectionIteratorRef sect = LLVMObjectFileCopySectionIterator(m_binary_ref);
+    if (!sect)
+      return 0;
+
+    LLVMMoveToContainingSection(sect, m_ref);
+    bool HasContainingSection =
+        !LLVMObjectFileIsSectionIteratorAtEnd(m_binary_ref, sect);
+    LLVMDisposeSectionIterator(sect);
+
+    if (!HasContainingSection)
+      return 0;
+
     return LLVMGetSymbolSize(m_ref);
   }
 

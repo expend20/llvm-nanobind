@@ -212,15 +212,15 @@ def clone_constant_impl(cst: llvm.Value, m: llvm.Module) -> llvm.Value:
         ty = TypeCloner(m).clone(cst)
         return ty.null()
 
-    # Try undef
-    if cst.is_undef:
-        check_value_kind(cst, llvm.ValueKind.UndefValue)
-        return TypeCloner(m).clone(cst).undef()
-
     # Try poison
     if cst.is_poison:
         check_value_kind(cst, llvm.ValueKind.PoisonValue)
         return TypeCloner(m).clone(cst).poison()
+
+    # Try undef
+    if cst.is_undef:
+        check_value_kind(cst, llvm.ValueKind.UndefValue)
+        return TypeCloner(m).clone(cst).undef()
 
     # Try null
     if cst.is_null:
@@ -447,18 +447,33 @@ class FunCloner:
         if src in self.vmap:
             return self.vmap[src]
 
-        if src.num_operands != 1:
-            raise RuntimeError("BlockAddress should have exactly one operand")
+        num_ops = src.num_operands
+        if num_ops not in (1, 2):
+            raise RuntimeError("BlockAddress should have one or two operands")
 
-        bb_val = src.get_operand(0)
+        bb_op_index = num_ops - 1
+        bb_val = src.get_operand(bb_op_index)
         if not bb_val.value_is_basic_block:
             raise RuntimeError("BlockAddress operand is not a basic block")
 
         src_bb = bb_val.value_as_basic_block()
-        src_fn = src_bb.function
+        if num_ops == 2:
+            fn_op = src.get_operand(0)
+            if not fn_op.is_function:
+                raise RuntimeError("BlockAddress function operand is not a function")
+            src_fn = fn_op
+        else:
+            src_fn = src_bb.function
+
+        if src_bb.function != src_fn:
+            raise RuntimeError("BlockAddress function/block mismatch")
+
         dst_fn = self.module.get_function(src_fn.name)
         if not dst_fn:
             raise RuntimeError("Could not find function for block address")
+
+        if dst_fn != self.fun:
+            raise RuntimeError("Cross-function blockaddress is not supported")
 
         dst_bb = self.declare_bb(src_bb)
         dst = dst_fn.block_address(dst_bb)
@@ -467,10 +482,13 @@ class FunCloner:
 
     def clone_value(self, src: llvm.Value) -> llvm.Value:
         """Clone a value, handling constants, params, and instructions."""
+        # Handle BlockAddress by value kind first. Some LLVM revisions may not
+        # classify BlockAddress as a constant in the IsA helpers.
+        if src.value_kind == llvm.ValueKind.BlockAddress:
+            return self.clone_block_address_constant(src)
+
         # First, the value may be constant
         if src.is_constant:
-            if src.value_kind == llvm.ValueKind.BlockAddress:
-                return self.clone_block_address_constant(src)
             return clone_constant(src, self.module)
 
         # Function argument should always be in the map
