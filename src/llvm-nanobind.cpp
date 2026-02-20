@@ -7823,6 +7823,8 @@ struct LLVMDisasmContextWrapper : NoMoveCopy {
         m_ref, const_cast<uint8_t *>(bytes.data() + offset),
         bytes.size() - offset, pc, outline, sizeof(outline));
 
+    if (consumed == 0)
+      return {0, ""};
     return {consumed, std::string(outline)};
   }
 
