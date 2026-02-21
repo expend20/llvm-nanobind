@@ -80,7 +80,13 @@ jobs:
 
       # ── Build C++ test executables ──────────────────────────────────
       - name: Build C++ test executables
-        run: cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release && cmake --build build
+        shell: bash
+        run: |
+          CMAKE_EXTRA=""
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            CMAKE_EXTRA="-DCMAKE_C_COMPILER=clang-cl -DCMAKE_CXX_COMPILER=clang-cl"
+          fi
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release $CMAKE_EXTRA && cmake --build build
 
       # ── Build Python package ────────────────────────────────────────
       - name: Build Python package
